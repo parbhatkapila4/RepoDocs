@@ -9,7 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^2.0.27",
+    "@ai-sdk/react": "^2.0.39",
     "@react-email/components": "^0.5.2",
+    "ai": "^5.0.39",
     "bcryptjs": "^3.0.2",
     "mongoose": "^8.18.0",
     "next": "15.5.2",

@@ -47,5 +47,14 @@ export async function GET(request: Request) {
       },
       { status: 200 }
     );
-  } catch (error) {}
+  } catch (error) {
+    console.log("Glitch in matrix", error);
+    return Response.json(
+      {
+        success: false,
+        message: "Glitch in matrix",
+      },
+      { status: 500 }
+    );
+  }
 }
