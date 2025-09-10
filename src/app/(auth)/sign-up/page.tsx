@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import axios, { AxiosError } from "axios";
-import { useDebounceValue } from "usehooks-ts";
+import { useDebounceCallback } from "usehooks-ts";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { signUpSchema } from "@/schemas/signUpSchema";
@@ -29,7 +29,7 @@ const page = () => {
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [debouncedUsername] = useDebounceValue(username, 300);
+  const debounced = useDebounceCallback(setUsername, 300);
   const router = useRouter();
 
   const form = useForm<z.infer<typeof signUpSchema>>({
@@ -43,14 +43,15 @@ const page = () => {
 
   useEffect(() => {
     const checkUsernameUnique = async () => {
-      if (debouncedUsername) {
+      if (username) {
         setIsCheckingUsername(true);
         setUsernameMessage("");
         try {
           const response = await axios.get(
-            `/api/check-username-unique?username=${debouncedUsername}`
+            `/api/check-username-unique?username=${username}`
           );
-          setUsernameMessage(response.data.message);
+          let axiosMessage = response.data.message;
+          setUsernameMessage(axiosMessage);
         } catch (error) {
           const axiosError = error as AxiosError<ApiResponse>;
           setUsernameMessage(
@@ -63,7 +64,7 @@ const page = () => {
     };
 
     checkUsernameUnique();
-  }, [debouncedUsername]);
+  }, [username]);
 
   const onSubmit = async (data: z.infer<typeof signUpSchema>) => {
     setIsSubmitting(true);
@@ -109,10 +110,17 @@ const page = () => {
                       {...field}
                       onChange={(e) => {
                         field.onChange(e);
-                        setUsername(e.target.value);
+                        debounced(e.target.value);
                       }}
                     />
                   </FormControl>
+                  {isCheckingUsername && <Loader2 className="animate-spin" />}
+                  <p
+                    className={`text-sm ${usernameMessage === "Great choice! This username is available" ? "text-green-500" : "text-red-500"}`}
+                  >
+                    test{usernameMessage}
+                  </p>
+
                   <FormMessage />
                 </FormItem>
               )}
@@ -160,7 +168,7 @@ const page = () => {
         </Form>
         <div className="text-center mt-4">
           <p>
-            Log back in, mystery awaits {""}
+            Log back in, mystery awaits? {""}
             <Link href="/sign-in" className="text-blue-500 hover:text-blue-900">
               Sign In
             </Link>
