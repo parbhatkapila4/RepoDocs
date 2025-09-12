@@ -3,6 +3,7 @@ import "@/app/globals.css"
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import { ClerkProvider } from "@clerk/nextjs";
+import { ThemeProvider } from "@/provider/ThemeProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -75,7 +76,14 @@ export default function RootLayout({
     <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
         {children}
+        </ThemeProvider>
         <Toaster />
         </body>
       </html>
