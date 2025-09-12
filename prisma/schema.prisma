@@ -1,0 +1,97 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+generator client {
+    provider = "prisma-client-js"
+    previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+    extensions = [vector]
+}
+
+enum DocType {
+    API_DOCS
+    ARCHITECTURE_DIAGRAM
+    CONTRIBUTING_GUIDE
+    DEPLOYMENT_GUIDE
+    USER_MANUAL
+    TECHNICAL_SPEC
+    CHANGELOG
+    OTHER
+}
+
+model User {
+    id            String          @id @default(uuid())
+    createdAt     DateTime        @default(now())
+    updatedAt     DateTime        @updatedAt
+    imageUrl      String?
+    firstName     String?
+    lastName      String?
+    emailAddress  String          @unique
+    credits       Int             @default(150)
+    projects      Project[]
+    readmes       Readme[]
+    docs          Doc[]
+}
+
+model Project {
+    id                   String                 @id @default(uuid())
+    createdAt            DateTime               @default(now())
+    updatedAt            DateTime               @updatedAt
+    name                 String
+    repoUrl              String
+    deletedAt            DateTime?
+    userId               String
+    user                 User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+    summaries            Summary[]
+    readmes              Readme[]
+    docs                 Doc[]
+}
+
+
+model Summary {
+    id               String                      @id @default(uuid())
+    createdAt        DateTime                    @default(now())
+    sourceCode       String
+    fileName         String
+    Summary          String
+    projectId        String
+    project          Project                     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Readme {
+    id               String                      @id @default(uuid())
+    createdAt        DateTime                    @default(now())
+    updatedAt        DateTime                    @updatedAt
+    title            String
+    content          String                      @db.Text
+    version          String                      @default("1.0.0")
+    isPublic         Boolean                     @default(false)
+    publicUrl        String?                     @unique
+    projectId        String
+    project          Project                     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+    userId           String
+    user             User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Doc {
+    id               String                      @id @default(uuid())
+    createdAt        DateTime                    @default(now())
+    updatedAt        DateTime                    @updatedAt
+    title            String
+    content          String                      @db.Text
+    docType          DocType                     @default(API_DOCS)
+    version          String                      @default("1.0.0")
+    isPublic         Boolean                     @default(false)
+    publicUrl        String?                     @unique
+    projectId        String
+    project          Project                     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+    userId           String
+    user             User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
