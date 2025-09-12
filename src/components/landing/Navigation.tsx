@@ -3,9 +3,11 @@ import React, { useState } from 'react'
 import Link from 'next/link'
 import { Button } from "@/components/ui/button"
 import { FileText, Menu, X } from "lucide-react"
+import { useUser } from "@clerk/nextjs"
 
 export default function Navigation() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const { isSignedIn } = useUser()
 
   return (
     <nav className="glass sticky top-0 z-50 border-b border-subtle">
@@ -26,16 +28,26 @@ export default function Navigation() {
             <Button variant="ghost" size="sm" className="text-white/70 hover:text-white hover:bg-white/5">
               GitHub
             </Button>
-            <Link href="/sign-in">
-              <Button variant="ghost" size="sm" className="text-white/70 hover:text-white hover:bg-white/5">
-                Sign In
-              </Button>
-            </Link>
-            <Link href="/sign-up">
-              <Button className="bg-white/10 hover:bg-white/20 text-white border border-subtle glow-subtle">
-                Sign Up
-              </Button>
-            </Link>
+            {isSignedIn ? (
+              <Link href="/dashboard">
+                <Button className="bg-white/10 hover:bg-white/20 text-white border border-subtle glow-subtle">
+                  Dashboard
+                </Button>
+              </Link>
+            ) : (
+              <>
+                <Link href="/sign-in">
+                  <Button variant="ghost" size="sm" className="text-white/70 hover:text-white hover:bg-white/5">
+                    Sign In
+                  </Button>
+                </Link>
+                <Link href="/sign-up">
+                  <Button className="bg-white/10 hover:bg-white/20 text-white border border-subtle glow-subtle">
+                    Sign Up
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -66,16 +78,26 @@ export default function Navigation() {
               <Button variant="ghost" size="sm" className="w-full justify-start text-white/70 hover:text-white hover:bg-white/5">
                 GitHub
               </Button>
-              <Link href="/sign-in" className="w-full">
-                <Button variant="ghost" size="sm" className="w-full justify-start text-white/70 hover:text-white hover:bg-white/5">
-                  Sign In
-                </Button>
-              </Link>
-              <Link href="/sign-up" className="w-full">
-                <Button className="w-full bg-white/10 hover:bg-white/20 text-white border border-subtle glow-subtle">
-                  Sign Up
-                </Button>
-              </Link>
+              {isSignedIn ? (
+                <Link href="/dashboard" className="w-full">
+                  <Button className="w-full bg-white/10 hover:bg-white/20 text-white border border-subtle glow-subtle">
+                    Dashboard
+                  </Button>
+                </Link>
+              ) : (
+                <>
+                  <Link href="/sign-in" className="w-full">
+                    <Button variant="ghost" size="sm" className="w-full justify-start text-white/70 hover:text-white hover:bg-white/5">
+                      Sign In
+                    </Button>
+                  </Link>
+                  <Link href="/sign-up" className="w-full">
+                    <Button className="w-full bg-white/10 hover:bg-white/20 text-white border border-subtle glow-subtle">
+                      Sign Up
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         )}
