@@ -15,10 +15,9 @@ export default function Layout({
 }) {
   return (
     <SidebarProvider>
-      <div className="  text-white">
+      <div className="flex h-screen w-full  text-white">
         <AppSidebar />
-          
-          <main className="">
+          <main className="w-[80vw]">
             {children}
           </main>
       </div>
