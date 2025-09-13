@@ -24,7 +24,8 @@ import {
   Brain,
   LogOut,
   BookOpen,
-  Code
+  Code,
+  Plus
 } from "lucide-react"
 import { useUser } from "@clerk/nextjs"
 
@@ -57,10 +58,11 @@ const navigationItems: NavigationItem[] = [
     icon: Brain,
   },
   {
-    title: "Settings",
-    url: "/settings",
-    icon: Settings,
+    title: "Create",
+    url: "/create",
+    icon: Plus,
   },
+  
 ]
 
 const recentProjects: NavigationItem[] = [
@@ -82,7 +84,7 @@ export default function AppSidebar() {
   const pathname = usePathname()
 
   return (
-    <Sidebar variant="inset" className="border-white">
+    <Sidebar variant="inset" className="border-white/15 border-r">
       <SidebarHeader className=" p-4 ">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8  rounded-lg flex items-center justify-center">

@@ -15,7 +15,7 @@ export default function Layout({
 }) {
   return (
     <SidebarProvider>
-      <div className="min-h-screen bg-black text-white">
+      <div className="  text-white">
         <AppSidebar />
           
           <main className="">
