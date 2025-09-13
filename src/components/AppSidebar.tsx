@@ -27,7 +27,7 @@ import {
   Code,
   Plus
 } from "lucide-react"
-import { useUser } from "@clerk/nextjs"
+import { useUser } from "@/hooks/useUser"
 
 type NavigationItem = {
   title: string

@@ -1,11 +1,10 @@
 "use client";
-import React from "react";
+import React, { useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
-import { addProject } from "@/lib/slices/projectSlice";
+import { useProjects } from "@/hooks/useProjects";
 import {
   Card,
   CardContent,
@@ -24,6 +23,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Github, Plus } from "lucide-react";
+import { toast } from "sonner";
 
 // Form validation schema
 const createProjectSchema = z.object({
@@ -49,8 +49,9 @@ const createProjectSchema = z.object({
 type CreateProjectForm = z.infer<typeof createProjectSchema>;
 
 function CreatePage() {
-  const dispatch = useDispatch();
   const router = useRouter();
+  const { createNewProject, isLoading } = useProjects();
+  const isSubmittingRef = useRef(false);
 
   const form = useForm<CreateProjectForm>({
     resolver: zodResolver(createProjectSchema),
@@ -60,21 +61,26 @@ function CreatePage() {
     },
   });
 
-  const onSubmit = (data: CreateProjectForm) => {
+  const onSubmit = async (data: CreateProjectForm) => {
+    if (isLoading || isSubmittingRef.current) {
+      return;
+    }
+    
+    isSubmittingRef.current = true;
+    
     try {
-      // Dispatch the project creation action
-      dispatch(
-        addProject({
-          name: data.name,
-          githubUrl: data.githubUrl,
-          status: "pending",
-        })
-      );
-
-      // Redirect to dashboard after successful creation
+      await createNewProject(data.name, data.githubUrl);
+      toast.success("Project created successfully!", {
+        description: `${data.name} has been added to your projects.`,
+      });
       router.push("/dashboard");
     } catch (error) {
       console.error("Error creating project:", error);
+      toast.error("Failed to create project", {
+        description: "Please try again or check your connection.",
+      });
+    } finally {
+      isSubmittingRef.current = false;
     }
   };
 
@@ -150,9 +156,9 @@ function CreatePage() {
                   <Button
                     type="submit"
                     className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                    disabled={form.formState.isSubmitting}
+                    disabled={form.formState.isSubmitting || isLoading}
                   >
-                    {form.formState.isSubmitting
+                    {form.formState.isSubmitting || isLoading
                       ? "Creating..."
                       : "Create Project"}
                   </Button>

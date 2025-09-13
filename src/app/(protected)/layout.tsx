@@ -2,11 +2,10 @@
 
 import React from 'react'
 import { 
-  SidebarInset, 
-  SidebarProvider, 
-  SidebarTrigger 
+  SidebarProvider
 } from "@/components/ui/sidebar"
 import AppSidebar from "@/components/AppSidebar"
+import UserProvider from "@/components/UserProvider"
 
 export default function Layout({
   children,
@@ -14,13 +13,15 @@ export default function Layout({
   children: React.ReactNode
 }) {
   return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full  text-white">
-        <AppSidebar />
-          <main className="w-[80vw]">
-            {children}
-          </main>
-      </div>
-    </SidebarProvider>
+    <UserProvider>
+      <SidebarProvider>
+        <div className="flex h-screen w-full  text-white">
+          <AppSidebar />
+            <main className="w-[80vw]">
+              {children}
+            </main>
+        </div>
+      </SidebarProvider>
+    </UserProvider>
   )
 }
