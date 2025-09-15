@@ -3,6 +3,7 @@
 import { createProjectWithAuth } from './queries';
 import { auth } from '@clerk/nextjs/server';
 import prisma from './prisma';
+import { getGitHubRepositoryInfo } from './github';
 
 export async function createProject(name: string, githubUrl: string, githubToken?: string) {
   return await createProjectWithAuth(name, githubUrl, githubToken);
@@ -97,5 +98,15 @@ export async function getUserProjects() {
   } catch (error) {
     console.error('Error fetching user projects:', error);
     return [];
+  }
+}
+
+export async function fetchRepositoryInfo(repoUrl: string) {
+  try {
+    const repoInfo = await getGitHubRepositoryInfo(repoUrl);
+    return repoInfo;
+  } catch (error) {
+    console.error('Error fetching repository information:', error);
+    return null;
   }
 }
