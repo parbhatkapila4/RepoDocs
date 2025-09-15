@@ -1,6 +1,7 @@
 import prisma from './prisma';
 import { Project, Prisma } from '@prisma/client';
 import { auth } from '@clerk/nextjs/server';
+import { indexGithubRepository } from './github';
 
 export async function createProject(data: Prisma.ProjectCreateInput): Promise<Project> {
   try {
@@ -15,7 +16,7 @@ export async function createProject(data: Prisma.ProjectCreateInput): Promise<Pr
   }
 }
 
-export async function createProjectWithAuth(name: string, githubUrl: string): Promise<Project> {
+export async function createProjectWithAuth(name: string, githubUrl: string, githubToken?: string): Promise<Project> {
   try {
     const { userId } = await auth();
     
@@ -38,6 +39,16 @@ export async function createProjectWithAuth(name: string, githubUrl: string): Pr
         },
       },
     });
+
+    // Index the GitHub repository after project creation
+    try {
+      await indexGithubRepository(project.id, githubUrl, githubToken);
+      console.log(`Successfully indexed repository for project: ${project.name}`);
+    } catch (indexingError) {
+      console.error('Error indexing GitHub repository:', indexingError);
+      // Don't throw here - project creation succeeded, indexing failed
+      // The project can still be used, just without the indexed content
+    }
 
     return project;
   } catch (error) {

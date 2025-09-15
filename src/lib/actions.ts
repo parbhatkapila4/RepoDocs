@@ -4,8 +4,8 @@ import { createProjectWithAuth } from './queries';
 import { auth } from '@clerk/nextjs/server';
 import prisma from './prisma';
 
-export async function createProject(name: string, githubUrl: string) {
-  return await createProjectWithAuth(name, githubUrl);
+export async function createProject(name: string, githubUrl: string, githubToken?: string) {
+  return await createProjectWithAuth(name, githubUrl, githubToken);
 }
 
 export async function getCurrentUser() {
@@ -66,5 +66,36 @@ export async function updateUserCredits(credits: number) {
   } catch (error) {
     console.error('Error updating user credits:', error);
     throw new Error('Failed to update user credits');
+  }
+}
+
+export async function getUserProjects() {
+  try {
+    const { userId } = await auth();
+    
+    if (!userId) {
+      return [];
+    }
+
+    const projects = await prisma.project.findMany({
+      where: {
+        userId: userId,
+        deletedAt: null,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      select: {
+        id: true,
+        name: true,
+        repoUrl: true,
+        createdAt: true,
+      },
+    });
+
+    return projects;
+  } catch (error) {
+    console.error('Error fetching user projects:', error);
+    return [];
   }
 }

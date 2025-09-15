@@ -11,7 +11,7 @@ export const useProjects = () => {
   );
   const { currentUser } = useSelector((state: RootState) => state.user);
 
-  const createNewProject = useCallback(async (name: string, githubUrl: string) => {
+  const createNewProject = useCallback(async (name: string, githubUrl: string, githubToken?: string) => {
     if (!currentUser) {
       throw new Error('User not authenticated');
     }
@@ -20,7 +20,7 @@ export const useProjects = () => {
       dispatch(setLoading(true));
       dispatch(setError(null));
 
-      const project = await createProject(name, githubUrl);
+      const project = await createProject(name, githubUrl, githubToken);
 
       dispatch(
         addProject({

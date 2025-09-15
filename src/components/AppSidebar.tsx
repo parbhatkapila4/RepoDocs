@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/sidebar"
 import { 
   LayoutDashboard, 
-  Settings, 
   FileText,
   Github,
   Brain,
@@ -28,6 +27,7 @@ import {
   Plus
 } from "lucide-react"
 import { useUser } from "@/hooks/useUser"
+import { useProjectsContext } from "@/context/ProjectsContext"
 
 type NavigationItem = {
   title: string
@@ -65,27 +65,16 @@ const navigationItems: NavigationItem[] = [
   
 ]
 
-const recentProjects: NavigationItem[] = [
-  {
-    title: "react-dashboard",
-    url: "/repos/react-dashboard",
-    icon: Code,
-  },
-  {
-    title: "api-docs",
-    url: "/repos/api-docs",
-    icon: FileText,
-  },
-]
 
 
 export default function AppSidebar() {
   const { user } = useUser()
+  const { projects, selectedProjectId, selectProject } = useProjectsContext()
   const pathname = usePathname()
 
   return (
     <Sidebar variant="inset" className="border-white/15 border-r">
-      <SidebarHeader className=" p-4 ">
+      <SidebarHeader className=" p-2 ">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8  rounded-lg flex items-center justify-center">
             <FileText className="w-5 h-5 text-white" />
@@ -94,7 +83,7 @@ export default function AppSidebar() {
         </div>
       </SidebarHeader>
       
-      <SidebarContent className=" px-2 py-4">
+      <SidebarContent className="  py-3">
         <SidebarGroup>
           <SidebarGroupLabel className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-2 px-2">
             Navigation
@@ -129,30 +118,36 @@ export default function AppSidebar() {
 
         <SidebarGroup>
           <SidebarGroupLabel className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-2 px-2">
-            Recent Projects
+            My Projects
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {recentProjects.map((item, index) => {
-                const isActive = pathname === item.url
-                return (
-                  <SidebarMenuItem key={`${item.title}-${index}`}>
-                    <SidebarMenuButton 
-                      asChild 
-                      className={`h-10 px-3 rounded-lg transition-colors relative ${
-                        isActive 
-                          ? "bg-white/20 text-white" 
-                          : "hover:bg-gray-800 text-gray-300"
-                      }`}
-                    >
-                      <Link href={item.url}>
-                        <item.icon className="w-4 h-4" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )
-              })}
+              {projects.length > 0 ? (
+                projects.map((project) => {
+                  const isSelected = selectedProjectId === project.id
+                  return (
+                    <SidebarMenuItem key={project.id}>
+                      <SidebarMenuButton 
+                        onClick={() => selectProject(project.id)}
+                        className={`h-10 px-3 rounded-lg transition-colors relative cursor-pointer ${
+                          isSelected 
+                            ? " text-white " 
+                            : " text-white/40"
+                        }`}
+                      >
+                        <Code className="w-4 h-4" />
+                        <span className="truncate">{project.name}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )
+                })
+              ) : (
+                <SidebarMenuItem>
+                  <div className="h-10 px-3 flex items-center text-gray-500 text-sm">
+                    No projects yet
+                  </div>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

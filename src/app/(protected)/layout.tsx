@@ -6,6 +6,7 @@ import {
 } from "@/components/ui/sidebar"
 import AppSidebar from "@/components/AppSidebar"
 import UserProvider from "@/components/UserProvider"
+import { ProjectsProvider } from "@/context/ProjectsContext"
 
 export default function Layout({
   children,
@@ -14,14 +15,16 @@ export default function Layout({
 }) {
   return (
     <UserProvider>
-      <SidebarProvider>
-        <div className="flex h-screen w-full  text-white">
-          <AppSidebar />
-            <main className="w-[80vw]">
-              {children}
-            </main>
-        </div>
-      </SidebarProvider>
+      <ProjectsProvider>
+        <SidebarProvider>
+          <div className="flex h-screen w-full  text-white">
+            <AppSidebar />
+              <main className="w-[80vw]">
+                {children}
+              </main>
+          </div>
+        </SidebarProvider>
+      </ProjectsProvider>
     </UserProvider>
   )
 }

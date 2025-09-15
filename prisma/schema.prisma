@@ -14,29 +14,16 @@ datasource db {
     extensions = [vector]
 }
 
-enum DocType {
-    API_DOCS
-    ARCHITECTURE_DIAGRAM
-    CONTRIBUTING_GUIDE
-    DEPLOYMENT_GUIDE
-    USER_MANUAL
-    TECHNICAL_SPEC
-    CHANGELOG
-    OTHER
-}
-
 model User {
-    id            String          @id @default(uuid())
-    createdAt     DateTime        @default(now())
-    updatedAt     DateTime        @updatedAt
-    imageUrl      String?
-    firstName     String?
-    lastName      String?
-    emailAddress  String          @unique
-    credits       Int             @default(150)
-    projects      Project[]
-    readmes       Readme[]
-    docs          Doc[]
+    id                String              @id @default(uuid())
+    createdAt         DateTime            @default(now())
+    updatedAt         DateTime            @updatedAt
+    imageUrl          String?
+    firstName         String?
+    lastName          String?
+    emailAddress      String              @unique
+    credits           Int                 @default(150)
+    projects          Project[]
 }
 
 model Project {
@@ -45,18 +32,17 @@ model Project {
     updatedAt            DateTime               @updatedAt
     name                 String
     repoUrl              String
+    githubToken          String?
     deletedAt            DateTime?
     userId               String
     user                 User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-    summaries            Summary[]
-    readmes              Readme[]
-    docs                 Doc[]
+    sourceCodeEmbiddings SourceCodeEmbiddings[]
 }
 
-
-model Summary {
+model SourceCodeEmbiddings {
     id               String                      @id @default(uuid())
     createdAt        DateTime                    @default(now())
+    summaryEmbedding Unsupported("vector(768)")?
     sourceCode       String
     fileName         String
     Summary          String
@@ -64,34 +50,5 @@ model Summary {
     project          Project                     @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
-model Readme {
-    id               String                      @id @default(uuid())
-    createdAt        DateTime                    @default(now())
-    updatedAt        DateTime                    @updatedAt
-    title            String
-    content          String                      @db.Text
-    version          String                      @default("1.0.0")
-    isPublic         Boolean                     @default(false)
-    publicUrl        String?                     @unique
-    projectId        String
-    project          Project                     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-    userId           String
-    user             User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
 
-model Doc {
-    id               String                      @id @default(uuid())
-    createdAt        DateTime                    @default(now())
-    updatedAt        DateTime                    @updatedAt
-    title            String
-    content          String                      @db.Text
-    docType          DocType                     @default(API_DOCS)
-    version          String                      @default("1.0.0")
-    isPublic         Boolean                     @default(false)
-    publicUrl        String?                     @unique
-    projectId        String
-    project          Project                     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-    userId           String
-    user             User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
 

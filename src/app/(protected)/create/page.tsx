@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
 import { useProjects } from "@/hooks/useProjects";
+import { useProjectsContext } from "@/context/ProjectsContext";
 import {
   Card,
   CardContent,
@@ -44,6 +45,13 @@ const createProjectSchema = z.object({
         return false;
       }
     }, "Please enter a valid GitHub repository URL"),
+  githubToken: z
+    .string()
+    .optional()
+    .refine((token) => {
+      if (!token) return true; // Optional field
+      return token.length >= 20; // Basic validation for GitHub token length
+    }, "GitHub token must be at least 20 characters long"),
 });
 
 type CreateProjectForm = z.infer<typeof createProjectSchema>;
@@ -51,6 +59,7 @@ type CreateProjectForm = z.infer<typeof createProjectSchema>;
 function CreatePage() {
   const router = useRouter();
   const { createNewProject, isLoading } = useProjects();
+  const { loadProjects, selectProject } = useProjectsContext();
   const isSubmittingRef = useRef(false);
 
   const form = useForm<CreateProjectForm>({
@@ -58,6 +67,7 @@ function CreatePage() {
     defaultValues: {
       name: "",
       githubUrl: "",
+      githubToken: "",
     },
   });
 
@@ -69,10 +79,23 @@ function CreatePage() {
     isSubmittingRef.current = true;
     
     try {
-      await createNewProject(data.name, data.githubUrl);
+      const newProject = await createNewProject(data.name, data.githubUrl, process.env.GITHUB_TOKEN);
+      
+      // Small delay to ensure database transaction is complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Refetch projects to get the updated list
+      await loadProjects();
+      
+      // Set the newly created project as selected
+      if (newProject?.id) {
+        selectProject(newProject.id);
+      }
+      
       toast.success("Project created successfully!", {
-        description: `${data.name} has been added to your projects.`,
+        description: `${data.name} has been added to your projects and is being indexed.`,
       });
+      
       router.push("/dashboard");
     } catch (error) {
       console.error("Error creating project:", error);
@@ -151,6 +174,8 @@ function CreatePage() {
                     </FormItem>
                   )}
                 />
+
+              
 
                 <div className="flex gap-4 pt-4">
                   <Button
