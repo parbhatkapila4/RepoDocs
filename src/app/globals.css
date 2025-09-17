@@ -1,6 +1,19 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* README Badge Styling */
+.prose img[src*="shields.io"] {
+  display: inline-block !important;
+  margin-right: 8px !important;
+  margin-bottom: 8px !important;
+  vertical-align: middle !important;
+}
+
+.prose p:has(img[src*="shields.io"]) {
+  line-height: 1.2 !important;
+  margin-bottom: 16px !important;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -172,5 +185,122 @@
 
 .border-accent {
   border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Spotlight Animation */
+@keyframes spotlight {
+  0% {
+    opacity: 0;
+    transform: translate(-72%, -62%) scale(0.5);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -40%) scale(1);
+  }
+}
+
+.animate-spotlight {
+  animation: spotlight 2s ease-out 0.75s forwards;
+}
+
+/* Infinite Scroll Animation */
+@keyframes scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-scroll {
+  animation: scroll 8s linear infinite;
+}
+
+/* Markdown Styling */
+.prose {
+  color: #e5e7eb;
+}
+
+.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+  color: #ffffff;
+}
+
+.prose p {
+  color: #d1d5db;
+}
+
+.prose a {
+  color: #60a5fa;
+}
+
+.prose a:hover {
+  color: #93c5fd;
+}
+
+.prose code {
+  background-color: #374151;
+  color: #fbbf24;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+}
+
+.prose pre {
+  background-color: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin: 1rem 0;
+  overflow-x: auto;
+}
+
+.prose pre code {
+  background-color: transparent;
+  color: #e5e7eb;
+  padding: 0;
+}
+
+.prose blockquote {
+  border-left: 4px solid #3b82f6;
+  background-color: #1f2937;
+  padding: 1rem;
+  margin: 1rem 0;
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+.prose ul, .prose ol {
+  color: #d1d5db;
+}
+
+.prose li {
+  color: #d1d5db;
+}
+
+.prose strong {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.prose table {
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+
+.prose th, .prose td {
+  border: 1px solid #374151;
+  padding: 0.75rem;
+  text-align: left;
+}
+
+.prose th {
+  background-color: #374151;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.prose td {
+  background-color: #1f2937;
+  color: #d1d5db;
 }
 
