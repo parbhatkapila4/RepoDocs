@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useProjectsContext } from '@/context/ProjectsContext';
-import { getProjectDocs, regenerateProjectDocs, modifyDocsWithQna, getDocsQnaHistory, createDocsShare, revokeDocsShare, getDocsShare, deleteDocsQnaRecord, deleteAllDocsQnaHistory } from '@/lib/actions';
+import { getProjectReadme, regenerateProjectReadme, modifyReadmeWithQna, getReadmeQnaHistory, createReadmeShare, revokeReadmeShare, getReadmeShare, deleteReadmeQnaRecord, deleteAllReadmeQnaHistory } from '@/lib/actions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,8 +12,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
-  BookOpen, 
+  FileText, 
   RefreshCw, 
   Calendar, 
   Clock, 
@@ -35,30 +37,14 @@ import {
   Share2,
   Link,
   X,
-  FileText,
-  Settings,
-  Database,
-  Zap,
-  Layers,
-  ChevronLeft,
-  ChevronRight,
   Trash2,
   MoreVertical
 } from 'lucide-react';
-import { 
-  Sheet, 
-  SheetContent, 
-  SheetHeader, 
-  SheetTitle, 
-  SheetDescription 
-} from '@/components/ui/sheet';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-interface DocsData {
+interface ReadmeData {
   id: string;
   content: string;
   prompt: string;
@@ -66,7 +52,7 @@ interface DocsData {
   updatedAt: Date;
 }
 
-interface DocsMetadata {
+interface ReadmeMetadata {
   title: string;
   description: string;
   stars: number;
@@ -83,14 +69,14 @@ interface QnaRecord {
   createdAt: Date;
 }
 
-interface DocsWithQna extends DocsData {
+interface ReadmeWithQna extends ReadmeData {
   qnaHistory?: QnaRecord[];
 }
 
-function DocsPage() {
+function ReadmePage() {
   const { selectedProjectId, projects } = useProjectsContext();
-  const [docsData, setDocsData] = useState<DocsData | null>(null);
-  const [metadata, setMetadata] = useState<DocsMetadata | null>(null);
+  const [readmeData, setReadmeData] = useState<ReadmeData | null>(null);
+  const [metadata, setMetadata] = useState<ReadmeMetadata | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,7 +89,6 @@ function DocsPage() {
   const [isCreatingShare, setIsCreatingShare] = useState(false);
   const [isRevokingShare, setIsRevokingShare] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
-  const [isQnaPanelOpen, setIsQnaPanelOpen] = useState(false);
   const [isDeletingQna, setIsDeletingQna] = useState(false);
   const [isDeletingAllQna, setIsDeletingAllQna] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -112,9 +97,9 @@ function DocsPage() {
 
   const selectedProject = projects.find(p => p.id === selectedProjectId);
 
-  const parseDocsMetadata = (content: string): DocsMetadata => {
+  const parseReadmeMetadata = (content: string): ReadmeMetadata => {
     const lines = content.split('\n');
-    let title = 'Technical Documentation';
+    let title = 'README';
     let description = '';
     let stars = 0;
     let forks = 0;
@@ -136,7 +121,7 @@ function DocsPage() {
         language = 'TypeScript';
       } else if (line.includes('License-MIT')) {
         license = 'MIT';
-      } else if (line.startsWith('## ') && line.toLowerCase().includes('overview')) {
+      } else if (line.startsWith('## ') && line.toLowerCase().includes('description')) {
         if (i + 1 < lines.length) {
           description = lines[i + 1].trim();
         }
@@ -147,12 +132,12 @@ function DocsPage() {
   };
 
   const handleCopyCode = async () => {
-    if (!docsData?.content) return;
+    if (!readmeData?.content) return;
     
     try {
-      await navigator.clipboard.writeText(docsData.content);
+      await navigator.clipboard.writeText(readmeData.content);
       setIsCopied(true);
-      toast.success('Documentation copied to clipboard!', {
+      toast.success('README copied to clipboard!', {
         description: 'The markdown content has been copied successfully.',
       });
       
@@ -161,52 +146,52 @@ function DocsPage() {
       }, 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
-      toast.error('Failed to copy documentation', {
+      toast.error('Failed to copy README', {
         description: 'Unable to copy content to clipboard.',
       });
     }
   };
 
-  const fetchDocs = async () => {
+  const fetchReadme = async () => {
     if (!selectedProjectId) return;
     
     setIsLoading(true);
     setError(null);
     
     try {
-      const docs = await getProjectDocs(selectedProjectId);
-      setDocsData(docs);
-      if (docs?.content) {
-        setMetadata(parseDocsMetadata(docs.content));
+      const readme = await getProjectReadme(selectedProjectId);
+      setReadmeData(readme);
+      if (readme?.content) {
+        setMetadata(parseReadmeMetadata(readme.content));
       }
     } catch (err) {
-      console.error('Error fetching docs:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch documentation');
+      console.error('Error fetching README:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch README');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleRegenerateDocs = async () => {
+  const handleRegenerateReadme = async () => {
     if (!selectedProjectId) return;
     
     setIsRegenerating(true);
     setError(null);
     
     try {
-      const newDocs = await regenerateProjectDocs(selectedProjectId);
-      setDocsData(newDocs);
-      if (newDocs.content) {
-        setMetadata(parseDocsMetadata(newDocs.content));
+      const newReadme = await regenerateProjectReadme(selectedProjectId);
+      setReadmeData(newReadme);
+      if (newReadme.content) {
+        setMetadata(parseReadmeMetadata(newReadme.content));
       }
-      toast.success('Documentation regenerated successfully!', {
-        description: 'The technical documentation has been updated with the latest codebase analysis.',
+      toast.success('README regenerated successfully!', {
+        description: 'The README has been updated with the latest codebase analysis.',
       });
     } catch (err) {
-      console.error('Error regenerating docs:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to regenerate documentation';
+      console.error('Error regenerating README:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to regenerate README';
       setError(errorMessage);
-      toast.error('Failed to regenerate documentation', {
+      toast.error('Failed to regenerate README', {
         description: errorMessage,
       });
     } finally {
@@ -221,27 +206,27 @@ function DocsPage() {
     setError(null);
     
     try {
-      const result = await modifyDocsWithQna(selectedProjectId, qnaQuestion);
-      setDocsData(result.docs);
-      if (result.docs.content) {
-        setMetadata(parseDocsMetadata(result.docs.content));
+      const result = await modifyReadmeWithQna(selectedProjectId, qnaQuestion);
+      setReadmeData(result.readme);
+      if (result.readme.content) {
+        setMetadata(parseReadmeMetadata(result.readme.content));
       }
       
       // Add to Q&A history
       setQnaHistory(prev => [result.qnaRecord, ...prev]);
       setQnaQuestion('');
       
-      // Switch to preview tab to show the updated docs
+      // Switch to preview tab to show the updated README
       setActiveTab('preview');
       
-      toast.success('Documentation updated successfully!', {
-        description: 'Your request has been processed and the documentation has been modified.',
+      toast.success('README updated successfully!', {
+        description: 'Your request has been processed and the README has been modified.',
       });
     } catch (err) {
       console.error('Error processing Q&A:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to modify documentation';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to modify README';
       setError(errorMessage);
-      toast.error('Failed to modify documentation', {
+      toast.error('Failed to modify README', {
         description: errorMessage,
       });
     } finally {
@@ -253,9 +238,9 @@ function DocsPage() {
     if (!selectedProjectId) return;
     
     try {
-      const docsWithQna = await getDocsQnaHistory(selectedProjectId);
-      if (docsWithQna?.qnaHistory) {
-        setQnaHistory(docsWithQna.qnaHistory);
+      const readmeWithQna = await getReadmeQnaHistory(selectedProjectId);
+      if (readmeWithQna?.qnaHistory) {
+        setQnaHistory(readmeWithQna.qnaHistory);
       }
     } catch (err) {
       console.error('Error fetching Q&A history:', err);
@@ -266,7 +251,7 @@ function DocsPage() {
     if (!selectedProjectId) return;
     
     try {
-      const share = await getDocsShare(selectedProjectId);
+      const share = await getReadmeShare(selectedProjectId);
       if (share && share.isActive) {
         setShareToken(share.shareToken);
       }
@@ -282,17 +267,17 @@ function DocsPage() {
     setError(null);
     
     try {
-      const share = await createDocsShare(selectedProjectId);
+      const share = await createReadmeShare(selectedProjectId);
       setShareToken(share.shareToken);
       setShowShareModal(true);
       
       if (share.isActive) {
         toast.success('Share link ready!', {
-          description: 'Your documentation is publicly accessible.',
+          description: 'Your README is publicly accessible.',
         });
       } else {
         toast.success('Share link created!', {
-          description: 'Your documentation is now publicly accessible.',
+          description: 'Your README is now publicly accessible.',
         });
       }
     } catch (err) {
@@ -314,12 +299,12 @@ function DocsPage() {
     setError(null);
     
     try {
-      await revokeDocsShare(selectedProjectId);
+      await revokeReadmeShare(selectedProjectId);
       setShareToken(null);
       setShowShareModal(false);
       
       toast.success('Share link revoked!', {
-        description: 'Your documentation is no longer publicly accessible.',
+        description: 'Your README is no longer publicly accessible.',
       });
     } catch (err) {
       console.error('Error revoking share:', err);
@@ -336,7 +321,7 @@ function DocsPage() {
   const handleCopyShareLink = async () => {
     if (!shareToken) return;
     
-    const shareUrl = `${window.location.origin}/docs/${shareToken}`;
+    const shareUrl = `${window.location.origin}/readme/${shareToken}`;
     
     try {
       await navigator.clipboard.writeText(shareUrl);
@@ -358,7 +343,7 @@ function DocsPage() {
     setError(null);
     
     try {
-      await deleteDocsQnaRecord(selectedProjectId, qnaId);
+      await deleteReadmeQnaRecord(selectedProjectId, qnaId);
       setQnaHistory(prev => prev.filter(qna => qna.id !== qnaId));
       setShowDeleteDialog(false);
       setQnaToDelete(null);
@@ -385,7 +370,7 @@ function DocsPage() {
     setError(null);
     
     try {
-      await deleteAllDocsQnaHistory(selectedProjectId);
+      await deleteAllReadmeQnaHistory(selectedProjectId);
       setQnaHistory([]);
       setShowDeleteAllDialog(false);
       
@@ -414,7 +399,7 @@ function DocsPage() {
   };
 
   useEffect(() => {
-    fetchDocs();
+    fetchReadme();
     fetchQnaHistory();
     fetchShareData();
   }, [selectedProjectId]);
@@ -425,10 +410,10 @@ function DocsPage() {
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
             <div className="text-center">
-              <BookOpen className="h-12 w-12 mx-auto text-white/50 mb-4" />
+              <FileText className="h-12 w-12 mx-auto text-white/50 mb-4" />
               <h3 className="text-lg font-semibold text-white mb-2">No Project</h3>
               <p className="text-white/50">
-                Select a project to view technical documentation.
+                Select a project to view README.
               </p>
             </div>
           </CardContent>
@@ -460,11 +445,11 @@ function DocsPage() {
       <div className="flex items-center justify-between mb-6 mt-4 px-4">
         <div className="flex items-center gap-4">
           <div className="p-3 bg-white/10 border border-white/20 rounded-xl">
-            <BookOpen className="h-6 w-6 text-white/70" />
+            <FileText className="h-6 w-6 text-white/70" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-white">
-              {metadata?.title || 'Technical Documentation'}
+              {metadata?.title || 'README'}
             </h1>
             <p className="text-white/50 mt-1">
               {selectedProject.name}
@@ -472,15 +457,6 @@ function DocsPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Button
-            onClick={() => setIsQnaPanelOpen(!isQnaPanelOpen)}
-            variant="outline"
-            className="border-white/20 text-white hover:bg-white/10 px-6 py-2 rounded-lg transition-all duration-200"
-          >
-            <MessageSquare className="h-4 w-4 mr-2" />
-            Need Help?
-          </Button>
-          
           {shareToken ? (
             <Button
               onClick={() => setShowShareModal(true)}
@@ -510,7 +486,7 @@ function DocsPage() {
           )}
           
           <Button
-            onClick={handleRegenerateDocs}
+            onClick={handleRegenerateReadme}
             disabled={isRegenerating || isLoading}
             className="bg-white/10 hover:bg-white/20 text-white border border-white/20 px-6 py-2 rounded-lg transition-all duration-200"
           >
@@ -522,7 +498,7 @@ function DocsPage() {
             ) : (
               <>
                 <RefreshCw className="h-4 w-4 mr-2" />
-                Regenerate Docs
+                Regenerate README
               </>
             )}
           </Button>
@@ -609,16 +585,33 @@ function DocsPage() {
                 </div>
               </div>
             </div>
-          ) : docsData ? (
-            <div className="h-full">
-              {/* Docs Preview - Full width, no layout changes */}
-              <div className="h-full rounded-lg shadow-sm backdrop-blur-sm">
-                <div className="h-full overflow-hidden">
-                  <ScrollArea className="h-full">
-                    <div className="p-8">
-                      <div className="prose prose-lg max-w-none text-white">
+          ) : readmeData ? (
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
+              <div className="border-b border-white/10 px-6 py-2 pb-8">
+                <TabsList className="grid w-full grid-cols-3 bg-white/5 border border-white/10">
+                  <TabsTrigger value="preview" className="flex items-center gap-2">
+                    <Eye className="h-4 w-4" />
+                    Preview
+                  </TabsTrigger>
+                  <TabsTrigger value="code" className="flex items-center gap-2">
+                    <Code className="h-4 w-4" />
+                    Code
+                  </TabsTrigger>
+                  <TabsTrigger value="qna" className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4" />
+                    Q&A
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+              
+              <TabsContent value="preview" className="flex-1 m-0">
+                <ScrollArea className="h-full">
+                  <div className="p-8">
+                    <div className="max-w-4xl mx-auto">
+                      <div className="prose prose-invert prose-lg max-w-none">
                         <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
+                          className="text-white"
                           components={{
                             h1: ({ children }) => (
                               <h1 className="text-3xl font-bold text-white mb-6 border-b border-white/20 pb-3">
@@ -635,25 +628,22 @@ function DocsPage() {
                                 {children}
                               </h3>
                             ),
-                            h4: ({ children }) => (
-                              <h4 className="text-lg font-semibold text-white mb-2 mt-4">
-                                {children}
-                              </h4>
-                            ),
-                            p: ({ children }) => (
-                              <p className="text-white/80 leading-relaxed mb-4">
-                                {children}
-                              </p>
-                            ),
+                            p: ({ children }) => {
+                              // Check if this paragraph contains only images (badges)
+                              const hasOnlyImages = React.Children.toArray(children).every(
+                                child => React.isValidElement(child) && child.type === 'img'
+                              );
+                              
+                              return (
+                                <p className={`text-white/80 leading-relaxed ${hasOnlyImages ? 'mb-4' : 'mb-4'}`}>
+                                  {children}
+                                </p>
+                              );
+                            },
                             ul: ({ children }) => (
                               <ul className="text-white/80 mb-4 space-y-2">
                                 {children}
                               </ul>
-                            ),
-                            ol: ({ children }) => (
-                              <ol className="text-white/80 mb-4 space-y-2 list-decimal list-inside">
-                                {children}
-                              </ol>
                             ),
                             li: ({ children }) => (
                               <li className="flex items-start gap-2">
@@ -667,7 +657,7 @@ function DocsPage() {
                               </code>
                             ),
                             pre: ({ children }) => (
-                              <pre className="bg-gray-900/50 text-white/90 border border-white/10 rounded-lg p-4 overflow-x-auto mb-4">
+                              <pre className="bg-gray-900/50 border border-white/10 rounded-lg p-4 overflow-x-auto mb-4">
                                 {children}
                               </pre>
                             ),
@@ -685,194 +675,220 @@ function DocsPage() {
                                 {children}
                               </blockquote>
                             ),
-                            table: ({ children }) => (
-                              <div className="overflow-x-auto mb-4">
-                                <table className="w-full border-collapse border border-white/20">
-                                  {children}
-                                </table>
-                              </div>
-                            ),
-                            th: ({ children }) => (
-                              <th className="border border-white/20 px-4 py-2 bg-white/10 text-white font-semibold text-left">
-                                {children}
-                              </th>
-                            ),
-                            td: ({ children }) => (
-                              <td className="border border-white/20 px-4 py-2 text-white/80">
-                                {children}
-                              </td>
-                            ),
                           }}
                         >
-                          {docsData.content}
+                          {readmeData.content}
                         </ReactMarkdown>
+                      </div>
+                    </div>
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+              
+              <TabsContent value="code" className="flex-1 m-0">
+                <ScrollArea className="h-full">
+                  <div className="p-8">
+                    <div className="max-w-4xl mx-auto">
+                      <div className="relative">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-lg font-semibold text-white">README.md</h3>
+                          <Button
+                            onClick={handleCopyCode}
+                            variant="outline"
+                            size="sm"
+                            className="bg-white/5 hover:bg-white/10 text-white border-white/20"
+                          >
+                            {isCopied ? (
+                              <>
+                                <Check className="h-4 w-4 mr-2 text-green-400" />
+                                Copied!
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="h-4 w-4 mr-2" />
+                                Copy Code
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                        <pre className="bg-gray-900/50 border border-white/10 rounded-lg p-6 overflow-x-auto">
+                          <code className="text-white/90 text-sm font-mono whitespace-pre-wrap">
+                            {readmeData.content}
+                          </code>
+                        </pre>
+                      </div>
+                    </div>
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+              
+              <TabsContent value="qna" className="flex-1 m-0">
+                <div className="h-full flex flex-col">
+                  <div className="p-6 border-b border-white/10">
+                    <div className="max-w-4xl mx-auto">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2 bg-blue-500/20 border border-blue-500/30 rounded-lg">
+                          <Bot className="h-5 w-5 text-blue-400" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-white">AI README Assistant</h3>
+                          <p className="text-white/60 text-sm">Ask me to modify your README content</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-3">
+                        <Input
+                          value={qnaQuestion}
+                          onChange={(e) => setQnaQuestion(e.target.value)}
+                          placeholder="e.g., Add a deployment section, Update the installation instructions, Add more examples..."
+                          className="flex-1 bg-white/5 border-white/20 text-white placeholder:text-white/50"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              handleQnaSubmit();
+                            }
+                          }}
+                        />
+                        <Button
+                          onClick={handleQnaSubmit}
+                          disabled={isProcessingQna || !qnaQuestion.trim()}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-6"
+                        >
+                          {isProcessingQna ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Send className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                      
+                      <div className="mt-3 text-xs text-white/50">
+                        Examples: "Add a troubleshooting section", "Include more code examples", "Update the description"
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <ScrollArea className="flex-1">
+                    <div className="p-6">
+                      <div className="max-w-4xl mx-auto">
+                        {qnaHistory.length > 0 ? (
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between mb-6">
+                              <div className="flex items-center gap-2">
+                                <History className="h-4 w-4 text-white/60" />
+                                <h4 className="text-sm font-medium text-white/80">Modification History</h4>
+                              </div>
+                              <Button
+                                onClick={openDeleteAllDialog}
+                                variant="outline"
+                                size="sm"
+                                className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/30"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Clear All
+                              </Button>
+                            </div>
+                            
+                            {qnaHistory.map((qna, index) => (
+                              <Card key={qna.id} className="bg-white/5 border-white/10">
+                                <CardContent className="p-4">
+                                  <div className="space-y-3">
+                                    <div className="flex items-start gap-3">
+                                      <div className="p-1.5 bg-blue-500/20 border border-blue-500/30 rounded">
+                                        <MessageSquare className="h-3 w-3 text-blue-400" />
+                                      </div>
+                                      <div className="flex-1">
+                                        <p className="text-white/90 text-sm font-medium mb-1">Your Request:</p>
+                                        <p className="text-white/70 text-sm">{qna.question}</p>
+                                      </div>
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 w-8 p-0 text-white/50 hover:text-white/80 hover:bg-white/10"
+                                          >
+                                            <MoreVertical className="h-4 w-4" />
+                                          </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="bg-gray-800 border-white/20">
+                                          <DropdownMenuItem
+                                            onClick={() => openDeleteDialog(qna.id)}
+                                            className="text-red-400 hover:bg-red-500/10 focus:bg-red-500/10"
+                                          >
+                                            <Trash2 className="h-4 w-4 mr-2" />
+                                            Delete
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    </div>
+                                    
+                                    <div className="flex items-start gap-3">
+                                      <div className="p-1.5 bg-green-500/20 border border-green-500/30 rounded">
+                                        <CheckCircle className="h-3 w-3 text-green-400" />
+                                      </div>
+                                      <div className="flex-1">
+                                        <p className="text-white/90 text-sm font-medium mb-1">AI Response:</p>
+                                        <p className="text-white/70 text-sm">{qna.answer}</p>
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-2 text-xs text-white/50 pt-2 border-t border-white/10">
+                                      <Clock className="h-3 w-3" />
+                                      <span>{new Date(qna.createdAt).toLocaleString()}</span>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-12">
+                            <div className="p-4 bg-white/10 border border-white/20 rounded-2xl mb-4 inline-block">
+                              <MessageSquare className="h-12 w-12 text-white/50" />
+                            </div>
+                            <h4 className="text-lg font-semibold text-white mb-2">No Modifications Yet</h4>
+                            <p className="text-white/60 mb-6 max-w-md mx-auto">
+                              Start a conversation with the AI to modify your README. Ask for changes, additions, or improvements.
+                            </p>
+                            <div className="space-y-2 text-sm text-white/50">
+                              <p>Try asking:</p>
+                              <p>"Add a troubleshooting section"</p>
+                              <p>"Include more code examples"</p>
+                              <p>"Update the installation instructions"</p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </ScrollArea>
                 </div>
-              </div>
-
-              {/* Q&A Sheet - Proper overlay that doesn't affect main content */}
-              <Sheet open={isQnaPanelOpen} onOpenChange={setIsQnaPanelOpen}>
-                <SheetContent side="right" className="min-w-[500px] w-[500px] bg-black/30 border-l border-white/10 backdrop-blur-md px-4">
-                  <SheetHeader className="pb-6">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-blue-500/20 border border-blue-500/30 rounded-lg w-10 h-10">
-                        <Bot className="h-5 w-5 text-blue-400" />
-                      </div>
-                      <div>
-                        <SheetTitle className="text-[24px] font-semibold text-white leading-tight">Ask a question</SheetTitle>
-                        <SheetDescription className="text-white/60 text-[14px] mt-1">Modify your documentation</SheetDescription>
-                      </div>
-                    </div>
-                  </SheetHeader>
-                  
-                  {/* Q&A Input Section */}
-                  <div className="pb-6 border-b border-white/10">
-                    <div className="space-y-6">
-                      <textarea
-                        value={qnaQuestion}
-                        onChange={(e) => setQnaQuestion(e.target.value)}
-                        placeholder="Which file contains authentication logic?"
-                        className="w-full h-[80px] p-3 bg-black/30 border border-white/20 rounded-lg resize-none text-[16px] text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && e.ctrlKey) {
-                            e.preventDefault();
-                            handleQnaSubmit();
-                          }
-                        }}
-                      />
-                      <Button
-                        onClick={handleQnaSubmit}
-                        disabled={isProcessingQna || !qnaQuestion.trim()}
-                        className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg transition-colors h-[48px] text-[16px] font-medium"
-                      >
-                        {isProcessingQna ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Processing...
-                          </>
-                        ) : (
-                          'Ask CodeLens'
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  {/* Q&A History */}
-                  <div className="flex-1 mt-6 overflow-hidden">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2">
-                        <History className="h-4 w-4 text-white/60" />
-                        <h4 className="text-[16px] font-medium text-white/80">Recent Questions</h4>
-                      </div>
-                      {qnaHistory.length > 0 && (
-                        <Button
-                          onClick={openDeleteAllDialog}
-                          variant="outline"
-                          size="sm"
-                          className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/30 text-[12px] px-3 py-1 h-7"
-                        >
-                          <Trash2 className="h-3 w-3 mr-1" />
-                          Clear All
-                        </Button>
-                      )}
-                    </div>
-                    
-                    <ScrollArea className="h-full max-h-[400px]">
-                      <div className="pr-4">
-                        {qnaHistory.length > 0 ? (
-                          <div className="space-y-4">
-                            {qnaHistory.map((qna, index) => (
-                              <div key={qna.id} className="bg-black/30 border border-white/10 rounded-lg p-4">
-                                <div className="space-y-3">
-                                  <div className="flex items-start justify-between">
-                                    <div className="flex-1">
-                                      <p className="text-white/90 text-[16px] font-medium mb-1">Your Question:</p>
-                                      <p className="text-white/70 text-[16px] break-words">{qna.question}</p>
-                                    </div>
-                                    <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-6 w-6 p-0 text-white/50 hover:text-white/80 hover:bg-white/10 ml-2"
-                                        >
-                                          <MoreVertical className="h-3 w-3" />
-                                        </Button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end" className="bg-gray-800 border-white/20">
-                                        <DropdownMenuItem
-                                          onClick={() => openDeleteDialog(qna.id)}
-                                          className="text-red-400 hover:bg-red-500/10 focus:bg-red-500/10"
-                                        >
-                                          <Trash2 className="h-3 w-3 mr-2" />
-                                          Delete
-                                        </DropdownMenuItem>
-                                      </DropdownMenuContent>
-                                    </DropdownMenu>
-                                  </div>
-                                  
-                                  <div>
-                                    <p className="text-white/90 text-[16px] font-medium mb-1">AI Response:</p>
-                                    <p className="text-white/70 text-[16px] break-words">{qna.answer}</p>
-                                  </div>
-                                  
-                                  <div className="flex items-center gap-2 text-[12px] text-white/50 pt-2 border-t border-white/10">
-                                    <Clock className="h-3 w-3" />
-                                    <span>{new Date(qna.createdAt).toLocaleString()}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-center py-8">
-                            <div className="p-4 bg-black/30 border border-white/20 rounded-2xl mb-4 inline-block">
-                              <MessageSquare className="h-8 w-8 text-white/50" />
-                            </div>
-                            <h4 className="text-[16px] font-semibold text-white mb-2">No questions yet</h4>
-                            <p className="text-white/60 text-[14px] mb-4">
-                              Ask questions to modify your documentation
-                            </p>
-                            <div className="space-y-1 text-[12px] text-white/50">
-                              <p>Try asking:</p>
-                              <p>"Add API examples"</p>
-                              <p>"Update installation guide"</p>
-                              <p>"Add troubleshooting section"</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </ScrollArea>
-                  </div>
-                </SheetContent>
-              </Sheet>
-            </div>
+              </TabsContent>
+            </Tabs>
           ) : (
             <div className="flex items-center justify-center h-full p-8">
               <div className="text-center max-w-md">
                 <div className="p-6 bg-white/10 border border-white/20 rounded-2xl mb-6 inline-block">
-                  <BookOpen className="h-16 w-16 text-white/50" />
+                  <FileText className="h-16 w-16 text-white/50" />
                 </div>
-                <h3 className="text-xl font-semibold text-white mb-3">No Documentation</h3>
+                <h3 className="text-xl font-semibold text-white mb-3">No README</h3>
                 <p className="text-white/50 mb-6">
-                  Generate comprehensive technical documentation for your codebase.
+                  Generate AI-powered documentation for your codebase.
                 </p>
                 <Button
-                  onClick={handleRegenerateDocs}
+                  onClick={handleRegenerateReadme}
                   disabled={isRegenerating}
                   className="bg-white/10 hover:bg-white/20 text-white border border-white/20 px-8 py-3 rounded-lg transition-all duration-200"
                 >
                   {isRegenerating ? (
                     <>
                       <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                      Generating Documentation...
+                      Generating README...
                     </>
                   ) : (
                     <>
-                      <BookOpen className="h-5 w-5 mr-2" />
-                      Generate Documentation
+                      <FileText className="h-5 w-5 mr-2" />
+                      Generate README
                     </>
                   )}
                 </Button>
@@ -887,7 +903,7 @@ function DocsPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <Card className="w-full max-w-md border border-white/20 bg-gray-900">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-white">Share Documentation</CardTitle>
+              <CardTitle className="text-white">Share README</CardTitle>
               <Button
                 variant="ghost"
                 size="sm"
@@ -902,7 +918,7 @@ function DocsPage() {
                 <label className="text-sm font-medium text-white/80">Public Link</label>
                 <div className="flex items-center gap-2">
                   <Input
-                    value={`${typeof window !== 'undefined' ? window.location.origin : ''}/docs/${shareToken}`}
+                    value={`${typeof window !== 'undefined' ? window.location.origin : ''}/readme/${shareToken}`}
                     readOnly
                     className="bg-white/5 border-white/20 text-white text-sm"
                   />
@@ -922,7 +938,7 @@ function DocsPage() {
                   <span className="text-sm font-medium text-blue-400">Public Access</span>
                 </div>
                 <p className="text-xs text-white/60">
-                  Anyone with this link can view your technical documentation. The link will remain active until you revoke it.
+                  Anyone with this link can view your README. The link will remain active until you revoke it.
                 </p>
               </div>
               
@@ -1033,5 +1049,4 @@ function DocsPage() {
   );
 }
 
-export default DocsPage;
-
+export default ReadmePage;
