@@ -2,6 +2,7 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import { Button } from "@/components/ui/button"
+import { HoverBorderGradient } from "@/components/ui/hover-border-gradient"
 import { FileText, Menu, X } from "lucide-react"
 import { useUser } from "@clerk/nextjs"
 
@@ -10,41 +11,43 @@ export default function Navigation() {
   const { isSignedIn } = useUser()
 
   return (
-    <nav className="glass sticky top-0 z-50 border-b border-subtle">
+    <div className="sticky top-0 z-50 backdrop-blur-xl bg-black/20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center border border-subtle glow-subtle">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-gradient-to-br border-none from-white/20 to-white/5 rounded-2xl flex items-center justify-center  shadow-lg">
               <FileText className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-white">RepoDoc</span>
+            <span className="text-xl font-semibold text-white tracking-tight">RepoDoc</span>
           </div>
           
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-4">
-            <Button variant="ghost" size="sm" className="text-white/70 hover:text-white hover:bg-white/5">
-              Docs
-            </Button>
-            <Button variant="ghost" size="sm" className="text-white/70 hover:text-white hover:bg-white/5">
-              GitHub
-            </Button>
+          <div className="hidden md:flex items-center space-x-3">
             {isSignedIn ? (
               <Link href="/dashboard">
-                <Button className="bg-white/10 hover:bg-white/20 text-white border border-subtle glow-subtle">
-                  Dashboard
-                </Button>
+                <HoverBorderGradient
+                  containerClassName="rounded-2xl"
+                  as="button"
+                  className="dark:bg-black bg-white text-black dark:text-white flex items-center space-x-2 px-4 py-1"
+                >
+                  <span className="font-medium">Dashboard</span>
+                </HoverBorderGradient>
               </Link>
             ) : (
               <>
                 <Link href="/sign-in">
-                  <Button variant="ghost" size="sm" className="text-white/70 hover:text-white hover:bg-white/5">
+                  <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-white/10 rounded-xl px-4 py-2 transition-all duration-200">
                     Sign In
                   </Button>
                 </Link>
                 <Link href="/sign-up">
-                  <Button className="bg-white/10 hover:bg-white/20 text-white border border-subtle glow-subtle">
-                    Sign Up
-                  </Button>
+                  <HoverBorderGradient
+                    containerClassName="rounded-2xl"
+                    as="button"
+                    className="dark:bg-black bg-white text-black dark:text-white flex items-center space-x-2 px-4 py-1"
+                  >
+                    <span className="font-medium">Sign Up</span>
+                  </HoverBorderGradient>
                 </Link>
               </>
             )}
@@ -57,7 +60,7 @@ export default function Navigation() {
               size="sm"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               aria-label="Toggle mobile menu"
-              className="text-white/70 hover:text-white hover:bg-white/5"
+              className="text-white/80 hover:text-white hover:bg-white/10 rounded-xl p-2 transition-all duration-200"
             >
               {isMobileMenuOpen ? (
                 <X className="w-5 h-5" />
@@ -70,31 +73,33 @@ export default function Navigation() {
 
         {/* Mobile Navigation Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-subtle glass-card">
-            <div className="px-2 pt-2 pb-3 space-y-1">
-              <Button variant="ghost" size="sm" className="w-full justify-start text-white/70 hover:text-white hover:bg-white/5">
-                Docs
-              </Button>
-              <Button variant="ghost" size="sm" className="w-full justify-start text-white/70 hover:text-white hover:bg-white/5">
-                GitHub
-              </Button>
+          <div className="md:hidden glass-card backdrop-blur-xl">
+            <div className="px-4 pt-4 pb-4 space-y-3">
               {isSignedIn ? (
                 <Link href="/dashboard" className="w-full">
-                  <Button className="w-full bg-white/10 hover:bg-white/20 text-white border border-subtle glow-subtle">
-                    Dashboard
-                  </Button>
+                  <HoverBorderGradient
+                    containerClassName="rounded-2xl w-full"
+                    as="button"
+                    className="dark:bg-black bg-white text-black dark:text-white flex items-center justify-center space-x-2 w-full py-3"
+                  >
+                    <span className="font-medium">Dashboard</span>
+                  </HoverBorderGradient>
                 </Link>
               ) : (
                 <>
                   <Link href="/sign-in" className="w-full">
-                    <Button variant="ghost" size="sm" className="w-full justify-start text-white/70 hover:text-white hover:bg-white/5">
+                    <Button variant="ghost" size="sm" className="w-full justify-start text-white/80 hover:text-white hover:bg-white/10 rounded-xl py-3 transition-all duration-200">
                       Sign In
                     </Button>
                   </Link>
                   <Link href="/sign-up" className="w-full">
-                    <Button className="w-full bg-white/10 hover:bg-white/20 text-white border border-subtle glow-subtle">
-                      Sign Up
-                    </Button>
+                    <HoverBorderGradient
+                      containerClassName="rounded-2xl w-full"
+                      as="button"
+                      className="dark:bg-black bg-white text-black dark:text-white flex items-center justify-center space-x-2 w-full py-3"
+                    >
+                      <span className="font-medium">Sign Up</span>
+                    </HoverBorderGradient>
                   </Link>
                 </>
               )}
@@ -102,6 +107,6 @@ export default function Navigation() {
           </div>
         )}
       </div>
-    </nav>
+    </div>
   )
 }

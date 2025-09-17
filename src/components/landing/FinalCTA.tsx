@@ -1,8 +1,22 @@
+"use client"
 import React from 'react'
 import { Button } from "@/components/ui/button"
 import { Github, Play } from "lucide-react"
+import { useUser } from '@/hooks/useUser'
+import { useRouter } from 'next/navigation'
 
 export default function FinalCTA() {
+  const { isAuthenticated } = useUser()
+  const router = useRouter()
+
+  const handleTryWithGitHub = () => {
+    if (isAuthenticated) {
+      router.push('/create')
+    } else {
+      router.push('/sign-up')
+    }
+  }
+
   return (
     <section className="py-20 relative">
       <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
@@ -17,18 +31,12 @@ export default function FinalCTA() {
             <Button 
               size="lg" 
               className="bg-white/10 hover:bg-white/20 text-white h-12 px-8 text-lg border border-subtle glow-subtle"
+              onClick={handleTryWithGitHub}
             >
               <Github className="w-5 h-5 mr-2" />
               Try with GitHub
             </Button>
-            <Button 
-              variant="outline" 
-              size="lg" 
-              className="h-12 px-8 text-lg border-subtle text-white/70 hover:text-white hover:bg-white/5 glass-card"
-            >
-              <Play className="w-5 h-5 mr-2" />
-              See demo repos
-            </Button>
+            
           </div>
         </div>
       </div>
