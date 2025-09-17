@@ -19,7 +19,7 @@ export default function Layout({
         <SidebarProvider>
           <div className="flex h-screen w-full  text-white">
             <AppSidebar />
-              <main className="w-[80vw]">
+              <main className="w-[80vw] h-full overflow-y-auto scrollbar-hide">
                 {children}
               </main>
           </div>

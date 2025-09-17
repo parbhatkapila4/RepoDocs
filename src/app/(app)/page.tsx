@@ -24,7 +24,6 @@ export default function LandingPage() {
       <Navigation />
       <Hero />
       <Features />
-      <HowItWorks />
       <Demo />
       <DashboardPreview />
       <SocialProof />
