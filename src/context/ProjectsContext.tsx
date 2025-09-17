@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { getUserProjects } from '@/lib/actions';
+import { getUserProjects, deleteUserProject } from '@/lib/actions';
 
 export interface SidebarProject {
   id: string;
@@ -16,6 +16,7 @@ interface ProjectsContextType {
   isLoading: boolean;
   loadProjects: () => Promise<void>;
   selectProject: (projectId: string) => void;
+  deleteProject: (projectId: string) => Promise<void>;
 }
 
 const ProjectsContext = createContext<ProjectsContextType | undefined>(undefined);
@@ -50,6 +51,21 @@ export const ProjectsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     localStorage.setItem('selectedProjectId', projectId);
   }, []);
 
+  const deleteProject = useCallback(async (projectId: string) => {
+    try {
+      await deleteUserProject(projectId);
+      setProjects(prev => prev.filter(project => project.id !== projectId));
+      
+      if (selectedProjectId === projectId) {
+        setSelectedProjectId(null);
+        localStorage.removeItem('selectedProjectId');
+      }
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      throw error;
+    }
+  }, [selectedProjectId]);
+
   useEffect(() => {
     loadProjects();
     
@@ -68,6 +84,7 @@ export const ProjectsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         isLoading,
         loadProjects,
         selectProject,
+        deleteProject,
       }}
     >
       {children}
