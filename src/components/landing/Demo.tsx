@@ -1,12 +1,26 @@
+"use client"
 import React from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { FileText, Code, Globe, Zap } from "lucide-react"
+import { useUser } from '@/hooks/useUser'
+import { useRouter } from 'next/navigation'
 
 export default function Demo() {
+  const { isAuthenticated } = useUser()
+  const router = useRouter()
+
+  const handleAnalyze = () => {
+    if (isAuthenticated) {
+      router.push('/create')
+    } else {
+      router.push('/sign-up')
+    }
+  }
+
   return (
-    <section className="py-20 relative">
+    <section className="py-10 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
@@ -30,6 +44,7 @@ export default function Demo() {
                   <Button 
                     size="lg" 
                     className="bg-white/10 hover:bg-white/20 text-white h-12 px-8 border border-subtle glow-subtle"
+                    onClick={handleAnalyze}
                   >
                     <Zap className="w-5 h-5 mr-2" />
                     Analyze

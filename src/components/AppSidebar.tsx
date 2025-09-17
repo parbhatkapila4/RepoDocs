@@ -1,6 +1,6 @@
 "use client"
 
-import React from 'react'
+import React, { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { 
@@ -16,6 +16,16 @@ import {
   SidebarMenuItem,
   SidebarSeparator
 } from "@/components/ui/sidebar"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { 
   LayoutDashboard, 
   FileText,
@@ -24,10 +34,12 @@ import {
   LogOut,
   BookOpen,
   Code,
-  Plus
+  Plus,
+  Trash2
 } from "lucide-react"
 import { useUser } from "@/hooks/useUser"
 import { useProjectsContext } from "@/context/ProjectsContext"
+import { useClerk } from "@clerk/nextjs"
 
 type NavigationItem = {
   title: string
@@ -38,13 +50,8 @@ type NavigationItem = {
 
 const navigationItems: NavigationItem[] = [
   {
-    title: "Dashboard",
-    url: "/dashboard",
-    icon: LayoutDashboard,
-  },
-  {
     title: "My Repos",
-    url: "/repos",
+    url: "/dashboard",
     icon: Github,
   },
   {
@@ -53,8 +60,8 @@ const navigationItems: NavigationItem[] = [
     icon: BookOpen,
   },
   {
-    title: "AI Analysis",
-    url: "/analysis",
+    title: "Generate Readme",
+    url: "/readme",
     icon: Brain,
   },
   {
@@ -68,9 +75,39 @@ const navigationItems: NavigationItem[] = [
 
 
 export default function AppSidebar() {
-  const { user } = useUser()
-  const { projects, selectedProjectId, selectProject } = useProjectsContext()
+  const { user, isLoading: userLoading } = useUser()
+  const { projects, selectedProjectId, selectProject, deleteProject } = useProjectsContext()
+  const { signOut } = useClerk()
   const pathname = usePathname()
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [projectToDelete, setProjectToDelete] = useState<string | null>(null)
+
+  const handleDeleteClick = (projectId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setProjectToDelete(projectId)
+    setDeleteDialogOpen(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (projectToDelete) {
+      try {
+        await deleteProject(projectToDelete)
+      } catch (error) {
+        console.error('Failed to delete project:', error)
+      }
+    }
+    setDeleteDialogOpen(false)
+    setProjectToDelete(null)
+  }
+
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false)
+    setProjectToDelete(null)
+  }
+
+  const handleLogout = () => {
+    signOut()
+  }
 
   return (
     <Sidebar variant="inset" className="border-white/15 border-r">
@@ -79,7 +116,9 @@ export default function AppSidebar() {
           <div className="w-8 h-8  rounded-lg flex items-center justify-center">
             <FileText className="w-5 h-5 text-white" />
           </div>
+          <Link href="/">
           <span className="text-xl font-bold text-white">RepoDoc</span>
+          </Link>
         </div>
       </SidebarHeader>
       
@@ -127,17 +166,26 @@ export default function AppSidebar() {
                   const isSelected = selectedProjectId === project.id
                   return (
                     <SidebarMenuItem key={project.id}>
-                      <SidebarMenuButton 
-                        onClick={() => selectProject(project.id)}
-                        className={`h-10 px-3 rounded-lg transition-colors relative cursor-pointer ${
-                          isSelected 
-                            ? " text-white " 
-                            : " text-white/40"
-                        }`}
-                      >
-                        <Code className="w-4 h-4" />
-                        <span className="truncate">{project.name}</span>
-                      </SidebarMenuButton>
+                      <div className="group relative">
+                        <SidebarMenuButton 
+                          onClick={() => selectProject(project.id)}
+                          className={`h-10 px-3 rounded-lg transition-colors relative cursor-pointer ${
+                            isSelected 
+                              ? " text-white " 
+                              : " text-white/40"
+                          }`}
+                        >
+                          <Code className="w-4 h-4" />
+                          <span className="truncate">{project.name}</span>
+                        </SidebarMenuButton>
+                        <button
+                          onClick={(e) => handleDeleteClick(project.id, e)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-500/20 rounded text-red-400 hover:text-red-300"
+                          title="Delete project"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
                     </SidebarMenuItem>
                   )
                 })
@@ -161,21 +209,51 @@ export default function AppSidebar() {
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-medium">
-                    {user?.firstName?.charAt(0) || "P"}
-                  </span>
+                  {userLoading ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <span className="text-white text-sm font-medium">
+                      {user?.firstName?.charAt(0) || user?.emailAddress?.charAt(0)?.toUpperCase() || "U"}
+                    </span>
+                  )}
                 </div>
                 <span className="text-white font-medium">
-                  {user?.firstName || "Parbhat"}
+                  {userLoading ? "Loading..." : (user?.firstName || user?.emailAddress?.split('@')[0] || "User")}
                 </span>
               </div>
-              <button className="p-1 hover:bg-gray-800 rounded transition-colors">
+              <button 
+                onClick={handleLogout}
+                className="p-1 hover:bg-gray-800 rounded transition-colors"
+                title="Logout"
+              >
                 <LogOut className="w-4 h-4 text-gray-400" />
               </button>
             </div>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Project</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this project? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleDeleteCancel}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteConfirm}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sidebar>
   )
 }
