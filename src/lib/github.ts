@@ -1,6 +1,6 @@
 import { GithubRepoLoader } from '@langchain/community/document_loaders/web/github'
 import { Document } from '@langchain/core/documents'
-import { getGenerateEmbeddings, getSummariseCode } from './gemini'
+import { getGenerateEmbeddings, getSummariseCode, generateReadmeFromCodebase } from './gemini'
 import prisma from '@/lib/prisma'
 import { Octokit } from 'octokit'
 
@@ -22,11 +22,16 @@ export async function loadGithubRepository(githubUrl: string, githubToken?: stri
 export async function indexGithubRepository(projectId: string, githubUrl: string, githubToken?: string) {
     const docs = await loadGithubRepository(githubUrl, githubToken || process.env.GITHUB_TOKEN)
     const allEmbeddings = await generateEmbeddings(docs as Document[])
+    
+    // Store embeddings and collect summaries for README generation
+    const summaries: string[] = []
     await Promise.allSettled(allEmbeddings.map(async (result) => {
         if (result.status === 'rejected' || !result.value) {
             return
         }
         const embedding = result.value
+        summaries.push(embedding.summary)
+        
         const sourceCodeEmbiddings = await prisma.sourceCodeEmbiddings.create({
             data: {
                 sourceCode: embedding.sourceCode,
@@ -41,6 +46,33 @@ export async function indexGithubRepository(projectId: string, githubUrl: string
         WHERE "id" = ${sourceCodeEmbiddings.id}
         `
     }))
+
+    // Generate README after embeddings are created
+    try {
+        const project = await prisma.project.findUnique({
+            where: { id: projectId },
+            select: { name: true }
+        })
+        
+        if (project && summaries.length > 0) {
+            const repoInfo = await getGitHubRepositoryInfo(githubUrl, githubToken)
+            const readmeContent = await generateReadmeFromCodebase(project.name, summaries, repoInfo)
+            
+            // Store README in database
+            await prisma.readme.create({
+                data: {
+                    content: readmeContent,
+                    prompt: `Generated README for ${project.name} based on codebase analysis`,
+                    projectId: projectId
+                }
+            })
+            
+            console.log(`Successfully generated and stored README for project: ${project.name}`)
+        }
+    } catch (readmeError) {
+        console.error('Error generating README:', readmeError)
+        // Don't throw here - embeddings succeeded, README generation failed
+    }
 }
 
 async function generateEmbeddings(docs: Document[]) {

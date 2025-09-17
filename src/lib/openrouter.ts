@@ -26,26 +26,46 @@ export async function openrouterChatCompletion(options: ChatCompletionOptions): 
     } = options
 
     try {
+        // Create AbortController for timeout handling
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 120000) // 2 minutes timeout
+
         const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${OPENROUTER_API_KEY}`
+                'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+                'HTTP-Referer': 'https://repodoc.dev',
+                'X-Title': 'RepoDocs'
             },
             body: JSON.stringify({
                 model,
                 messages,
                 temperature,
-            })
+                max_tokens: 8000, // Increase token limit for comprehensive docs
+            }),
+            signal: controller.signal
         })
 
+        clearTimeout(timeoutId)
+
         if (!response.ok) {
-            throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`)
+            const errorText = await response.text()
+            throw new Error(`OpenRouter API error: ${response.status} ${response.statusText} - ${errorText}`)
         }
 
         const data = await response.json()
+        
+        if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+            throw new Error('Invalid response format from OpenRouter API')
+        }
+        
         return data.choices[0].message.content
     } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+            console.error("OpenRouter API request timed out after 2 minutes")
+            throw new Error("Request timed out. The documentation generation is taking longer than expected. Please try again.")
+        }
         console.error("Error calling OpenRouter chat completion:", error)
         throw error
     }
