@@ -2,12 +2,24 @@
 import React from 'react'
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Github, Play, Zap } from "lucide-react"
+import { ArrowDown, Zap } from "lucide-react"
 import { motion } from "motion/react"
 import { Vortex } from "@/components/ui/vortex"
-import { cn } from "@/lib/utils"
+import { useUser } from "@clerk/nextjs"
+import { useRouter } from "next/navigation"
 
 export default function Hero() {
+  const { isSignedIn } = useUser()
+  const router = useRouter()
+
+  const handleButtonClick = () => {
+    if (isSignedIn) {
+      router.push('/dashboard')
+    } else {
+      router.push('/sign-in')
+    }
+  }
+
   return (
     <section className="pt-20 pb-16 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       <Vortex
@@ -83,21 +95,14 @@ export default function Hero() {
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
             <Button 
-              size="lg" 
-              className="bg-white/10 hover:bg-white/20 text-white h-12 px-8 text-lg border border-subtle glow-subtle"
-              aria-label="Sign in with GitHub to analyze your repositories"
-            >
-              <Github className="w-5 h-5 mr-2" />
-              Analyze My Repos
-            </Button>
-            <Button 
               variant="outline" 
               size="lg" 
               className="h-12 px-8 text-lg border-subtle text-white/70 hover:text-white hover:bg-white/5 glass-card"
-              aria-label="View demo of AI-generated documentation"
+              aria-label="Start your journey - sign in or go to dashboard"
+              onClick={handleButtonClick}
             >
-              <Play className="w-5 h-5 mr-2" />
-              See AI Demo
+              <ArrowDown className="w-5 h-5 mr-2 border-none" />
+              Start Your Journey
             </Button>
           </div>
           
