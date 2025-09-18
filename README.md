@@ -38,7 +38,9 @@ npm install
 ## Set up environment variables in a .env file:
 
 DATABASE_URL=your_postgres_connection_string
+
 OPENAI_API_KEY=your_openai_key
+
 GEMINI_API_KEY=your_gemini_key
 
 
