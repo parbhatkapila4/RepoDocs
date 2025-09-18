@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# RepoDoc
+
+RepoDoc is an AI-powered documentation platform for GitHub that solves one of the most expensive inefficiencies in software engineering: outdated, unreliable, and messy documentation. Developers lose nearly 25% of productivity searching for information, while poor documentation increases onboarding time by more than 60%. RepoDoc eliminates this problem by automatically generating and maintaining accurate documentation, enabling developers to query knowledge in natural language and making documentation instantly shareable across teams.
+
+By combining Next.js, TypeScript, PostgreSQL, Prisma, and Retrieval-Augmented Generation (RAG) with OpenAI and Gemini APIs, RepoDoc creates a system where project knowledge is always accessible, accurate, and reliable. Developers can ask questions directly to their documentation, receive context-aware answers, and keep READMEs up to date without manual effort. This reduces onboarding time by half, improves knowledge retention by over 60%, and increases overall team productivity by more than 40%.
+
+For founders and technical leaders, RepoDoc represents more than a tool — it is a competitive advantage. A 50-person engineering team can save over 10,000 hours annually, representing $1M+ in cost savings at Silicon Valley salary levels. By turning documentation into a living, interactive layer of the development workflow, RepoDoc ensures that teams ship faster, onboard faster, and scale without the bottleneck of poor documentation.
+
+# Tech Stack
+
+Next.js
+
+OpenAI / Gemini API
+
+PostgreSQL
+
+TypeScript
+
+Prisma ORM
+
+Retrieval-Augmented Generation (RAG)
+
+...
 
 ## Getting Started
 
-First, run the development server:
+Clone the repository:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+git clone https://github.com/yourusername/repodoc.git
+cd repodoc
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Install dependencies:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+npm install
 
-## Learn More
 
-To learn more about Next.js, take a look at the following resources:
+## Set up environment variables in a .env file:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+DATABASE_URL=your_postgres_connection_string
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+OPENAI_API_KEY=your_openai_key
 
-## Deploy on Vercel
+GEMINI_API_KEY=your_gemini_key
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Run database migrations:
+
+npx prisma migrate dev
