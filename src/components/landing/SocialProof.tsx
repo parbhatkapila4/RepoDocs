@@ -170,20 +170,40 @@ export default function SocialProof() {
         <div className="text-center">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 items-center opacity-40">
             <div className="text-center">
-              <Users className="w-8 h-8 mx-auto mb-2 text-white/40" />
-              <p className="text-sm text-white/40">Open Source Maintainers</p>
+              <div className="relative inline-flex h-16 w-16 overflow-hidden rounded-full p-[1px] focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 focus:ring-offset-slate-50 mx-auto mb-2">
+                <span className="absolute inset-[-1000%] animate-[spin_2s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#E2CBFF_0%,#393BB2_50%,#E2CBFF_100%)]" />
+                <span className="inline-flex h-full w-full items-center justify-center rounded-full bg-slate-950 backdrop-blur-3xl">
+                  <Users className="w-8 h-8 text-white brightness-150" />
+                </span>
+              </div>
+              <p className="text-sm text-white brightness-150">Open Source Maintainers</p>
             </div>
             <div className="text-center">
-              <Code className="w-8 h-8 mx-auto mb-2 text-white/40" />
-              <p className="text-sm text-white/40">Engineering Teams</p>
+              <div className="relative inline-flex h-16 w-16 overflow-hidden rounded-full p-[1px] focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 focus:ring-offset-slate-50 mx-auto mb-2">
+                <span className="absolute inset-[-1000%] animate-[spin_2s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#E2CBFF_0%,#393BB2_50%,#E2CBFF_100%)]" />
+                <span className="inline-flex h-full w-full items-center justify-center rounded-full bg-slate-950 backdrop-blur-3xl">
+                  <Code className="w-8 h-8 text-white brightness-150" />
+                </span>
+              </div>
+              <p className="text-sm text-white brightness-150">Engineering Teams</p>
             </div>
             <div className="text-center">
-              <FileText className="w-8 h-8 mx-auto mb-2 text-white/40" />
-              <p className="text-sm text-white/40">Technical Writers</p>
+              <div className="relative inline-flex h-16 w-16 overflow-hidden rounded-full p-[1px] focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 focus:ring-offset-slate-50 mx-auto mb-2">
+                <span className="absolute inset-[-1000%] animate-[spin_2s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#E2CBFF_0%,#393BB2_50%,#E2CBFF_100%)]" />
+                <span className="inline-flex h-full w-full items-center justify-center rounded-full bg-slate-950 backdrop-blur-3xl">
+                  <FileText className="w-8 h-8 text-white brightness-150" />
+                </span>
+              </div>
+              <p className="text-sm text-white brightness-150">Technical Writers</p>
             </div>
             <div className="text-center">
-              <Globe className="w-8 h-8 mx-auto mb-2 text-white/40" />
-              <p className="text-sm text-white/40">Startup Founders</p>
+              <div className="relative inline-flex h-16 w-16 overflow-hidden rounded-full p-[1px] focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 focus:ring-offset-slate-50 mx-auto mb-2">
+                <span className="absolute inset-[-1000%] animate-[spin_2s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#E2CBFF_0%,#393BB2_50%,#E2CBFF_100%)]" />
+                <span className="inline-flex h-full w-full items-center justify-center rounded-full bg-slate-950 backdrop-blur-3xl">
+                  <Globe className="w-8 h-8 text-white brightness-150" />
+                </span>
+              </div>
+              <p className="text-sm text-white brightness-150">Startup Founders</p>
             </div>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import React from 'react'
-import { FileText, Github, Globe } from "lucide-react"
+import { FileText, Github } from "lucide-react"
 
 export default function Footer() {
   return (
@@ -10,11 +10,8 @@ export default function Footer() {
             © 2025 RepoDoc. All rights reserved.
           </p>
           <div className="flex space-x-6 mt-4 md:mt-0">
-            <a href="#" className="text-white/60 hover:text-white transition-colors">
-              <Github className="w-5 h-5" />
-            </a>
-            <a href="#" className="text-white/60 hover:text-white transition-colors">
-              <Globe className="w-5 h-5" />
+            <a href="https://github.com/parbhatkapila4/RepoDocs" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-white transition-colors">
+              <Github className="w-5 h-5 animate-pulse" />
             </a>
           </div>
         </div>
