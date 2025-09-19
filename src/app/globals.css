@@ -304,3 +304,245 @@
   color: #d1d5db;
 }
 
+/* Mobile-specific utilities */
+@media (max-width: 640px) {
+  .container {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+  
+  .text-responsive {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+  
+  .button-responsive {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+  }
+  
+  .card-responsive {
+    padding: 1rem;
+    margin: 0.5rem;
+  }
+  
+  .grid-responsive {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  /* Mobile sidebar improvements */
+  .sidebar-mobile {
+    width: 100%;
+    max-width: 280px;
+  }
+  
+  /* Mobile dashboard improvements */
+  .dashboard-mobile {
+    padding: 0.5rem;
+    margin: 0;
+  }
+  
+  .dashboard-mobile .card {
+    margin-bottom: 0.75rem;
+    padding: 0.75rem;
+  }
+  
+  .dashboard-mobile .grid {
+    gap: 0.5rem;
+  }
+  
+  /* Mobile sidebar improvements */
+  .sidebar-mobile {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+  }
+  
+  .sidebar-mobile.open {
+    transform: translateX(0);
+  }
+  
+  /* Mobile content adjustments */
+  .mobile-content {
+    padding-top: 0;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+  
+  /* Mobile card improvements */
+  .mobile-card {
+    margin: 0.25rem;
+    padding: 0.75rem;
+  }
+  
+  /* Mobile text improvements */
+  .mobile-text {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+  
+  /* Mobile prose content wrapping */
+  .mobile-prose {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    hyphens: auto;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  
+  .mobile-prose * {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    max-width: 100%;
+  }
+  
+  /* Force all text elements to wrap */
+  .mobile-prose p,
+  .mobile-prose h1,
+  .mobile-prose h2,
+  .mobile-prose h3,
+  .mobile-prose h4,
+  .mobile-prose h5,
+  .mobile-prose h6,
+  .mobile-prose li,
+  .mobile-prose span,
+  .mobile-prose div {
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    word-break: break-word !important;
+    white-space: normal !important;
+    max-width: 100% !important;
+  }
+  
+  /* Prevent text truncation */
+  .mobile-no-truncate {
+    white-space: normal;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    max-width: 100%;
+  }
+  
+  /* Mobile layout improvements */
+  .mobile-layout {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+  
+  /* Force text wrapping in all containers */
+  .mobile-layout * {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    max-width: 100%;
+  }
+  
+  /* Mobile card content */
+  .mobile-card-content {
+    padding: 0.5rem;
+    margin: 0;
+    overflow-x: hidden;
+  }
+  
+  /* Ensure ScrollArea doesn't cause horizontal overflow */
+  .mobile-layout [data-radix-scroll-area-viewport] {
+    overflow-x: hidden !important;
+  }
+  
+  /* Force container width constraints */
+  .mobile-layout .prose {
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+  
+  /* Ensure all prose content wraps */
+  .mobile-layout .prose * {
+    max-width: 100% !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    word-break: break-word !important;
+  }
+  
+  /* Mobile text sizing */
+  .mobile-text-sm {
+    font-size: 0.75rem;
+    line-height: 1rem;
+  }
+  
+  .mobile-text-base {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+  
+  .mobile-text-lg {
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+}
+
+/* Tablet-specific utilities */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .container {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+  
+  .text-responsive {
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+  
+  .button-responsive {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+  }
+  
+  .card-responsive {
+    padding: 1.5rem;
+    margin: 0.75rem;
+  }
+  
+  .grid-responsive {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+/* Desktop-specific utilities */
+@media (min-width: 1025px) {
+  .container {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+  
+  .text-responsive {
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+  }
+  
+  .button-responsive {
+    padding: 1rem 2rem;
+    font-size: 1.125rem;
+  }
+  
+  .card-responsive {
+    padding: 2rem;
+    margin: 1rem;
+  }
+  
+  .grid-responsive {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+  }
+}
+

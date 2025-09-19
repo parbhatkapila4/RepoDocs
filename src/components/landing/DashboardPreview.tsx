@@ -17,7 +17,7 @@ export default function DashboardPreview() {
           </p>
         </div>
         
-        <div className="grid lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
           <Card className="glass-card border-subtle shadow-2xl">
             <CardHeader>
               <CardTitle className="flex items-center text-white">
@@ -27,7 +27,7 @@ export default function DashboardPreview() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 glass-card rounded-lg border-subtle">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 glass-card rounded-lg border-subtle gap-3 sm:gap-0">
                   <div className="flex items-center space-x-3">
                     <div className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center border border-subtle glow-subtle">
                       <span className="text-white text-sm font-bold">R</span>
@@ -47,7 +47,7 @@ export default function DashboardPreview() {
                   </div>
                 </div>
                 
-                <div className="flex items-center justify-between p-3 glass-card rounded-lg border-subtle">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 glass-card rounded-lg border-subtle gap-3 sm:gap-0">
                   <div className="flex items-center space-x-3">
                     <div className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center border border-subtle glow-subtle">
                       <span className="text-white text-sm font-bold">A</span>
@@ -87,12 +87,12 @@ export default function DashboardPreview() {
                   <p className="text-sm text-white/60 mb-3">
                     Comprehensive documentation for the React dashboard project
                   </p>
-                  <div className="flex items-center space-x-2">
-                    <Button size="sm" variant="outline" className="glass-card border-subtle text-white/70 hover:text-white hover:bg-white/5">
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button size="sm" variant="outline" className="glass-card border-subtle text-white/70 hover:text-white hover:bg-white/5 w-full sm:w-auto">
                       <ExternalLink className="w-4 h-4 mr-1" />
                       View
                     </Button>
-                    <Button size="sm" variant="outline" className="glass-card border-subtle text-white/70 hover:text-white hover:bg-white/5">
+                    <Button size="sm" variant="outline" className="glass-card border-subtle text-white/70 hover:text-white hover:bg-white/5 w-full sm:w-auto">
                       <GitBranch className="w-4 h-4 mr-1" />
                       Create PR
                     </Button>
@@ -107,12 +107,12 @@ export default function DashboardPreview() {
                   <p className="text-sm text-white/60 mb-3">
                     API documentation and usage examples
                   </p>
-                  <div className="flex items-center space-x-2">
-                    <Button size="sm" variant="outline" className="glass-card border-subtle text-white/70 hover:text-white hover:bg-white/5">
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button size="sm" variant="outline" className="glass-card border-subtle text-white/70 hover:text-white hover:bg-white/5 w-full sm:w-auto">
                       <ExternalLink className="w-4 h-4 mr-1" />
                       View
                     </Button>
-                    <Button size="sm" variant="outline" className="glass-card border-subtle text-white/70 hover:text-white hover:bg-white/5">
+                    <Button size="sm" variant="outline" className="glass-card border-subtle text-white/70 hover:text-white hover:bg-white/5 w-full sm:w-auto">
                       <GitBranch className="w-4 h-4 mr-1" />
                       Create PR
                     </Button>

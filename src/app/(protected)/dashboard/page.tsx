@@ -216,8 +216,8 @@ function ReposPage() {
 
   if (userLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <Card className="w-full max-w-md">
+      <div className="flex items-center justify-center min-h-screen p-4">
+        <Card className="w-full max-w-md mx-auto">
           <CardHeader>
             <CardTitle className="text-center">Loading...</CardTitle>
             <CardDescription className="text-center">
@@ -231,8 +231,8 @@ function ReposPage() {
 
   if (!currentProject) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <Card className="w-full max-w-md">
+      <div className="flex items-center justify-center min-h-screen p-4">
+        <Card className="w-full max-w-md mx-auto">
           <CardHeader>
             <CardTitle className="text-center">No Project Selected</CardTitle>
             <CardDescription className="text-center">
@@ -245,11 +245,11 @@ function ReposPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-white">Repository Information</h1>
-          <p className="text-gray-400 mt-2">
+    <div className="w-full p-2 sm:p-4 md:p-6 space-y-2 sm:space-y-4 md:space-y-6 dashboard-mobile mobile-layout">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-white mobile-no-truncate">Repository Information</h1>
+          <p className="text-gray-400 mt-1 sm:mt-2 text-xs sm:text-sm md:text-base mobile-no-truncate">
             Detailed information about {currentProject.name}
           </p>
         </div>
@@ -257,7 +257,7 @@ function ReposPage() {
           variant="default"
           onClick={handleRefresh} 
           disabled={loading}
-          className=""
+          className="w-full sm:w-auto text-xs sm:text-sm"
         >
           {loading ? "Loading..." : "Refresh"}
         </Button>
@@ -275,7 +275,7 @@ function ReposPage() {
       )}
 
       {loading && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {[...Array(6)].map((_, i) => (
             <Card key={i}>
               <CardHeader>
@@ -292,18 +292,18 @@ function ReposPage() {
       )}
 
       {repoInfo && !loading && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
           {/* Main Repository Info */}
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <Github className="h-8 w-8 text-white" />
-                  <div>
-                    <CardTitle className="text-xl text-white">
+          <Card className="xl:col-span-2 mobile-card">
+            <CardHeader className="mobile-card-content">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4">
+                <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
+                  <Github className="h-6 w-6 sm:h-8 sm:w-8 text-white flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="text-base sm:text-lg md:text-xl text-white mobile-no-truncate">
                       {repoInfo.fullName}
                     </CardTitle>
-                    <CardDescription className="text-gray-400">
+                    <CardDescription className="text-gray-400 text-xs sm:text-sm md:text-base mobile-no-truncate">
                       {repoInfo.description || 'No description available'}
                     </CardDescription>
                   </div>
@@ -317,37 +317,37 @@ function ReposPage() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3 sm:space-y-4 mobile-card-content">
               {/* Stats */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="flex items-center gap-2">
-                  <Star className="h-4 w-4 text-yellow-400" />
-                  <span className="text-white">{repoInfo.stars.toLocaleString()}</span>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Star className="h-3 w-3 sm:h-4 sm:w-4 text-yellow-400 flex-shrink-0" />
+                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">{repoInfo.stars.toLocaleString()}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <GitFork className="h-4 w-4 text-blue-400" />
-                  <span className="text-white">{repoInfo.forks.toLocaleString()}</span>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <GitFork className="h-3 w-3 sm:h-4 sm:w-4 text-blue-400 flex-shrink-0" />
+                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">{repoInfo.forks.toLocaleString()}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Eye className="h-4 w-4 text-green-400" />
-                  <span className="text-white">{repoInfo.watchers.toLocaleString()}</span>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Eye className="h-3 w-3 sm:h-4 sm:w-4 text-green-400 flex-shrink-0" />
+                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">{repoInfo.watchers.toLocaleString()}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-red-400" />
-                  <span className="text-white">{repoInfo.openIssues.toLocaleString()}</span>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4 text-red-400 flex-shrink-0" />
+                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">{repoInfo.openIssues.toLocaleString()}</span>
                 </div>
               </div>
 
               {/* Languages */}
               {repoInfo.language && (
                 <div>
-                  <h4 className="text-white font-semibold mb-2">Primary Language</h4>
-                  <div className="flex items-center gap-2">
+                  <h4 className="text-white font-semibold mb-1 sm:mb-2 text-sm sm:text-base">Primary Language</h4>
+                  <div className="flex items-center gap-1 sm:gap-2">
                     <div 
-                      className="w-3 h-3 rounded-full" 
+                      className="w-2 h-2 sm:w-3 sm:h-3 rounded-full flex-shrink-0" 
                       style={{ backgroundColor: getLanguageColor(repoInfo.language) }}
                     />
-                    <span className="text-white">{repoInfo.language}</span>
+                    <span className="text-white text-xs sm:text-sm mobile-no-truncate">{repoInfo.language}</span>
                   </div>
                 </div>
               )}
@@ -355,15 +355,15 @@ function ReposPage() {
               {/* All Languages */}
               {Object.keys(repoInfo.languages).length > 0 && (
                 <div>
-                  <h4 className="text-white font-semibold mb-2">Languages</h4>
-                  <div className="flex flex-wrap gap-2">
+                  <h4 className="text-white font-semibold mb-1 sm:mb-2 text-sm sm:text-base">Languages</h4>
+                  <div className="flex flex-wrap gap-1 sm:gap-2">
                     {Object.entries(repoInfo.languages).map(([lang]) => (
-                      <Badge key={lang} variant="outline" className="text-white border-gray-600">
+                      <Badge key={lang} variant="outline" className="text-white border-gray-600 text-xs sm:text-sm">
                         <div 
-                          className="w-2 h-2 rounded-full mr-2" 
+                          className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full mr-1 sm:mr-2 flex-shrink-0" 
                           style={{ backgroundColor: getLanguageColor(lang) }}
                         />
-                        {lang}
+                        <span className="mobile-no-truncate">{lang}</span>
                       </Badge>
                     ))}
                   </div>
@@ -373,11 +373,11 @@ function ReposPage() {
               {/* Topics */}
               {repoInfo.topics.length > 0 && (
                 <div>
-                  <h4 className="text-white font-semibold mb-2">Topics</h4>
-                  <div className="flex flex-wrap gap-2">
+                  <h4 className="text-white font-semibold mb-1 sm:mb-2 text-sm sm:text-base">Topics</h4>
+                  <div className="flex flex-wrap gap-1 sm:gap-2">
                     {repoInfo.topics.map((topic) => (
-                      <Badge key={topic} variant="secondary" className="text-white bg-gray-700">
-                        {topic}
+                      <Badge key={topic} variant="secondary" className="text-white bg-gray-700 text-xs sm:text-sm">
+                        <span className="mobile-no-truncate">{topic}</span>
                       </Badge>
                     ))}
                   </div>
@@ -385,117 +385,117 @@ function ReposPage() {
               )}
 
               {/* Links */}
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-1 sm:gap-2">
                 <Button 
                   variant="outline" 
                   size="sm"
                   onClick={() => window.open(repoInfo.htmlUrl, '_blank')}
-                  className="border-gray-600 text-white hover:bg-gray-700"
+                  className="border-gray-600 text-white hover:bg-gray-700 w-full sm:w-auto text-xs sm:text-sm"
                 >
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  View on GitHub
+                  <ExternalLink className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+                  <span className="mobile-no-truncate">View on GitHub</span>
                 </Button>
                 <Button 
                   variant="outline" 
                   size="sm"
                   onClick={() => window.open(repoInfo.cloneUrl, '_blank')}
-                  className="border-gray-600 text-white hover:bg-gray-700"
+                  className="border-gray-600 text-white hover:bg-gray-700 w-full sm:w-auto text-xs sm:text-sm"
                 >
-                  <Download className="h-4 w-4 mr-2" />
-                  Clone
+                  <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+                  <span className="mobile-no-truncate">Clone</span>
                 </Button>
               </div>
             </CardContent>
           </Card>
 
           {/* Repository Details */}
-          <div className="space-y-6">
+          <div className="space-y-3 sm:space-y-4 md:space-y-6">
             {/* Owner Info */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg text-white">Owner</CardTitle>
+            <Card className="mobile-card">
+              <CardHeader className="mobile-card-content">
+                <CardTitle className="text-sm sm:text-base md:text-lg text-white">Owner</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-3">
+              <CardContent className="mobile-card-content">
+                <div className="flex items-center gap-2 sm:gap-3">
                   <img 
                     src={repoInfo.owner.avatarUrl} 
                     alt={repoInfo.owner.login}
-                    width={40}
-                    height={40}
-                    className="w-10 h-10 rounded-full"
+                    width={32}
+                    height={32}
+                    className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex-shrink-0"
                   />
-    <div>
-                    <p className="text-white font-medium">{repoInfo.owner.login}</p>
-                    <p className="text-gray-400 text-sm capitalize">{repoInfo.owner.type}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-medium text-xs sm:text-sm mobile-no-truncate">{repoInfo.owner.login}</p>
+                    <p className="text-gray-400 text-xs sm:text-sm capitalize mobile-no-truncate">{repoInfo.owner.type}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Repository Details */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg text-white">Repository Details</CardTitle>
+            <Card className="mobile-card">
+              <CardHeader className="mobile-card-content">
+                <CardTitle className="text-sm sm:text-base md:text-lg text-white">Repository Details</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Code className="h-4 w-4 text-blue-400" />
-                  <span className="text-white">Size: {formatFileSize(repoInfo.size)}</span>
+              <CardContent className="space-y-2 sm:space-y-3 mobile-card-content">
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Code className="h-3 w-3 sm:h-4 sm:w-4 text-blue-400 flex-shrink-0" />
+                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Size: {formatFileSize(repoInfo.size)}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <GitFork className="h-4 w-4 text-blue-400" />
-                  <span className="text-white">Default Branch: {repoInfo.defaultBranch}</span>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <GitFork className="h-3 w-3 sm:h-4 sm:w-4 text-blue-400 flex-shrink-0" />
+                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Default Branch: {repoInfo.defaultBranch}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-blue-400" />
-                  <span className="text-white">Created: {formatDate(repoInfo.createdAt)}</span>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-blue-400 flex-shrink-0" />
+                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Created: {formatDate(repoInfo.createdAt)}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-blue-400" />
-                  <span className="text-white">Updated: {formatDate(repoInfo.updatedAt)}</span>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-blue-400 flex-shrink-0" />
+                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Updated: {formatDate(repoInfo.updatedAt)}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-blue-400" />
-                  <span className="text-white">Pushed: {formatDate(repoInfo.pushedAt)}</span>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-blue-400 flex-shrink-0" />
+                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Pushed: {formatDate(repoInfo.pushedAt)}</span>
                 </div>
               </CardContent>
             </Card>
 
             {/* Features */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg text-white">Features</CardTitle>
+            <Card className="mobile-card">
+              <CardHeader className="mobile-card-content">
+                <CardTitle className="text-sm sm:text-base md:text-lg text-white">Features</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className={`h-4 w-4 ${repoInfo.hasIssues ? 'text-green-400' : 'text-gray-400'}`} />
-                  <span className="text-white">Issues {repoInfo.hasIssues ? 'Enabled' : 'Disabled'}</span>
+              <CardContent className="space-y-1 sm:space-y-2 mobile-card-content">
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <AlertCircle className={`h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 ${repoInfo.hasIssues ? 'text-green-400' : 'text-gray-400'}`} />
+                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Issues {repoInfo.hasIssues ? 'Enabled' : 'Disabled'}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <BookOpen className={`h-4 w-4 ${repoInfo.hasWiki ? 'text-green-400' : 'text-gray-400'}`} />
-                  <span className="text-white">Wiki {repoInfo.hasWiki ? 'Enabled' : 'Disabled'}</span>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <BookOpen className={`h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 ${repoInfo.hasWiki ? 'text-green-400' : 'text-gray-400'}`} />
+                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Wiki {repoInfo.hasWiki ? 'Enabled' : 'Disabled'}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Download className={`h-4 w-4 ${repoInfo.hasDownloads ? 'text-green-400' : 'text-gray-400'}`} />
-                  <span className="text-white">Downloads {repoInfo.hasDownloads ? 'Enabled' : 'Disabled'}</span>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Download className={`h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 ${repoInfo.hasDownloads ? 'text-green-400' : 'text-gray-400'}`} />
+                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Downloads {repoInfo.hasDownloads ? 'Enabled' : 'Disabled'}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Globe className={`h-4 w-4 ${repoInfo.hasPages ? 'text-green-400' : 'text-gray-400'}`} />
-                  <span className="text-white">Pages {repoInfo.hasPages ? 'Enabled' : 'Disabled'}</span>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Globe className={`h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 ${repoInfo.hasPages ? 'text-green-400' : 'text-gray-400'}`} />
+                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Pages {repoInfo.hasPages ? 'Enabled' : 'Disabled'}</span>
                 </div>
               </CardContent>
             </Card>
 
             {/* License */}
             {repoInfo.license && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg text-white">License</CardTitle>
+              <Card className="mobile-card">
+                <CardHeader className="mobile-card-content">
+                  <CardTitle className="text-sm sm:text-base md:text-lg text-white">License</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-2">
-                    <Shield className="h-4 w-4 text-blue-400" />
-                    <span className="text-white">{repoInfo.license.name}</span>
+                <CardContent className="mobile-card-content">
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    <Shield className="h-3 w-3 sm:h-4 sm:w-4 text-blue-400 flex-shrink-0" />
+                    <span className="text-white text-xs sm:text-sm mobile-no-truncate">{repoInfo.license.name}</span>
                   </div>
                 </CardContent>
               </Card>

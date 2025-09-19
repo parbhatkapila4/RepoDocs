@@ -108,13 +108,13 @@ function CreatePage() {
   };
 
   return (
-    <div className="flex items-center justify-center h-full w-full">
-      <div className="max-w-2xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight text-white">
+    <div className="flex items-center justify-center h-full w-full p-4">
+      <div className="max-w-2xl mx-auto w-full">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
             Create New Project
           </h1>
-          <p className="text-gray-400 mt-2">
+          <p className="text-gray-400 mt-2 text-sm sm:text-base">
             Add a new project by providing its name and GitHub repository URL
           </p>
         </div>
@@ -177,7 +177,7 @@ function CreatePage() {
 
               
 
-                <div className="flex gap-4 pt-4">
+                <div className="flex flex-col sm:flex-row gap-4 pt-4">
                   <Button
                     type="submit"
                     className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
@@ -190,7 +190,7 @@ function CreatePage() {
                   <Button
                     type="button"
                     variant="outline"
-                    className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                    className="flex-1 sm:flex-none border-gray-600 text-gray-300 hover:bg-gray-700"
                     onClick={() => router.back()}
                   >
                     Cancel

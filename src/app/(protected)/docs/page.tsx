@@ -456,54 +456,54 @@ function DocsPage() {
   }
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between mb-6 mt-4 px-4">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-white/10 border border-white/20 rounded-xl">
-            <BookOpen className="h-6 w-6 text-white/70" />
+    <div className="h-full flex flex-col mobile-layout">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 mt-2 sm:mt-4 px-2 sm:px-4 gap-3 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
+          <div className="p-2 sm:p-3 bg-white/10 border border-white/20 rounded-xl flex-shrink-0">
+            <BookOpen className="h-5 w-5 sm:h-6 sm:w-6 text-white/70" />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white">
-              {metadata?.title || 'Technical Documentation'}
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-white mobile-no-truncate">
+              { 'Technical Documentation'}
             </h1>
-            <p className="text-white/50 mt-1">
+            <p className="text-white/50 mt-1 text-xs sm:text-sm md:text-base mobile-no-truncate">
               {selectedProject.name}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
           <Button
             onClick={() => setIsQnaPanelOpen(!isQnaPanelOpen)}
             variant="outline"
-            className="border-white/20 text-white hover:bg-white/10 px-6 py-2 rounded-lg transition-all duration-200"
+            className="border-white/20 text-white hover:bg-white/10 px-3 sm:px-4 md:px-6 py-2 rounded-lg transition-all duration-200 w-full sm:w-auto text-xs sm:text-sm"
           >
-            <MessageSquare className="h-4 w-4 mr-2" />
-            Need Help?
+            <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+            <span className="mobile-no-truncate">Need Help?</span>
           </Button>
           
           {shareToken ? (
             <Button
               onClick={() => setShowShareModal(true)}
-              className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-all duration-200"
+              className="bg-green-600 hover:bg-green-700 text-white px-3 sm:px-4 md:px-6 py-2 rounded-lg transition-all duration-200 w-full sm:w-auto text-xs sm:text-sm"
             >
-              <Globe className="h-4 w-4 mr-2" />
-              View Share Link
+              <Globe className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+              <span className="mobile-no-truncate">View Share Link</span>
             </Button>
           ) : (
             <Button
               onClick={handleCreateShare}
               disabled={isCreatingShare || isLoading}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-all duration-200"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 md:px-6 py-2 rounded-lg transition-all duration-200 w-full sm:w-auto text-xs sm:text-sm"
             >
               {isCreatingShare ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creating...
+                  <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin flex-shrink-0" />
+                  <span className="mobile-no-truncate">Creating...</span>
                 </>
               ) : (
                 <>
-                  <Share2 className="h-4 w-4 mr-2" />
-                  Share Publicly
+                  <Share2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+                  <span className="mobile-no-truncate">Share Publicly</span>
                 </>
               )}
             </Button>
@@ -512,17 +512,17 @@ function DocsPage() {
           <Button
             onClick={handleRegenerateDocs}
             disabled={isRegenerating || isLoading}
-            className="bg-white/10 hover:bg-white/20 text-white border border-white/20 px-6 py-2 rounded-lg transition-all duration-200"
+            className="bg-white/10 hover:bg-white/20 text-white border border-white/20 px-3 sm:px-4 md:px-6 py-2 rounded-lg transition-all duration-200 w-full sm:w-auto text-xs sm:text-sm"
           >
             {isRegenerating ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Regenerating...
+                <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin flex-shrink-0" />
+                <span className="mobile-no-truncate">Regenerating...</span>
               </>
             ) : (
               <>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Regenerate Docs
+                <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+                <span className="mobile-no-truncate">Regenerate Docs</span>
               </>
             )}
           </Button>
@@ -530,48 +530,48 @@ function DocsPage() {
       </div>
 
       {metadata && (
-        <div className="px-4 mb-6">
-          <div className="flex flex-wrap gap-3">
+        <div className="px-2 sm:px-4 mb-4 sm:mb-6">
+          <div className="flex flex-wrap gap-1 sm:gap-2 md:gap-3">
             <div className="flex items-center bg-gray-600 rounded-sm overflow-hidden shadow-sm">
-              <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-600">
-                <Star className="h-3 w-3 text-white" />
-                <span className="text-white text-xs font-medium">Stars</span>
+              <div className="flex items-center gap-1 px-1.5 sm:gap-1.5 sm:px-2 py-1 bg-gray-600">
+                <Star className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white flex-shrink-0" />
+                <span className="text-white text-xs font-medium mobile-no-truncate">Stars</span>
               </div>
-              <div className="px-2 py-1 bg-gray-500">
-                <span className="text-white text-xs font-medium">{metadata.stars}</span>
+              <div className="px-1.5 sm:px-2 py-1 bg-gray-500">
+                <span className="text-white text-xs font-medium mobile-no-truncate">{metadata.stars}</span>
               </div>
             </div>
             
             <div className="flex items-center bg-gray-600 rounded-sm overflow-hidden shadow-sm">
-              <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-600">
-                <GitFork className="h-3 w-3 text-white" />
-                <span className="text-white text-xs font-medium">Forks</span>
+              <div className="flex items-center gap-1 px-1.5 sm:px-2 py-1 bg-gray-600">
+                <GitFork className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white flex-shrink-0" />
+                <span className="text-white text-xs font-medium mobile-no-truncate">Forks</span>
               </div>
-              <div className="px-2 py-1 bg-gray-500">
-                <span className="text-white text-xs font-medium">{metadata.forks}</span>
-              </div>
-            </div>
-            
-            <div className="flex items-center bg-gray-600 rounded-sm overflow-hidden shadow-sm">
-              <div className="px-2 py-1 bg-gray-600">
-                <span className="text-white text-xs font-medium">Language</span>
-              </div>
-              <div className="px-2 py-1 bg-blue-500">
-                <span className="text-white text-xs font-medium">{metadata.language}</span>
+              <div className="px-1.5 sm:px-2 py-1 bg-gray-500">
+                <span className="text-white text-xs font-medium mobile-no-truncate">{metadata.forks}</span>
               </div>
             </div>
             
             <div className="flex items-center bg-gray-600 rounded-sm overflow-hidden shadow-sm">
-              <div className="px-2 py-1 bg-gray-600">
-                <span className="text-white text-xs font-medium">License</span>
+              <div className="px-1.5 sm:px-2 py-1 bg-gray-600">
+                <span className="text-white text-xs font-medium mobile-no-truncate">Language</span>
               </div>
-              <div className="px-2 py-1 bg-green-500">
-                <span className="text-white text-xs font-medium">{metadata.license}</span>
+              <div className="px-1.5 sm:px-2 py-1 bg-blue-500">
+                <span className="text-white text-xs font-medium mobile-no-truncate">{metadata.language}</span>
+              </div>
+            </div>
+            
+            <div className="flex items-center bg-gray-600 rounded-sm overflow-hidden shadow-sm">
+              <div className="px-1.5 sm:px-2 py-1 bg-gray-600">
+                <span className="text-white text-xs font-medium mobile-no-truncate">License</span>
+              </div>
+              <div className="px-1.5 sm:px-2 py-1 bg-green-500">
+                <span className="text-white text-xs font-medium mobile-no-truncate">{metadata.license}</span>
               </div>
             </div>
           </div>
           {metadata.description && (
-            <p className="text-white/60 mt-3 text-sm max-w-3xl">
+            <p className="text-white/60 mt-2 sm:mt-3 text-xs sm:text-sm max-w-3xl mobile-no-truncate">
               {metadata.description}
             </p>
           )}
@@ -587,10 +587,10 @@ function DocsPage() {
         </Alert>
       )}
 
-      <Card className="flex-1 flex flex-col border border-white/20 shadow-xl mx-4 mb-4">
-        <CardContent className="flex-1 p-0">
+      <Card className="flex-1 flex flex-col border border-white/20 shadow-xl mx-1 sm:mx-2 md:mx-4 mb-2 sm:mb-4 mobile-card">
+        <CardContent className="flex-1 p-0 mobile-card-content">
           {isLoading ? (
-            <div className="p-8 space-y-6">
+            <div className="p-4 sm:p-8 space-y-6">
               <div className="space-y-4">
                 <Skeleton className="h-12 w-1/2 bg-gray-700/50 rounded-lg" />
                 <div className="h-1 w-20 bg-gray-700/30 rounded-full"></div>
@@ -612,62 +612,62 @@ function DocsPage() {
           ) : docsData ? (
             <div className="h-full">
               {/* Docs Preview - Full width, no layout changes */}
-              <div className="h-full rounded-lg shadow-sm backdrop-blur-sm">
+              <div className="h-full rounded-lg shadow-sm backdrop-blur-sm overflow-hidden">
                 <div className="h-full overflow-hidden">
-                  <ScrollArea className="h-full">
-                    <div className="p-8">
-                      <div className="prose prose-lg max-w-none text-white">
+                  <ScrollArea className="h-full overflow-x-hidden">
+                    <div className="p-2 sm:p-4 md:p-8 mobile-card-content">
+                      <div className="prose prose-lg max-w-none text-white mobile-no-truncate mobile-prose">
                         <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
                           components={{
                             h1: ({ children }) => (
-                              <h1 className="text-3xl font-bold text-white mb-6 border-b border-white/20 pb-3">
+                              <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-white mb-3 sm:mb-4 md:mb-6 border-b border-white/20 pb-1 sm:pb-2 md:pb-3 mobile-no-truncate">
                                 {children}
                               </h1>
                             ),
                             h2: ({ children }) => (
-                              <h2 className="text-2xl font-semibold text-white mb-4 mt-8">
+                              <h2 className="text-base sm:text-lg md:text-xl lg:text-2xl font-semibold text-white mb-2 sm:mb-3 md:mb-4 mt-4 sm:mt-6 md:mt-8 mobile-no-truncate">
                                 {children}
                               </h2>
                             ),
                             h3: ({ children }) => (
-                              <h3 className="text-xl font-semibold text-white mb-3 mt-6">
+                              <h3 className="text-sm sm:text-base md:text-lg lg:text-xl font-semibold text-white mb-2 sm:mb-3 md:mb-3 mt-3 sm:mt-4 md:mt-6 mobile-no-truncate">
                                 {children}
                               </h3>
                             ),
                             h4: ({ children }) => (
-                              <h4 className="text-lg font-semibold text-white mb-2 mt-4">
+                              <h4 className="text-sm sm:text-base md:text-lg font-semibold text-white mb-1 sm:mb-2 mt-2 sm:mt-3 md:mt-4 mobile-no-truncate">
                                 {children}
                               </h4>
                             ),
                             p: ({ children }) => (
-                              <p className="text-white/80 leading-relaxed mb-4">
+                              <p className="text-white/80 leading-relaxed mb-2 sm:mb-3 md:mb-4 text-xs sm:text-sm md:text-base mobile-no-truncate">
                                 {children}
                               </p>
                             ),
                             ul: ({ children }) => (
-                              <ul className="text-white/80 mb-4 space-y-2">
+                              <ul className="text-white/80 mb-2 sm:mb-3 md:mb-4 space-y-1 sm:space-y-2 text-xs sm:text-sm md:text-base mobile-no-truncate">
                                 {children}
                               </ul>
                             ),
                             ol: ({ children }) => (
-                              <ol className="text-white/80 mb-4 space-y-2 list-decimal list-inside">
+                              <ol className="text-white/80 mb-2 sm:mb-3 md:mb-4 space-y-1 sm:space-y-2 list-decimal list-inside text-xs sm:text-sm md:text-base mobile-no-truncate">
                                 {children}
                               </ol>
                             ),
                             li: ({ children }) => (
-                              <li className="flex items-start gap-2">
-                                <span className="text-white/40 mt-2">•</span>
-                                <span>{children}</span>
+                              <li className="flex items-start gap-1 sm:gap-2 mobile-no-truncate">
+                                <span className="text-white/40 mt-1 sm:mt-2 flex-shrink-0">•</span>
+                                <span className="mobile-no-truncate">{children}</span>
                               </li>
                             ),
                             code: ({ children }) => (
-                              <code className="bg-white/10 text-white/90 px-2 py-1 rounded text-sm font-mono">
+                              <code className="bg-white/10 text-white/90 px-1 sm:px-1.5 md:px-2 py-0.5 sm:py-1 rounded text-xs sm:text-sm font-mono mobile-no-truncate">
                                 {children}
                               </code>
                             ),
                             pre: ({ children }) => (
-                              <pre className="bg-gray-900/50 text-white/90 border border-white/10 rounded-lg p-4 overflow-x-auto mb-4">
+                              <pre className="bg-gray-900/50 text-white/90 border border-white/10 rounded-lg p-2 sm:p-3 md:p-4 overflow-x-auto mb-2 sm:mb-3 md:mb-4 text-xs sm:text-sm mobile-no-truncate">
                                 {children}
                               </pre>
                             ),
@@ -676,29 +676,29 @@ function DocsPage() {
                                 src={src} 
                                 alt={alt} 
                                 {...props}
-                                className="inline-block mr-2 mb-2"
-                                style={{ display: 'inline-block', marginRight: '8px', marginBottom: '8px' }}
+                                className="inline-block mr-1 sm:mr-2 mb-1 sm:mb-2 max-w-full h-auto"
+                                style={{ display: 'inline-block', marginRight: '4px', marginBottom: '4px' }}
                               />
                             ),
                             blockquote: ({ children }) => (
-                              <blockquote className="border-l-4 border-white/20 pl-4 italic text-white/70 mb-4">
+                              <blockquote className="border-l-4 border-white/20 pl-2 sm:pl-3 md:pl-4 italic text-white/70 mb-2 sm:mb-3 md:mb-4 text-xs sm:text-sm md:text-base mobile-no-truncate">
                                 {children}
                               </blockquote>
                             ),
                             table: ({ children }) => (
-                              <div className="overflow-x-auto mb-4">
-                                <table className="w-full border-collapse border border-white/20">
+                              <div className="overflow-x-auto mb-2 sm:mb-3 md:mb-4">
+                                <table className="w-full border-collapse border border-white/20 text-xs sm:text-sm mobile-no-truncate">
                                   {children}
                                 </table>
                               </div>
                             ),
                             th: ({ children }) => (
-                              <th className="border border-white/20 px-4 py-2 bg-white/10 text-white font-semibold text-left">
+                              <th className="border border-white/20 px-1 sm:px-2 md:px-4 py-1 sm:py-1.5 md:py-2 bg-white/10 text-white font-semibold text-left text-xs sm:text-sm mobile-no-truncate">
                                 {children}
                               </th>
                             ),
                             td: ({ children }) => (
-                              <td className="border border-white/20 px-4 py-2 text-white/80">
+                              <td className="border border-white/20 px-1 sm:px-2 md:px-4 py-1 sm:py-1.5 md:py-2 text-white/80 text-xs sm:text-sm mobile-no-truncate">
                                 {children}
                               </td>
                             ),
@@ -714,27 +714,27 @@ function DocsPage() {
 
               {/* Q&A Sheet - Proper overlay that doesn't affect main content */}
               <Sheet open={isQnaPanelOpen} onOpenChange={setIsQnaPanelOpen}>
-                <SheetContent side="right" className="min-w-[500px] w-[500px] bg-black/30 border-l border-white/10 backdrop-blur-md px-4">
-                  <SheetHeader className="pb-6">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-blue-500/20 border border-blue-500/30 rounded-lg w-10 h-10">
-                        <Bot className="h-5 w-5 text-blue-400" />
+                <SheetContent side="right" className="min-w-[300px] sm:min-w-[400px] md:min-w-[500px] w-[90vw] sm:w-[400px] md:w-[500px] bg-black/30 border-l border-white/10 backdrop-blur-md px-2 sm:px-4">
+                  <SheetHeader className="pb-4 sm:pb-6">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <div className="p-1.5 sm:p-2 bg-blue-500/20 border border-blue-500/30 rounded-lg w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0">
+                        <Bot className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
                       </div>
-                      <div>
-                        <SheetTitle className="text-[24px] font-semibold text-white leading-tight">Ask a question</SheetTitle>
-                        <SheetDescription className="text-white/60 text-[14px] mt-1">Modify your documentation</SheetDescription>
+                      <div className="flex-1 min-w-0">
+                        <SheetTitle className="text-lg sm:text-xl md:text-2xl font-semibold text-white leading-tight mobile-no-truncate">Ask a question</SheetTitle>
+                        <SheetDescription className="text-white/60 text-xs sm:text-sm mt-1 mobile-no-truncate">Modify your documentation</SheetDescription>
                       </div>
                     </div>
                   </SheetHeader>
                   
                   {/* Q&A Input Section */}
-                  <div className="pb-6 border-b border-white/10">
-                    <div className="space-y-6">
+                  <div className="pb-4 sm:pb-6 border-b border-white/10">
+                    <div className="space-y-4 sm:space-y-6">
                       <textarea
                         value={qnaQuestion}
                         onChange={(e) => setQnaQuestion(e.target.value)}
                         placeholder="Which file contains authentication logic?"
-                        className="w-full h-[80px] p-3 bg-black/30 border border-white/20 rounded-lg resize-none text-[16px] text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full h-[60px] sm:h-[80px] p-2 sm:p-3 bg-black/30 border border-white/20 rounded-lg resize-none text-sm sm:text-base text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent mobile-no-truncate"
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' && e.ctrlKey) {
                             e.preventDefault();
@@ -745,36 +745,36 @@ function DocsPage() {
                       <Button
                         onClick={handleQnaSubmit}
                         disabled={isProcessingQna || !qnaQuestion.trim()}
-                        className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg transition-colors h-[48px] text-[16px] font-medium"
+                        className="w-full bg-red-600 hover:bg-red-700 text-white py-2 sm:py-3 rounded-lg transition-colors h-[40px] sm:h-[48px] text-sm sm:text-base font-medium"
                       >
                         {isProcessingQna ? (
                           <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Processing...
+                            <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin flex-shrink-0" />
+                            <span className="mobile-no-truncate">Processing...</span>
                           </>
                         ) : (
-                          'Ask CodeLens'
+                          <span className="mobile-no-truncate">Ask CodeLens</span>
                         )}
                       </Button>
                     </div>
                   </div>
                   
                   {/* Q&A History */}
-                  <div className="flex-1 mt-6 overflow-hidden">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2">
-                        <History className="h-4 w-4 text-white/60" />
-                        <h4 className="text-[16px] font-medium text-white/80">Recent Questions</h4>
+                  <div className="flex-1 mt-4 sm:mt-6 overflow-hidden">
+                    <div className="flex items-center justify-between mb-3 sm:mb-4">
+                      <div className="flex items-center gap-1 sm:gap-2">
+                        <History className="h-3 w-3 sm:h-4 sm:w-4 text-white/60 flex-shrink-0" />
+                        <h4 className="text-sm sm:text-base font-medium text-white/80 mobile-no-truncate">Recent Questions</h4>
                       </div>
                       {qnaHistory.length > 0 && (
                         <Button
                           onClick={openDeleteAllDialog}
                           variant="outline"
                           size="sm"
-                          className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/30 text-[12px] px-3 py-1 h-7"
+                          className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/30 text-xs px-2 sm:px-3 py-1 h-6 sm:h-7"
                         >
-                          <Trash2 className="h-3 w-3 mr-1" />
-                          Clear All
+                          <Trash2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1 flex-shrink-0" />
+                          <span className="mobile-no-truncate">Clear All</span>
                         </Button>
                       )}
                     </div>
@@ -782,23 +782,23 @@ function DocsPage() {
                     <ScrollArea className="h-full max-h-[400px]">
                       <div className="pr-4">
                         {qnaHistory.length > 0 ? (
-                          <div className="space-y-4">
+                          <div className="space-y-3 sm:space-y-4">
                             {qnaHistory.map((qna, index) => (
-                              <div key={qna.id} className="bg-black/30 border border-white/10 rounded-lg p-4">
-                                <div className="space-y-3">
+                              <div key={qna.id} className="bg-black/30 border border-white/10 rounded-lg p-3 sm:p-4">
+                                <div className="space-y-2 sm:space-y-3">
                                   <div className="flex items-start justify-between">
-                                    <div className="flex-1">
-                                      <p className="text-white/90 text-[16px] font-medium mb-1">Your Question:</p>
-                                      <p className="text-white/70 text-[16px] break-words">{qna.question}</p>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-white/90 text-sm sm:text-base font-medium mb-1 mobile-no-truncate">Your Question:</p>
+                                      <p className="text-white/70 text-sm sm:text-base break-words mobile-no-truncate">{qna.question}</p>
                                     </div>
                                     <DropdownMenu>
                                       <DropdownMenuTrigger asChild>
                                         <Button
                                           variant="ghost"
                                           size="sm"
-                                          className="h-6 w-6 p-0 text-white/50 hover:text-white/80 hover:bg-white/10 ml-2"
+                                          className="h-5 w-5 sm:h-6 sm:w-6 p-0 text-white/50 hover:text-white/80 hover:bg-white/10 ml-1 sm:ml-2 flex-shrink-0"
                                         >
-                                          <MoreVertical className="h-3 w-3" />
+                                          <MoreVertical className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                                         </Button>
                                       </DropdownMenuTrigger>
                                       <DropdownMenuContent align="end" className="bg-gray-800 border-white/20">
@@ -806,40 +806,40 @@ function DocsPage() {
                                           onClick={() => openDeleteDialog(qna.id)}
                                           className="text-red-400 hover:bg-red-500/10 focus:bg-red-500/10"
                                         >
-                                          <Trash2 className="h-3 w-3 mr-2" />
-                                          Delete
+                                          <Trash2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1 sm:mr-2" />
+                                          <span className="mobile-no-truncate">Delete</span>
                                         </DropdownMenuItem>
                                       </DropdownMenuContent>
                                     </DropdownMenu>
                                   </div>
                                   
                                   <div>
-                                    <p className="text-white/90 text-[16px] font-medium mb-1">AI Response:</p>
-                                    <p className="text-white/70 text-[16px] break-words">{qna.answer}</p>
+                                    <p className="text-white/90 text-sm sm:text-base font-medium mb-1 mobile-no-truncate">AI Response:</p>
+                                    <p className="text-white/70 text-sm sm:text-base break-words mobile-no-truncate">{qna.answer}</p>
                                   </div>
                                   
-                                  <div className="flex items-center gap-2 text-[12px] text-white/50 pt-2 border-t border-white/10">
-                                    <Clock className="h-3 w-3" />
-                                    <span>{new Date(qna.createdAt).toLocaleString()}</span>
+                                  <div className="flex items-center gap-1 sm:gap-2 text-xs text-white/50 pt-1 sm:pt-2 border-t border-white/10">
+                                    <Clock className="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" />
+                                    <span className="mobile-no-truncate">{new Date(qna.createdAt).toLocaleString()}</span>
                                   </div>
                                 </div>
                               </div>
                             ))}
                           </div>
                         ) : (
-                          <div className="text-center py-8">
-                            <div className="p-4 bg-black/30 border border-white/20 rounded-2xl mb-4 inline-block">
-                              <MessageSquare className="h-8 w-8 text-white/50" />
+                          <div className="text-center py-6 sm:py-8">
+                            <div className="p-3 sm:p-4 bg-black/30 border border-white/20 rounded-2xl mb-3 sm:mb-4 inline-block">
+                              <MessageSquare className="h-6 w-6 sm:h-8 sm:w-8 text-white/50" />
                             </div>
-                            <h4 className="text-[16px] font-semibold text-white mb-2">No questions yet</h4>
-                            <p className="text-white/60 text-[14px] mb-4">
+                            <h4 className="text-sm sm:text-base font-semibold text-white mb-2 mobile-no-truncate">No questions yet</h4>
+                            <p className="text-white/60 text-xs sm:text-sm mb-3 sm:mb-4 mobile-no-truncate">
                               Ask questions to modify your documentation
                             </p>
-                            <div className="space-y-1 text-[12px] text-white/50">
-                              <p>Try asking:</p>
-                              <p>"Add API examples"</p>
-                              <p>"Update installation guide"</p>
-                              <p>"Add troubleshooting section"</p>
+                            <div className="space-y-1 text-xs text-white/50">
+                              <p className="mobile-no-truncate">Try asking:</p>
+                              <p className="mobile-no-truncate">&quot;Add API examples&quot;</p>
+                              <p className="mobile-no-truncate">&quot;Update installation guide&quot;</p>
+                              <p className="mobile-no-truncate">&quot;Add troubleshooting section&quot;</p>
                             </div>
                           </div>
                         )}

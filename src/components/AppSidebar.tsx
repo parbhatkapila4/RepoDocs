@@ -84,6 +84,7 @@ export default function AppSidebar() {
 
   const handleDeleteClick = (projectId: string, e: React.MouseEvent) => {
     e.stopPropagation()
+    console.log('Delete button clicked for project:', projectId)
     setProjectToDelete(projectId)
     setDeleteDialogOpen(true)
   }
@@ -91,9 +92,12 @@ export default function AppSidebar() {
   const handleDeleteConfirm = async () => {
     if (projectToDelete) {
       try {
+        console.log('Deleting project:', projectToDelete)
         await deleteProject(projectToDelete)
+        console.log('Project deleted successfully')
       } catch (error) {
         console.error('Failed to delete project:', error)
+        alert('Failed to delete project. Please try again.')
       }
     }
     setDeleteDialogOpen(false)
@@ -111,13 +115,13 @@ export default function AppSidebar() {
 
   return (
     <Sidebar variant="inset" className="border-white/15 border-r">
-      <SidebarHeader className=" p-2 ">
+      <SidebarHeader className="p-2">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8  rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center">
             <FileText className="w-5 h-5 text-white" />
           </div>
           <Link href="/">
-          <span className="text-xl font-bold text-white">RepoDoc</span>
+            <span className="text-xl font-bold text-white">RepoDoc</span>
           </Link>
         </div>
       </SidebarHeader>
@@ -169,7 +173,7 @@ export default function AppSidebar() {
                       <div className="group relative">
                         <SidebarMenuButton 
                           onClick={() => selectProject(project.id)}
-                          className={`h-10 px-3 rounded-lg transition-colors relative cursor-pointer ${
+                          className={`h-10 px-3 pr-8 rounded-lg transition-colors relative cursor-pointer ${
                             isSelected 
                               ? " text-white " 
                               : " text-white/40"
@@ -180,8 +184,9 @@ export default function AppSidebar() {
                         </SidebarMenuButton>
                         <button
                           onClick={(e) => handleDeleteClick(project.id, e)}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-500/20 rounded text-red-400 hover:text-red-300"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity p-1 hover:bg-red-500/20 rounded text-red-400 hover:text-red-300 z-10"
                           title="Delete project"
+                          type="button"
                         >
                           <Trash2 className="w-3 h-3" />
                         </button>

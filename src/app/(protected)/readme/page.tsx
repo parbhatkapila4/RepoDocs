@@ -441,45 +441,45 @@ function ReadmePage() {
   }
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between mb-6 mt-4 px-4">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-white/10 border border-white/20 rounded-xl">
-            <FileText className="h-6 w-6 text-white/70" />
+    <div className="h-full flex flex-col mobile-layout">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 mt-2 sm:mt-4 px-2 sm:px-4 gap-3 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
+          <div className="p-2 sm:p-3 bg-white/10 border border-white/20 rounded-xl flex-shrink-0">
+            <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-white/70" />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-white mobile-no-truncate">
               {metadata?.title || 'README'}
             </h1>
-            <p className="text-white/50 mt-1">
+            <p className="text-white/50 mt-1 text-xs sm:text-sm md:text-base mobile-no-truncate">
               {selectedProject.name}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
           {shareToken ? (
             <Button
               onClick={() => setShowShareModal(true)}
-              className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-all duration-200"
+              className="bg-green-600 hover:bg-green-700 text-white px-3 sm:px-4 md:px-6 py-2 rounded-lg transition-all duration-200 w-full sm:w-auto text-xs sm:text-sm"
             >
-              <Globe className="h-4 w-4 mr-2" />
-              View Share Link
+              <Globe className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+              <span className="mobile-no-truncate">View Share Link</span>
             </Button>
           ) : (
             <Button
               onClick={handleCreateShare}
               disabled={isCreatingShare || isLoading}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-all duration-200"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 md:px-6 py-2 rounded-lg transition-all duration-200 w-full sm:w-auto text-xs sm:text-sm"
             >
               {isCreatingShare ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creating...
+                  <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin flex-shrink-0" />
+                  <span className="mobile-no-truncate">Creating...</span>
                 </>
               ) : (
                 <>
-                  <Share2 className="h-4 w-4 mr-2" />
-                  Share Publicly
+                  <Share2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+                  <span className="mobile-no-truncate">Share Publicly</span>
                 </>
               )}
             </Button>
@@ -488,17 +488,17 @@ function ReadmePage() {
           <Button
             onClick={handleRegenerateReadme}
             disabled={isRegenerating || isLoading}
-            className="bg-white/10 hover:bg-white/20 text-white border border-white/20 px-6 py-2 rounded-lg transition-all duration-200"
+            className="bg-white/10 hover:bg-white/20 text-white border border-white/20 px-3 sm:px-4 md:px-6 py-2 rounded-lg transition-all duration-200 w-full sm:w-auto text-xs sm:text-sm"
           >
             {isRegenerating ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Regenerating...
+                <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin flex-shrink-0" />
+                <span className="mobile-no-truncate">Regenerating...</span>
               </>
             ) : (
               <>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Regenerate README
+                <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+                <span className="mobile-no-truncate">Regenerate README</span>
               </>
             )}
           </Button>
@@ -506,48 +506,48 @@ function ReadmePage() {
       </div>
 
       {metadata && (
-        <div className="px-4 mb-6">
-          <div className="flex flex-wrap gap-3">
+        <div className="px-2 sm:px-4 mb-4 sm:mb-6">
+          <div className="flex flex-wrap gap-1 sm:gap-2 md:gap-3">
             <div className="flex items-center bg-gray-600 rounded-sm overflow-hidden shadow-sm">
-              <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-600">
-                <Star className="h-3 w-3 text-white" />
-                <span className="text-white text-xs font-medium">Stars</span>
+              <div className="flex items-center gap-1 px-1.5 sm:gap-1.5 sm:px-2 py-1 bg-gray-600">
+                <Star className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white flex-shrink-0" />
+                <span className="text-white text-xs font-medium mobile-no-truncate">Stars</span>
               </div>
-              <div className="px-2 py-1 bg-gray-500">
-                <span className="text-white text-xs font-medium">{metadata.stars}</span>
+              <div className="px-1.5 sm:px-2 py-1 bg-gray-500">
+                <span className="text-white text-xs font-medium mobile-no-truncate">{metadata.stars}</span>
               </div>
             </div>
             
             <div className="flex items-center bg-gray-600 rounded-sm overflow-hidden shadow-sm">
-              <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-600">
-                <GitFork className="h-3 w-3 text-white" />
-                <span className="text-white text-xs font-medium">Forks</span>
+              <div className="flex items-center gap-1 px-1.5 sm:px-2 py-1 bg-gray-600">
+                <GitFork className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white flex-shrink-0" />
+                <span className="text-white text-xs font-medium mobile-no-truncate">Forks</span>
               </div>
-              <div className="px-2 py-1 bg-gray-500">
-                <span className="text-white text-xs font-medium">{metadata.forks}</span>
-              </div>
-            </div>
-            
-            <div className="flex items-center bg-gray-600 rounded-sm overflow-hidden shadow-sm">
-              <div className="px-2 py-1 bg-gray-600">
-                <span className="text-white text-xs font-medium">Language</span>
-              </div>
-              <div className="px-2 py-1 bg-blue-500">
-                <span className="text-white text-xs font-medium">{metadata.language}</span>
+              <div className="px-1.5 sm:px-2 py-1 bg-gray-500">
+                <span className="text-white text-xs font-medium mobile-no-truncate">{metadata.forks}</span>
               </div>
             </div>
             
             <div className="flex items-center bg-gray-600 rounded-sm overflow-hidden shadow-sm">
-              <div className="px-2 py-1 bg-gray-600">
-                <span className="text-white text-xs font-medium">License</span>
+              <div className="px-1.5 sm:px-2 py-1 bg-gray-600">
+                <span className="text-white text-xs font-medium mobile-no-truncate">Language</span>
               </div>
-              <div className="px-2 py-1 bg-green-500">
-                <span className="text-white text-xs font-medium">{metadata.license}</span>
+              <div className="px-1.5 sm:px-2 py-1 bg-blue-500">
+                <span className="text-white text-xs font-medium mobile-no-truncate">{metadata.language}</span>
+              </div>
+            </div>
+            
+            <div className="flex items-center bg-gray-600 rounded-sm overflow-hidden shadow-sm">
+              <div className="px-1.5 sm:px-2 py-1 bg-gray-600">
+                <span className="text-white text-xs font-medium mobile-no-truncate">License</span>
+              </div>
+              <div className="px-1.5 sm:px-2 py-1 bg-green-500">
+                <span className="text-white text-xs font-medium mobile-no-truncate">{metadata.license}</span>
               </div>
             </div>
           </div>
           {metadata.description && (
-            <p className="text-white/60 mt-3 text-sm max-w-3xl">
+            <p className="text-white/60 mt-2 sm:mt-3 text-xs sm:text-sm max-w-3xl mobile-no-truncate">
               {metadata.description}
             </p>
           )}
@@ -563,10 +563,10 @@ function ReadmePage() {
         </Alert>
       )}
 
-      <Card className="flex-1 flex flex-col border border-white/20 shadow-xl mx-4 mb-4">
-        <CardContent className="flex-1 p-0">
+      <Card className="flex-1 flex flex-col border border-white/20 shadow-xl mx-1 sm:mx-2 md:mx-4 mb-2 sm:mb-4 mobile-card">
+        <CardContent className="flex-1 p-0 mobile-card-content">
           {isLoading ? (
-            <div className="p-8 space-y-6">
+            <div className="p-4 sm:p-8 space-y-6">
               <div className="space-y-4">
                 <Skeleton className="h-12 w-1/2 bg-gray-700/50 rounded-lg" />
                 <div className="h-1 w-20 bg-gray-700/30 rounded-full"></div>
@@ -587,8 +587,8 @@ function ReadmePage() {
             </div>
           ) : readmeData ? (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-              <div className="border-b border-white/10 px-6 py-2 pb-8">
-                <TabsList className="grid w-full grid-cols-3 bg-white/5 border border-white/10">
+              <div className="border-b border-white/10 px-3 sm:px-6 py-2 pb-6 sm:pb-8">
+                <TabsList className="grid w-full grid-cols-3 bg-white/5 border border-white/10 text-xs sm:text-sm">
                   <TabsTrigger value="preview" className="flex items-center gap-2">
                     <Eye className="h-4 w-4" />
                     Preview
@@ -605,26 +605,26 @@ function ReadmePage() {
               </div>
               
               <TabsContent value="preview" className="flex-1 m-0">
-                <ScrollArea className="h-full">
-                  <div className="p-8">
+                <ScrollArea className="h-full overflow-x-hidden">
+                  <div className="p-2 sm:p-4 md:p-8 mobile-card-content">
                     <div className="max-w-4xl mx-auto">
-                      <div className="prose prose-invert prose-lg max-w-none">
+                      <div className="prose prose-invert prose-lg max-w-none mobile-no-truncate mobile-prose">
                         <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
                           className="text-white"
                           components={{
                             h1: ({ children }) => (
-                              <h1 className="text-3xl font-bold text-white mb-6 border-b border-white/20 pb-3">
+                              <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-white mb-3 sm:mb-4 md:mb-6 border-b border-white/20 pb-1 sm:pb-2 md:pb-3 mobile-no-truncate">
                                 {children}
                               </h1>
                             ),
                             h2: ({ children }) => (
-                              <h2 className="text-2xl font-semibold text-white mb-4 mt-8">
+                              <h2 className="text-base sm:text-lg md:text-xl lg:text-2xl font-semibold text-white mb-2 sm:mb-3 md:mb-4 mt-4 sm:mt-6 md:mt-8 mobile-no-truncate">
                                 {children}
                               </h2>
                             ),
                             h3: ({ children }) => (
-                              <h3 className="text-xl font-semibold text-white mb-3 mt-6">
+                              <h3 className="text-sm sm:text-base md:text-lg lg:text-xl font-semibold text-white mb-2 sm:mb-3 md:mb-3 mt-3 sm:mt-4 md:mt-6 mobile-no-truncate">
                                 {children}
                               </h3>
                             ),
@@ -635,29 +635,29 @@ function ReadmePage() {
                               );
                               
                               return (
-                                <p className={`text-white/80 leading-relaxed ${hasOnlyImages ? 'mb-4' : 'mb-4'}`}>
+                                <p className={`text-white/80 leading-relaxed ${hasOnlyImages ? 'mb-2 sm:mb-3 md:mb-4' : 'mb-2 sm:mb-3 md:mb-4'} text-xs sm:text-sm md:text-base mobile-no-truncate`}>
                                   {children}
                                 </p>
                               );
                             },
                             ul: ({ children }) => (
-                              <ul className="text-white/80 mb-4 space-y-2">
+                              <ul className="text-white/80 mb-2 sm:mb-3 md:mb-4 space-y-1 sm:space-y-2 text-xs sm:text-sm md:text-base mobile-no-truncate">
                                 {children}
                               </ul>
                             ),
                             li: ({ children }) => (
-                              <li className="flex items-start gap-2">
-                                <span className="text-white/40 mt-2">•</span>
-                                <span>{children}</span>
+                              <li className="flex items-start gap-1 sm:gap-2 mobile-no-truncate">
+                                <span className="text-white/40 mt-1 sm:mt-2 flex-shrink-0">•</span>
+                                <span className="mobile-no-truncate">{children}</span>
                               </li>
                             ),
                             code: ({ children }) => (
-                              <code className="bg-white/10 text-white/90 px-2 py-1 rounded text-sm font-mono">
+                              <code className="bg-white/10 text-white/90 px-1 sm:px-1.5 md:px-2 py-0.5 sm:py-1 rounded text-xs sm:text-sm font-mono mobile-no-truncate">
                                 {children}
                               </code>
                             ),
                             pre: ({ children }) => (
-                              <pre className="bg-gray-900/50 border border-white/10 rounded-lg p-4 overflow-x-auto mb-4">
+                              <pre className="bg-gray-900/50 border border-white/10 rounded-lg p-2 sm:p-3 md:p-4 overflow-x-auto mb-2 sm:mb-3 md:mb-4 text-xs sm:text-sm mobile-no-truncate">
                                 {children}
                               </pre>
                             ),
@@ -666,12 +666,12 @@ function ReadmePage() {
                                 src={src} 
                                 alt={alt} 
                                 {...props}
-                                className="inline-block mr-2 mb-2"
-                                style={{ display: 'inline-block', marginRight: '8px', marginBottom: '8px' }}
+                                className="inline-block mr-1 sm:mr-2 mb-1 sm:mb-2 max-w-full h-auto"
+                                style={{ display: 'inline-block', marginRight: '4px', marginBottom: '4px' }}
                               />
                             ),
                             blockquote: ({ children }) => (
-                              <blockquote className="border-l-4 border-white/20 pl-4 italic text-white/70 mb-4">
+                              <blockquote className="border-l-4 border-white/20 pl-2 sm:pl-3 md:pl-4 italic text-white/70 mb-2 sm:mb-3 md:mb-4 text-xs sm:text-sm md:text-base mobile-no-truncate">
                                 {children}
                               </blockquote>
                             ),
@@ -686,8 +686,8 @@ function ReadmePage() {
               </TabsContent>
               
               <TabsContent value="code" className="flex-1 m-0">
-                <ScrollArea className="h-full">
-                  <div className="p-8">
+                <ScrollArea className="h-full overflow-x-hidden">
+                  <div className="p-2 sm:p-4 md:p-8 mobile-card-content">
                     <div className="max-w-4xl mx-auto">
                       <div className="relative">
                         <div className="flex items-center justify-between mb-4">
@@ -724,24 +724,24 @@ function ReadmePage() {
               
               <TabsContent value="qna" className="flex-1 m-0">
                 <div className="h-full flex flex-col">
-                  <div className="p-6 border-b border-white/10">
+                  <div className="p-2 sm:p-4 md:p-6 border-b border-white/10 mobile-card-content">
                     <div className="max-w-4xl mx-auto">
                       <div className="flex items-center gap-3 mb-4">
                         <div className="p-2 bg-blue-500/20 border border-blue-500/30 rounded-lg">
                           <Bot className="h-5 w-5 text-blue-400" />
                         </div>
-                        <div>
-                          <h3 className="text-lg font-semibold text-white">AI README Assistant</h3>
-                          <p className="text-white/60 text-sm">Ask me to modify your README content</p>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-sm sm:text-base md:text-lg font-semibold text-white mobile-no-truncate">AI README Assistant</h3>
+                          <p className="text-white/60 text-xs sm:text-sm mobile-no-truncate">Ask me to modify your README content</p>
                         </div>
                       </div>
                       
-                      <div className="flex gap-3">
+                      <div className="flex flex-col sm:flex-row gap-3">
                         <Input
                           value={qnaQuestion}
                           onChange={(e) => setQnaQuestion(e.target.value)}
                           placeholder="e.g., Add a deployment section, Update the installation instructions, Add more examples..."
-                          className="flex-1 bg-white/5 border-white/20 text-white placeholder:text-white/50"
+                          className="flex-1 bg-white/5 border-white/20 text-white placeholder:text-white/50 text-xs sm:text-sm mobile-no-truncate"
                           onKeyDown={(e) => {
                             if (e.key === 'Enter' && !e.shiftKey) {
                               e.preventDefault();
@@ -752,24 +752,24 @@ function ReadmePage() {
                         <Button
                           onClick={handleQnaSubmit}
                           disabled={isProcessingQna || !qnaQuestion.trim()}
-                          className="bg-blue-600 hover:bg-blue-700 text-white px-6"
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 md:px-6 w-full sm:w-auto text-xs sm:text-sm"
                         >
                           {isProcessingQna ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin flex-shrink-0" />
                           ) : (
-                            <Send className="h-4 w-4" />
+                            <Send className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
                           )}
                         </Button>
                       </div>
                       
-                      <div className="mt-3 text-xs text-white/50">
-                        Examples: "Add a troubleshooting section", "Include more code examples", "Update the description"
+                      <div className="mt-2 sm:mt-3 text-xs text-white/50 mobile-no-truncate">
+                        Examples: &quot;Add a troubleshooting section&quot;, &quot;Include more code examples&quot;, &quot;Update the description&quot;
                       </div>
                     </div>
                   </div>
                   
-                  <ScrollArea className="flex-1">
-                    <div className="p-6">
+                  <ScrollArea className="flex-1 overflow-x-hidden">
+                    <div className="p-2 sm:p-4 md:p-6 mobile-card-content">
                       <div className="max-w-4xl mx-auto">
                         {qnaHistory.length > 0 ? (
                           <div className="space-y-4">
