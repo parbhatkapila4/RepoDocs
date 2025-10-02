@@ -6,7 +6,7 @@ Open-source RAG system that turns GitHub repositories into queryable knowledge b
 
 RepoDoc ingests your repository and makes it conversational. Ask "how does auth work?" and get accurate answers with code references. No more grep-ing through files or outdated docs.
 
-**Live Demo**: https://repodoc.parbhat.dev/ | 
+**Live Demo**: https://repodoc.parbhat.dev/ 
 
 ## Technical Implementation
 
