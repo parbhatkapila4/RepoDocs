@@ -358,4 +358,4 @@ PRs welcome, especially for:
 
 ---
 
-Built by [@parbhatkapila4](https://github.com/parbhatkapila4) | [LinkedIn](https://www.linkedin.com/in/parbhatkapila/)
+Built by [@parbhatkapila4](https://github.com/parbhatkapila4) | [LinkedIn](https://www.linkedin.com/in/parbhat-kapila/)
