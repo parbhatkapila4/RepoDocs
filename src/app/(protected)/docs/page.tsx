@@ -753,7 +753,7 @@ function DocsPage() {
                             <span className="mobile-no-truncate">Processing...</span>
                           </>
                         ) : (
-                          <span className="mobile-no-truncate">Ask CodeLens</span>
+                          <span className="mobile-no-truncate">Ask RepoDocs</span>
                         )}
                       </Button>
                     </div>
