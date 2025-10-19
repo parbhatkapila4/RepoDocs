@@ -32,7 +32,7 @@ export default function Hero() {
         <div className="text-center">
           <Badge variant="secondary" className="mb-4 sm:mb-6 px-3 sm:px-4 py-2 text-xs sm:text-sm glass-card text-white/90 border-subtle">
             <Zap className="w-3 h-3 sm:w-4 sm:h-4 mr-2 text-white/80" />
-            AI-powered documentation in 60 seconds
+            RAG-powered codebase intelligence in seconds
           </Badge>
           
           <motion.h1 
@@ -41,7 +41,7 @@ export default function Hero() {
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 1.2, ease: "easeOut" }}
           >
-            {["AI", "generates", "documentation", "from", "your", "GitHub", "repo", "instantly."].map((word, index) => (
+            {["Turn", "your", "GitHub", "repos", "into", "queryable", "knowledge", "bases."].map((word, index) => (
               <motion.span
                 key={index}
                 initial={{ 
@@ -69,7 +69,7 @@ export default function Hero() {
           </motion.h1>
           
           <p className="text-lg sm:text-xl text-white/60 mb-6 sm:mb-8 max-w-3xl mx-auto leading-relaxed">
-            {["Paste", "your", "GitHub", "URL.", "AI", "analyzes", "your", "code", "and", "generates", "README", "files", "and", "docs", "instantly."].map((word, index) => (
+            {["Ask", "questions", "about", "your", "codebase.", "Get", "instant", "answers", "with", "code", "references", "and", "context."].map((word, index) => (
               <motion.span
                 key={index}
                 initial={{ 

@@ -19,6 +19,14 @@ export default function Demo() {
     }
   }
 
+  const handleDemoClick = (repoUrl: string) => {
+    if (isAuthenticated) {
+      router.push(`/create?url=${encodeURIComponent(repoUrl)}`)
+    } else {
+      router.push(`/sign-up?url=${encodeURIComponent(repoUrl)}`)
+    }
+  }
+
   return (
     <section className="py-10 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -52,15 +60,27 @@ export default function Demo() {
                 </div>
                 
                 <div className="grid sm:grid-cols-3 gap-4">
-                  <Button variant="outline" className="h-12 justify-start glass-card border-subtle text-white/70 hover:text-white hover:bg-white/5">
+                  <Button 
+                    variant="outline" 
+                    className="h-12 justify-start glass-card border-subtle text-white/70 hover:text-white hover:bg-white/5"
+                    onClick={() => handleDemoClick('https://github.com/facebook/react')}
+                  >
                     <FileText className="w-4 h-4 mr-2" />
                     React App Demo
                   </Button>
-                  <Button variant="outline" className="h-12 justify-start glass-card border-subtle text-white/70 hover:text-white hover:bg-white/5">
+                  <Button 
+                    variant="outline" 
+                    className="h-12 justify-start glass-card border-subtle text-white/70 hover:text-white hover:bg-white/5"
+                    onClick={() => handleDemoClick('https://github.com/tiangolo/fastapi')}
+                  >
                     <Code className="w-4 h-4 mr-2" />
                     FastAPI Demo
                   </Button>
-                  <Button variant="outline" className="h-12 justify-start glass-card border-subtle text-white/70 hover:text-white hover:bg-white/5">
+                  <Button 
+                    variant="outline" 
+                    className="h-12 justify-start glass-card border-subtle text-white/70 hover:text-white hover:bg-white/5"
+                    onClick={() => handleDemoClick('https://github.com/vercel/next.js')}
+                  >
                     <Globe className="w-4 h-4 mr-2" />
                     Next.js Demo
                   </Button>
