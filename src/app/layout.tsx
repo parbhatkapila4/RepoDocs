@@ -32,6 +32,16 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/",
   },
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.png", type: "image/png" },
+    ],
+    apple: [
+      { url: "/favicon.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
+  manifest: "/site.webmanifest",
   openGraph: {
     title: "RepoDoc — Auto-generate README & Docs from any GitHub repo",
     description: "Paste a GitHub URL and generate professional README, architecture diagrams, and shareable docs. Sign in with GitHub.",
@@ -76,6 +86,10 @@ export default function RootLayout({
   return (
     <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="apple-touch-icon" href="/favicon.png" />
+        <link rel="manifest" href="/site.webmanifest" />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
       <ReduxProvider>
         <ThemeProvider
