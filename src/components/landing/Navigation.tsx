@@ -3,7 +3,8 @@ import React, { useState } from 'react'
 import Link from 'next/link'
 import { Button } from "@/components/ui/button"
 import { HoverBorderGradient } from "@/components/ui/hover-border-gradient"
-import { FileText, Menu, X } from "lucide-react"
+import { Menu, X } from "lucide-react"
+import { RepoDocLogo } from "@/components/ui/repodoc-logo"
 import { useUser } from "@clerk/nextjs"
 
 export default function Navigation() {
@@ -15,9 +16,7 @@ export default function Navigation() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-br border-none from-white/20 to-white/5 rounded-2xl flex items-center justify-center  shadow-lg">
-              <FileText className="w-5 h-5 text-white" />
-            </div>
+            <RepoDocLogo size="md" className="text-white" />
             <span className="text-xl font-semibold text-white tracking-tight">RepoDoc</span>
           </div>
           

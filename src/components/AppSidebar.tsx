@@ -28,7 +28,6 @@ import {
 } from "@/components/ui/alert-dialog"
 import { 
   LayoutDashboard, 
-  FileText,
   Github,
   Brain,
   LogOut,
@@ -37,6 +36,7 @@ import {
   Plus,
   Trash2
 } from "lucide-react"
+import { RepoDocLogo } from "@/components/ui/repodoc-logo"
 import { useUser } from "@/hooks/useUser"
 import { useProjectsContext } from "@/context/ProjectsContext"
 import { useClerk } from "@clerk/nextjs"
@@ -117,9 +117,7 @@ export default function AppSidebar() {
     <Sidebar variant="inset" className="border-white/15 border-r">
       <SidebarHeader className="p-2">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center">
-            <FileText className="w-5 h-5 text-white" />
-          </div>
+          <RepoDocLogo size="sm" className="text-white" />
           <Link href="/">
             <span className="text-xl font-bold text-white">RepoDoc</span>
           </Link>
