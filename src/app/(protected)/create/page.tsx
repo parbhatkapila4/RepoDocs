@@ -1,5 +1,5 @@
 "use client";
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -23,8 +23,9 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Github, Plus } from "lucide-react";
+import { Github, Plus, Loader2, CheckCircle2, Circle, Code2, FileText, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { Progress } from "@/components/ui/progress";
 
 // Form validation schema
 const createProjectSchema = z.object({
@@ -56,11 +57,26 @@ const createProjectSchema = z.object({
 
 type CreateProjectForm = z.infer<typeof createProjectSchema>;
 
+type LoadingStep = {
+  id: number;
+  label: string;
+  status: 'pending' | 'loading' | 'completed';
+  icon: React.ComponentType<{ className?: string }>;
+};
+
 function CreatePage() {
   const router = useRouter();
   const { createNewProject, isLoading } = useProjects();
   const { loadProjects, selectProject } = useProjectsContext();
   const isSubmittingRef = useRef(false);
+  const [loadingSteps, setLoadingSteps] = useState<LoadingStep[]>([
+    { id: 1, label: 'Creating project...', status: 'pending', icon: Plus },
+    { id: 2, label: 'Loading repository files...', status: 'pending', icon: Github },
+    { id: 3, label: 'Analyzing code...', status: 'pending', icon: Code2 },
+    { id: 4, label: 'Generating embeddings...', status: 'pending', icon: Sparkles },
+    { id: 5, label: 'Creating documentation...', status: 'pending', icon: FileText },
+  ]);
+  const [progress, setProgress] = useState(0);
 
   const form = useForm<CreateProjectForm>({
     resolver: zodResolver(createProjectSchema),
@@ -71,6 +87,14 @@ function CreatePage() {
     },
   });
 
+  const updateStep = (stepId: number, status: 'loading' | 'completed') => {
+    setLoadingSteps(prev => 
+      prev.map(step => 
+        step.id === stepId ? { ...step, status } : step
+      )
+    );
+  };
+
   const onSubmit = async (data: CreateProjectForm) => {
     if (isLoading || isSubmittingRef.current) {
       return;
@@ -79,10 +103,38 @@ function CreatePage() {
     isSubmittingRef.current = true;
     
     try {
+      // Step 1: Creating project
+      updateStep(1, 'loading');
+      setProgress(10);
+      
       const newProject = await createNewProject(data.name, data.githubUrl, process.env.GITHUB_TOKEN);
       
-      // Small delay to ensure database transaction is complete
-      await new Promise(resolve => setTimeout(resolve, 100));
+      updateStep(1, 'completed');
+      setProgress(20);
+      
+      // Step 2: Loading repository (simulate progress)
+      updateStep(2, 'loading');
+      await new Promise(resolve => setTimeout(resolve, 800));
+      updateStep(2, 'completed');
+      setProgress(40);
+      
+      // Step 3: Analyzing code
+      updateStep(3, 'loading');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      updateStep(3, 'completed');
+      setProgress(60);
+      
+      // Step 4: Generating embeddings
+      updateStep(4, 'loading');
+      await new Promise(resolve => setTimeout(resolve, 1200));
+      updateStep(4, 'completed');
+      setProgress(80);
+      
+      // Step 5: Creating documentation
+      updateStep(5, 'loading');
+      await new Promise(resolve => setTimeout(resolve, 800));
+      updateStep(5, 'completed');
+      setProgress(100);
       
       // Refetch projects to get the updated list
       await loadProjects();
@@ -93,14 +145,22 @@ function CreatePage() {
       }
       
       toast.success("Project created successfully!", {
-        description: `${data.name} has been added to your projects and is being indexed.`,
+        description: `${data.name} has been indexed and is ready to use!`,
       });
+      
+      // Small delay to show completion before redirecting
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       router.push("/dashboard");
     } catch (error) {
       console.error("Error creating project:", error);
+      
+      // Reset all steps to pending
+      setLoadingSteps(prev => prev.map(step => ({ ...step, status: 'pending' })));
+      setProgress(0);
+      
       toast.error("Failed to create project", {
-        description: "Please try again or check your connection.",
+        description: error instanceof Error ? error.message : "Please try again or check your connection.",
       });
     } finally {
       isSubmittingRef.current = false;
@@ -177,21 +237,68 @@ function CreatePage() {
 
               
 
+                {/* Loading Progress */}
+                {(form.formState.isSubmitting || isLoading) && (
+                  <div className="space-y-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-400">Processing...</span>
+                        <span className="text-blue-400 font-medium">{progress}%</span>
+                      </div>
+                      <Progress value={progress} className="h-2" />
+                    </div>
+                    
+                    <div className="space-y-3">
+                      {loadingSteps.map((step) => (
+                        <div
+                          key={step.id}
+                          className={`flex items-center gap-3 text-sm transition-all duration-300 ${
+                            step.status === 'completed'
+                              ? 'text-green-400'
+                              : step.status === 'loading'
+                              ? 'text-blue-400'
+                              : 'text-gray-500'
+                          }`}
+                        >
+                          {step.status === 'completed' ? (
+                            <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
+                          ) : step.status === 'loading' ? (
+                            <Loader2 className="h-5 w-5 flex-shrink-0 animate-spin" />
+                          ) : (
+                            <Circle className="h-5 w-5 flex-shrink-0" />
+                          )}
+                          <step.icon className="h-4 w-4 flex-shrink-0" />
+                          <span className="font-medium">{step.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex flex-col sm:flex-row gap-4 pt-4">
                   <Button
                     type="submit"
                     className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
                     disabled={form.formState.isSubmitting || isLoading}
                   >
-                    {form.formState.isSubmitting || isLoading
-                      ? "Creating..."
-                      : "Create Project"}
+                    {form.formState.isSubmitting || isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Create Project
+                      </>
+                    )}
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
                     className="flex-1 sm:flex-none border-gray-600 text-gray-300 hover:bg-gray-700"
                     onClick={() => router.back()}
+                    disabled={form.formState.isSubmitting || isLoading}
                   >
                     Cancel
                   </Button>

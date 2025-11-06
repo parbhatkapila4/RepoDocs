@@ -1,5 +1,9 @@
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY!
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+
+if (!OPENROUTER_API_KEY) {
+    throw new Error('Missing OPENROUTER_API_KEY environment variable');
+}
 
 interface ChatMessage {
     role: "user" | "assistant" | "system"

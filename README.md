@@ -1,361 +1,418 @@
 # RepoDoc
 
-Open-source RAG system that turns GitHub repositories into queryable knowledge bases. Built to understand code semantics, not just text matching.
+**AI-powered documentation generation and codebase Q&A for GitHub repositories.**
 
-## What This Actually Does
+Transform your GitHub repos into queryable knowledge bases with automatic README generation, comprehensive documentation, and an intelligent chat interface.
 
-RepoDoc ingests your repository and makes it conversational. Ask "how does auth work?" and get accurate answers with code references. No more grep-ing through files or outdated docs.
+🔗 **Live Demo**: https://repodoc.parbhat.dev/
 
-**Live Demo**: https://repodoc.parbhat.dev/ 
+---
 
-## Technical Implementation
+## What This Does
 
-### The RAG Pipeline
+RepoDoc analyzes your GitHub repository and provides:
+
+1. **RAG-Powered Codebase Chat** - Ask questions about your code and get accurate answers with source references
+2. **Automatic README Generation** - AI-generated README files based on your actual codebase
+3. **Comprehensive Documentation** - Detailed technical documentation with API references and architecture overviews
+4. **Repository Insights** - GitHub statistics, language breakdown, and repository metadata
+
+---
+
+## Key Features
+
+### ✅ Core Functionality
+
+- **Vector-Based Code Search** - Uses pgvector for semantic similarity search across your codebase
+- **AI Code Summarization** - Summarizes each file using Google Gemini Flash and OpenRouter
+- **Embedding Generation** - Creates 768-dimensional embeddings with Gemini Embedding-001
+- **Interactive Chat Interface** - Query your codebase in natural language with context-aware responses
+- **Automatic Documentation** - Generates professional README and docs from code analysis
+- **Share Links** - Create public shareable links for your documentation
+
+### 🛠️ Production-Ready Features
+
+- **Error Handling & Retry Logic** - Automatic retries with exponential backoff for API calls
+- **Intelligent Caching** - In-memory caching for embeddings and query results (Redis-ready)
+- **Rate Limiting** - Built-in rate limiting to prevent API abuse
+- **Cost Tracking** - Monitor API usage and estimated costs
+- **Batch Processing** - Processes large repositories in manageable batches
+- **Responsive UI** - Mobile-first design with dark mode
+
+---
+
+## Tech Stack
+
+- **Frontend**: Next.js 15, React 19, TypeScript, TailwindCSS, shadcn/ui
+- **Backend**: Next.js API Routes, Server Actions
+- **Database**: PostgreSQL with pgvector extension
+- **ORM**: Prisma
+- **Authentication**: Clerk
+- **AI/ML**: 
+  - Google Gemini (embedding-001 for embeddings, gemini-2.5-flash for generation)
+  - OpenRouter API (multi-model support)
+- **Code Analysis**: LangChain GitHub Loader
+- **Deployment**: Vercel-ready
+
+---
+
+## Architecture
 
 ```
-GitHub Repo → AST Parser → Semantic Chunker → Vector Store → Query Engine
-     ↓            ↓              ↓                ↓             ↓
-   Webhook    Language      Boundaries +    pgvector +    Hybrid Search
-   Events     Detection     Deduplication   Embeddings    (Dense+Sparse)
+User uploads GitHub repo URL
+         ↓
+LangChain loads repository files
+         ↓
+Each file → AI summarization (OpenRouter)
+         ↓
+Summary → Vector embedding (Gemini)
+         ↓
+Store in PostgreSQL with pgvector
+         ↓
+Generate README & Docs (AI)
+         ↓
+User can query via RAG system
 ```
 
-### Core Architecture Decisions
+### RAG Query Flow
 
-#### 1. Why Semantic Chunking Over Fixed-Size
-
-**Problem**: Fixed-size chunks break functions mid-logic, losing context.
-
-**Solution**: AST-aware chunking that respects code boundaries:
-
-```typescript
-// Our chunking strategy preserves logical units
-const chunkBoundaries = {
-  javascript: ['function', 'class', 'module.exports'],
-  python: ['def', 'class', 'if __name__'],
-  go: ['func', 'type', 'package']
-}
-
-// Result: 34% better retrieval accuracy vs naive splitting
-// Measured on 100 real user queries against Next.js repo
+```
+User asks question
+         ↓
+Question → Vector embedding
+         ↓
+Cosine similarity search in PostgreSQL
+         ↓
+Retrieve top 5 relevant code snippets
+         ↓
+Build context + conversation history
+         ↓
+Send to AI (Gemini Flash)
+         ↓
+Return answer with source references
 ```
 
-#### 2. Why Hybrid Search Over Pure Vector
+---
 
-**Problem**: Vector search fails on specific syntax queries (e.g., "useState hook").
-
-**Solution**: Combine dense vectors with BM25 keyword search:
-
-```typescript
-async function hybridSearch(query: string) {
-  // Parallel execution for speed
-  const [vectorResults, keywordResults] = await Promise.all([
-    pgvector.search(embed(query), limit=20),
-    postgres.fullTextSearch(query, limit=20)
-  ])
-  
-  // Reciprocal Rank Fusion for combining
-  return RRF(vectorResults, keywordResults, k=60)
-}
-
-// Improvement: 89% recall vs 67% with vector-only
-// Tested on internal documentation queries
-```
-
-#### 3. Why PostgreSQL + pgvector Over Pinecone
-
-**Problem**: Pinecone costs scale terribly. At 1M embeddings = $70/month.
-
-**Solution**: PostgreSQL with pgvector extension:
-- Same 180ms p99 latency (with proper indexing)
-- $0 marginal cost (already have Postgres)
-- ACID compliance for transactional updates
-- Single database for all data
-
-**Trade-off**: More complex index tuning, but worth it.
-
-### Performance Metrics (Actual Production)
-
-| Metric | Value | Context |
-|--------|-------|---------|
-| Indexing Speed | 847 files/min | Next.js repo (33k files) |
-| Query Latency p50 | 142ms | Includes embedding + search + generation |
-| Query Latency p99 | 487ms | Complex multi-hop queries |
-| Embedding Cache Hit | 73% | Content-based deduplication |
-| Storage per 1k files | ~50MB | Compressed embeddings |
-| Monthly cost (50k queries) | ~$120 | OpenAI API costs only |
-
-### Real Problems I've Solved
-
-#### Problem 1: GitHub Webhooks Dropping Events
-**Issue**: GitHub webhooks have no delivery guarantee. Lost 3-5% of push events.
-
-**Solution**: Dual-sync approach:
-```typescript
-// Immediate: Process webhook
-async function handleWebhook(event: PushEvent) {
-  await queue.add('index-changes', event, {
-    attempts: 3,
-    backoff: { type: 'exponential' }
-  })
-}
-
-// Backup: Cron-based reconciliation every 30min
-async function reconcileRepos() {
-  const repos = await db.repos.findAll()
-  for (const repo of repos) {
-    const lastCommit = await github.getLastCommit(repo)
-    if (lastCommit.sha !== repo.lastIndexedSha) {
-      await reindexRepo(repo, lastCommit.sha)
-    }
-  }
-}
-```
-
-#### Problem 2: OpenAI Rate Limits During Batch Processing
-**Issue**: Hit 10k TPM limit when indexing large repos.
-
-**Solution**: Token bucket rate limiter with batching:
-```typescript
-class EmbeddingService {
-  private tokenBucket = new TokenBucket({
-    capacity: 9000,  // Stay under 10k limit
-    refillRate: 150,  // Per second
-  })
-  
-  async embedBatch(texts: string[]) {
-    const chunks = []
-    let currentChunk = []
-    let currentTokens = 0
-    
-    for (const text of texts) {
-      const tokens = estimateTokens(text)
-      if (currentTokens + tokens > 8000) {
-        chunks.push(currentChunk)
-        currentChunk = [text]
-        currentTokens = tokens
-      } else {
-        currentChunk.push(text)
-        currentTokens += tokens
-      }
-    }
-    
-    // Process with rate limiting
-    const results = []
-    for (const chunk of chunks) {
-      await this.tokenBucket.consume(currentTokens)
-      results.push(await openai.embeddings.create({
-        model: 'text-embedding-3-small',  // 5x cheaper, minimal quality loss
-        input: chunk
-      }))
-    }
-    
-    return results.flat()
-  }
-}
-```
-
-#### Problem 3: Vercel Serverless Function Timeouts
-**Issue**: Large repo indexing exceeded 10s function limit.
-
-**Solution**: Streaming processing with resumable state:
-```typescript
-// Break processing into resumable chunks
-async function indexRepository(repoId: string, cursor?: string) {
-  const BATCH_SIZE = 100
-  const startTime = Date.now()
-  const MAX_RUNTIME = 9000 // 9s, leaving 1s buffer
-  
-  const files = await getFiles(repoId, cursor, BATCH_SIZE)
-  
-  for (const file of files) {
-    if (Date.now() - startTime > MAX_RUNTIME) {
-      // Save progress and schedule continuation
-      await saveProgress(repoId, file.path)
-      await scheduleNextBatch(repoId, file.path)
-      return { status: 'partial', processed: file.path }
-    }
-    
-    await processFile(file)
-  }
-  
-  return { status: 'complete' }
-}
-```
-
-## Production Setup
+## Quick Start
 
 ### Prerequisites
+
 - Node.js 18+
 - PostgreSQL 15+ with pgvector extension
-- Upstash Redis account (serverless-friendly)
-- OpenAI API key (or Gemini for cost savings)
+- Clerk account (for authentication)
+- Google AI API key OR OpenRouter API key
 
-### Quick Start
+### Installation
 
 ```bash
-# Clone and install
+# Clone the repository
 git clone https://github.com/parbhatkapila4/RepoDocs.git
 cd RepoDocs
-npm ci
 
-# Database setup (using Neon/Supabase)
-npx prisma migrate deploy
+# Install dependencies
+npm install
 
-# Environment configuration
-cp .env.example .env.local
-# Add your keys to .env.local
-
-# Development
-npm run dev
-
-# Production deployment
-vercel --prod
+# Set up environment variables
+cp src/env.example .env.local
 ```
 
 ### Environment Variables
 
-```bash
-# Core (all required)
-DATABASE_URL="postgres://...?pgbouncer=true&connection_limit=1"
-DIRECT_DATABASE_URL="postgres://..."  # For migrations
-
-# AI Providers (at least one required)
-OPENAI_API_KEY="sk-..."
-# OR for 60% cost savings with slight quality trade-off:
-GOOGLE_GENAI_API_KEY="..."
-
-# Caching (required for production)
-UPSTASH_REDIS_REST_URL="https://..."
-UPSTASH_REDIS_REST_TOKEN="..."
-
-# GitHub Integration
-GITHUB_APP_ID="..."
-GITHUB_PRIVATE_KEY="..."
-GITHUB_WEBHOOK_SECRET="..."
-
-# Performance Tuning
-EMBEDDING_MODEL="text-embedding-3-small"  # 5x cheaper than ada-002
-EMBEDDING_BATCH_SIZE="50"  # Lower for Vercel hobby plan
-QUERY_CACHE_TTL="3600"  # 1 hour
-MAX_SEARCH_RESULTS="10"
-```
-
-## Cost Optimization Strategies
-
-### What Actually Costs Money
-
-1. **Embeddings Generation**: ~$0.02 per 1000 files
-   - Solution: Aggressive caching, content-based hashing
-   - Result: 73% cache hit rate in production
-
-2. **LLM Queries**: ~$0.03 per complex query (GPT-4)
-   - Solution: Gemini Flash for 90% of queries ($0.001)
-   - Only use GPT-4 for complex code generation
-
-3. **Vercel Functions**: Free tier is actually sufficient
-   - Stays under 100GB-hrs/month with caching
-   - Edge functions for static queries
-
-### Real Monthly Costs (Current Production)
-- **Neon PostgreSQL**: $19 (up to 100k embeddings)
-- **Upstash Redis**: $0 (free tier sufficient)
-- **OpenAI API**: ~$30-50 (with caching)
-- **Vercel**: $0 (hobby plan)
-- **Total**: ~$50-70/month
-
-## API Design
-
-### RESTful Endpoints
-```typescript
-// Query endpoint with streaming
-app.post('/api/repos/:id/query', async (req, res) => {
-  res.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive'
-  })
-  
-  const stream = await queryWithStreaming(req.body.query)
-  for await (const chunk of stream) {
-    res.write(`data: ${JSON.stringify(chunk)}\n\n`)
-  }
-})
-
-// Webhook handler with signature verification
-app.post('/api/webhooks/github', 
-  verifyGitHubSignature,
-  async (req, res) => {
-    // Process async, return immediately
-    await queue.add('process-push', req.body)
-    res.status(200).json({ received: true })
-  }
-)
-```
-
-## Testing & Quality
+Create a `.env.local` file with:
 
 ```bash
-# Unit tests (critical paths only)
-npm run test
+# Database (required)
+DATABASE_URL="postgresql://user:password@localhost:5432/repodoc?pgbouncer=true"
 
-# RAG accuracy testing
-npm run test:rag
-# Measures: Precision@5, Recall@5, MRR
-# Current scores: P@5=0.89, R@5=0.76, MRR=0.82
+# Authentication (required)
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="pk_..."
+CLERK_SECRET_KEY="sk_..."
+NEXT_PUBLIC_CLERK_SIGN_IN_URL="/sign-in"
+NEXT_PUBLIC_CLERK_SIGN_UP_URL="/sign-up"
 
-# Load testing
-npm run test:load
-# Handles 50 concurrent queries maintaining <500ms p95
+# AI APIs (at least one required)
+GEMINI_API_KEY="..."           # For embeddings and generation
+OPENROUTER_API_KEY="..."        # For code summarization
+
+# GitHub (required for private repos)
+GITHUB_TOKEN="ghp_..."          # Personal access token
+
+# Optional: Webhooks
+CLERK_WEBHOOK_SECRET="whsec_..."
 ```
 
-## Known Limitations (Honest Assessment)
+### Database Setup
 
-1. **Large Files (>10k lines)**
-   - Currently splits arbitrarily at 8k tokens
-   - TODO: Smarter splitting preserving class boundaries
+```bash
+# Install pgvector extension in your PostgreSQL database
+CREATE EXTENSION IF NOT EXISTS vector;
 
-2. **Binary Files**
-   - Skipped entirely (images, compiled code)
-   - Could extract metadata but haven't needed it yet
+# Run Prisma migrations
+npx prisma migrate deploy
 
-3. **Non-English Comments**
-   - Embeddings trained on English, quality degrades
-   - Workaround: Translate before embedding (adds latency)
+# OR run custom migration with indexes
+psql -U your_user -d your_database -f prisma/migrations/add_indexes_and_query_table.sql
 
-4. **Monorepo Support**
-   - Works but slow (10+ minutes for huge repos)
-   - TODO: Parallel processing with worker pool
+# Generate Prisma client
+npx prisma generate
+```
 
-## Debugging Production Issues
+### Run Development Server
 
-### Common Problems & Solutions
+```bash
+npm run dev
+```
 
-**"Embeddings drift over time"**
-- OpenAI models get updated, embeddings change
-- Solution: Version embeddings, re-index on model updates
-
-**"Queries timeout on Vercel"**
-- Complex queries with many search results
-- Solution: Implement pagination, limit context to top 5
-
-**"Costs spiking unexpectedly"**
-- Usually from repeated identical queries
-- Solution: Query-level caching in Redis, 1hr TTL
-
-## Future Improvements (Realistic)
-
-- [ ] **Local embeddings** - Sentence transformers for zero API cost
-- [ ] **Incremental updates** - Only process git diff, not whole files  
-- [ ] **Query feedback loop** - Learn from user's chosen results
-- [ ] **Markdown export** - Generate full documentation sites
-
-## Contributing
-
-PRs welcome, especially for:
-- Language-specific parsers (NextJs)
-- Performance optimizations
-- Better chunking strategies
+Visit `http://localhost:3000`
 
 ---
 
-Built by [@parbhatkapila4](https://github.com/parbhatkapila4) | [LinkedIn](https://www.linkedin.com/in/parbhat-kapila/)
+## Usage
+
+### 1. Create a Project
+
+1. Sign in with Clerk authentication
+2. Click "Create" in the sidebar
+3. Enter project name and GitHub repository URL
+4. The system will automatically:
+   - Load all repository files
+   - Generate summaries for each file
+   - Create vector embeddings
+   - Store in PostgreSQL
+   - Generate README and comprehensive docs
+
+### 2. Chat with Your Codebase
+
+1. Select a project from the sidebar
+2. Navigate to "Chat with Code"
+3. Ask questions like:
+   - "How does authentication work?"
+   - "Explain the database schema"
+   - "What API endpoints are available?"
+4. Get AI-powered answers with source code references
+
+### 3. View & Share Documentation
+
+- **README**: Auto-generated README files at `/readme`
+- **Docs**: Comprehensive documentation at `/docs`
+- **Share**: Create public shareable links for your documentation
+
+---
+
+## API Endpoints
+
+### POST `/api/query`
+
+Query your codebase using RAG.
+
+**Request:**
+```json
+{
+  "projectId": "project-uuid",
+  "question": "How does authentication work?",
+  "conversationHistory": [
+    { "role": "user", "content": "previous question" },
+    { "role": "assistant", "content": "previous answer" }
+  ]
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "answer": "Authentication is implemented using...",
+  "sources": [
+    {
+      "fileName": "src/lib/auth.ts",
+      "similarity": 0.89,
+      "summary": "Handles user authentication..."
+    }
+  ],
+  "metadata": {
+    "sourcesCount": 3,
+    "projectName": "MyProject"
+  }
+}
+```
+
+### GET `/api/query?projectId=xxx`
+
+Get query history for a project.
+
+---
+
+## Performance Characteristics
+
+Based on real-world usage:
+
+| Metric | Value | Notes |
+|--------|-------|-------|
+| Indexing Speed | ~10-15 files/batch | Processes in batches to avoid rate limits |
+| Query Latency (p50) | ~2-4 seconds | Includes embedding + search + AI generation |
+| Embedding Dimensions | 768 | Gemini embedding-001 |
+| Max Context Window | ~8000 tokens | Limited by OpenRouter models |
+| Cache Hit Rate | Varies | Depends on query patterns |
+
+---
+
+## Cost Optimization
+
+### API Costs (Approximate)
+
+- **Embedding Generation**: ~$0.00001 per file
+- **Code Summarization**: ~$0.00001 per 1K tokens (Gemini Flash)
+- **RAG Queries**: ~$0.00005 per query
+
+### For a typical 100-file repository:
+- Initial indexing: ~$0.01
+- Per query: ~$0.00005
+
+### Tips to Reduce Costs:
+- Uses caching to avoid regenerating embeddings
+- Batch processing to minimize API calls
+- Gemini Flash for most operations (cheaper than GPT-4)
+- Only process changed files on updates
+
+---
+
+## Production Deployment
+
+### Deploy to Vercel
+
+```bash
+# Install Vercel CLI
+npm install -g vercel
+
+# Deploy
+vercel --prod
+```
+
+### Environment Variables to Set:
+
+- All database and API keys from `.env.local`
+- Ensure PostgreSQL with pgvector is accessible
+- Set `NEXT_PUBLIC_*` variables in Vercel dashboard
+
+### Database Considerations
+
+1. **Connection Pooling**: Use PgBouncer for better connection management
+2. **Vector Index**: HNSW index is created for fast similarity search
+3. **Backups**: Regular backups recommended for production
+
+---
+
+## Limitations & Roadmap
+
+### Current Limitations
+
+1. **No Streaming Responses** - Responses are generated in full before returning
+2. **Single Language** - Best results with English codebases
+3. **Large Repositories** - Very large repos (>1000 files) may take time to index
+4. **No Real-time Sync** - No webhook-based automatic re-indexing (manual refresh required)
+
+### Planned Improvements
+
+- [ ] **Streaming AI Responses** - Real-time streaming for better UX
+- [ ] **Background Job Queue** - Use BullMQ/Inngest for async processing
+- [ ] **Progress Tracking** - Real-time indexing progress updates
+- [ ] **GitHub Webhooks** - Auto-sync on code changes
+- [ ] **Multi-language Support** - Better handling of non-English comments
+- [ ] **Code Diff Analysis** - Only process changed files on updates
+- [ ] **Export Options** - Export docs as Markdown, PDF, or static site
+- [ ] **Team Collaboration** - Share projects with team members
+
+---
+
+## Development
+
+### Project Structure
+
+```
+src/
+├── app/
+│   ├── (app)/              # Landing page
+│   ├── (auth)/             # Auth pages (sign-in, sign-up)
+│   ├── (protected)/        # Protected routes
+│   │   ├── chat/           # RAG chat interface
+│   │   ├── create/         # Project creation
+│   │   ├── dashboard/      # Repository info
+│   │   ├── docs/           # Documentation viewer
+│   │   └── readme/         # README viewer
+│   └── api/
+│       ├── query/          # RAG query endpoint
+│       └── webhooks/       # Clerk webhooks
+├── components/
+│   ├── landing/            # Landing page components
+│   └── ui/                 # shadcn/ui components
+├── lib/
+│   ├── actions.ts          # Server actions
+│   ├── cache.ts            # Caching layer
+│   ├── errors.ts           # Error handling utilities
+│   ├── gemini.ts           # Google Gemini integration
+│   ├── github.ts           # GitHub repo loading & indexing
+│   ├── openrouter.ts       # OpenRouter API client
+│   ├── prisma.ts           # Prisma client
+│   ├── queries.ts          # Database queries
+│   ├── rag.ts              # RAG query system
+│   └── rate-limiter.ts     # Rate limiting
+└── hooks/                  # Custom React hooks
+```
+
+### Testing
+
+```bash
+# Run linter
+npm run lint
+
+# Type checking
+npx tsc --noEmit
+```
+
+---
+
+## Contributing
+
+Contributions are welcome! Areas that need help:
+
+1. **Performance Optimization** - Improve indexing speed
+2. **Testing** - Add unit and integration tests
+3. **Documentation** - Improve code documentation
+4. **Features** - Implement items from the roadmap
+
+### How to Contribute
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+---
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details
+
+---
+
+## Support & Contact
+
+- **Issues**: [GitHub Issues](https://github.com/parbhatkapila4/RepoDocs/issues)
+- **LinkedIn**: [Parbhat Kapila](https://www.linkedin.com/in/parbhat-kapila/)
+- **Website**: https://repodoc.parbhat.dev/
+
+---
+
+## Acknowledgments
+
+- Built with [Next.js](https://nextjs.org/)
+- UI components from [shadcn/ui](https://ui.shadcn.com/)
+- Authentication by [Clerk](https://clerk.com/)
+- Vector search powered by [pgvector](https://github.com/pgvector/pgvector)
+- AI models from [Google Gemini](https://ai.google.dev/) and [OpenRouter](https://openrouter.ai/)
+
+---
+
+**Made with ❤️ by [@parbhatkapila4](https://github.com/parbhatkapila4)**

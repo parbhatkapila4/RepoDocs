@@ -2,7 +2,14 @@ import { Document } from "@langchain/core/documents"
 import { openrouterSingleMessage } from "@/lib/openrouter"
 import { GoogleGenAI } from "@google/genai";
 
-const genAi = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! })
+// Support both GEMINI_API_KEY and GOOGLE_GENAI_API_KEY for backwards compatibility
+const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENAI_API_KEY;
+
+if (!geminiApiKey) {
+    throw new Error('Missing GEMINI_API_KEY or GOOGLE_GENAI_API_KEY environment variable');
+}
+
+const genAi = new GoogleGenAI({ apiKey: geminiApiKey })
 
 
 export async function getSummariseCode(doc: Document) {
@@ -25,8 +32,23 @@ Give a summary no more than 100 words of the code above.`
     }
 }
 
-export async function getGenerateEmbeddings(summary: string) {
+export async function getGenerateEmbeddings(summary: string, useCache: boolean = true) {
     console.log("Generating embeddings")
+    
+    // Check cache first
+    if (useCache) {
+        try {
+            const { cache } = await import('./cache');
+            const cached = await cache.getCachedEmbedding(summary);
+            if (cached) {
+                console.log("Using cached embedding");
+                return cached;
+            }
+        } catch (error) {
+            console.log("Cache miss, generating new embedding");
+        }
+    }
+    
     try {
         const response = await genAi.models.embedContent({
             model: 'gemini-embedding-001',
@@ -35,15 +57,31 @@ export async function getGenerateEmbeddings(summary: string) {
                 outputDimensionality: 768,
             },
         });
+        
         if (!response?.embeddings) {
-            return []
+            throw new Error("No embeddings returned from API");
         }
-        const embeddingLength = response?.embeddings[0]?.values;
+        
+        const embeddingValues = response?.embeddings[0]?.values;
+        
+        if (!embeddingValues || embeddingValues.length === 0) {
+            throw new Error("Invalid embedding values");
+        }
 
-        return embeddingLength
+        // Cache the result
+        if (useCache) {
+            try {
+                const { cache } = await import('./cache');
+                await cache.cacheEmbedding(summary, embeddingValues);
+            } catch (cacheError) {
+                console.log("Failed to cache embedding:", cacheError);
+            }
+        }
+
+        return embeddingValues;
     } catch (error) {
         console.error("Error generating embeddings:", error)
-        return []
+        throw new Error(`Failed to generate embeddings: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 }
 

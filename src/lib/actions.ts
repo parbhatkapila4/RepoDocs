@@ -247,7 +247,23 @@ export async function regenerateProjectReadme(projectId: string) {
     }
 
     const summaries = sourceCodeEmbeddings.map(embedding => embedding.Summary);
-    const repoInfo = await getGitHubRepositoryInfo(project.repoUrl);
+    
+    // Get repository info with fallback
+    let repoInfo;
+    try {
+      repoInfo = await getGitHubRepositoryInfo(project.repoUrl);
+    } catch (repoError) {
+      console.error('Error fetching repo info:', repoError);
+      // Use fallback if GitHub API fails
+      repoInfo = {
+        name: project.name,
+        htmlUrl: project.repoUrl,
+        description: 'Repository information unavailable',
+        language: null,
+        stars: 0,
+        forks: 0,
+      };
+    }
     
     // Import the generateReadmeFromCodebase function
     const { generateReadmeFromCodebase } = await import('./gemini');
@@ -273,7 +289,8 @@ export async function regenerateProjectReadme(projectId: string) {
     return readme;
   } catch (error) {
     console.error('Error regenerating project README:', error);
-    throw new Error('Failed to regenerate README');
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    throw new Error(`Failed to regenerate README: ${errorMessage}`);
   }
 }
 
@@ -664,9 +681,25 @@ export async function regenerateProjectDocs(projectId: string) {
     }
 
     const summaries = sourceCodeEmbeddings.map(embedding => embedding.Summary);
-    const repoInfo = await getGitHubRepositoryInfo(project.repoUrl);
     
-    // Import the generateDocsFromCodebase function
+    // Get repository info
+    let repoInfo;
+    try {
+      repoInfo = await getGitHubRepositoryInfo(project.repoUrl);
+    } catch (repoError) {
+      console.error('Error fetching repo info:', repoError);
+      // Use fallback if GitHub API fails
+      repoInfo = {
+        name: project.name,
+        htmlUrl: project.repoUrl,
+        description: 'Repository information unavailable',
+        language: null,
+        stars: 0,
+        forks: 0,
+      };
+    }
+    
+    // Import and generate docs
     const { generateDocsFromCodebase } = await import('./gemini');
     const docsContent = await generateDocsFromCodebase(project.name, summaries, repoInfo);
 
@@ -690,7 +723,8 @@ export async function regenerateProjectDocs(projectId: string) {
     return docs;
   } catch (error) {
     console.error('Error regenerating project docs:', error);
-    throw new Error('Failed to regenerate docs');
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    throw new Error(`Failed to regenerate docs: ${errorMessage}`);
   }
 }
 

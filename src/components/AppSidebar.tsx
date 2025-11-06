@@ -34,7 +34,8 @@ import {
   BookOpen,
   Code,
   Plus,
-  Trash2
+  Trash2,
+  MessageSquare
 } from "lucide-react"
 import { RepoDocLogo } from "@/components/ui/repodoc-logo"
 import { useUser } from "@/hooks/useUser"
@@ -53,6 +54,11 @@ const navigationItems: NavigationItem[] = [
     title: "My Repos",
     url: "/dashboard",
     icon: Github,
+  },
+  {
+    title: "Chat with Code",
+    url: "/chat",
+    icon: MessageSquare,
   },
   {
     title: "Generated Docs",
