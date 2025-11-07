@@ -21,7 +21,7 @@
     "db:seed": "prisma db seed",
     "security:audit": "npm audit",
     "security:fix": "npm audit fix",
-    "prepare": "husky install",
+    "prepare": "node -e \"try { require.resolve('husky'); require('child_process').execSync('husky install', { stdio: 'inherit' }); } catch (e) { if (e.code !== 'MODULE_NOT_FOUND') throw e; }\"",
     "validate": "npm run type-check && npm run lint && npm run test:ci",
     "clean": "rm -rf .next node_modules/.cache"
   },
