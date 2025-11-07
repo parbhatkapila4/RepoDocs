@@ -15,7 +15,8 @@ import {
   AlertCircle,
   Loader2,
   FileCode,
-  Bot
+  Bot,
+  Plus
 } from "lucide-react";
 import { toast } from "sonner";
 import ReactMarkdown from 'react-markdown';
@@ -41,14 +42,19 @@ export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const currentProject = projects.find(p => p.id === selectedProjectId);
 
   // Auto-scroll to bottom when new messages arrive
+  const prevMessagesLengthRef = useRef(messages.length);
+  
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    // Only auto-scroll if a new message was actually added
+    if (messages.length > prevMessagesLengthRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
+    prevMessagesLengthRef.current = messages.length;
   }, [messages]);
 
   // Focus input on mount
@@ -159,24 +165,43 @@ export default function ChatPage() {
     <div className="flex flex-col h-[calc(100vh-4rem)] p-2 sm:p-4 md:p-6">
       {/* Header */}
       <div className="mb-4">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-500/30">
-            <MessageSquare className="h-5 w-5 text-blue-400" />
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-500/30">
+              <MessageSquare className="h-5 w-5 text-blue-400" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-white">Chat with Codebase</h1>
+              <p className="text-gray-400 text-sm">
+                Ask questions about <span className="text-white font-medium">{currentProject.name}</span>
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white">Chat with Codebase</h1>
-            <p className="text-gray-400 text-sm">
-              Ask questions about <span className="text-white font-medium">{currentProject.name}</span>
-            </p>
-          </div>
+          
+          {/* New Chat Button */}
+          {messages.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setMessages([]);
+                setInput('');
+                toast.success('Chat cleared! Start a new conversation.');
+              }}
+              className="border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              New Chat
+            </Button>
+          )}
         </div>
       </div>
 
       {/* Chat Container */}
       <Card className="flex-1 flex flex-col overflow-hidden">
-        <CardContent className="flex-1 flex flex-col p-0">
+        <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
           {/* Messages */}
-          <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+          <ScrollArea className="flex-1 p-4 h-full" ref={scrollRef}>
             {messages.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full text-center p-8">
                 <div className="p-4 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-500/30 mb-4">
@@ -219,18 +244,18 @@ export default function ChatPage() {
                 <div
                   className={`inline-block max-w-[85%] ${
                     message.role === 'user'
-                      ? 'bg-blue-600 text-white rounded-2xl rounded-tr-sm'
-                      : 'bg-gray-800 text-white rounded-2xl rounded-tl-sm'
-                  } p-4`}
+                      ? 'bg-blue-600 text-white rounded-2xl rounded-tr-sm p-4'
+                      : 'bg-gray-800 text-white rounded-2xl rounded-tl-sm p-4 max-h-[600px] overflow-y-auto'
+                  }`}
                 >
                   {message.role === 'assistant' && (
-                    <div className="flex items-center gap-2 mb-2 text-blue-400">
+                    <div className="flex items-center gap-2 mb-2 text-blue-400 sticky top-0 bg-gray-800 pb-2 -mt-4 pt-4 -mx-4 px-4 z-10">
                       <Bot className="h-4 w-4" />
                       <span className="text-xs font-medium">AI Assistant</span>
                     </div>
                   )}
                   
-                  <div className="prose prose-invert max-w-none prose-sm">
+                  <div className="prose prose-invert max-w-none prose-sm [&>*:last-child]:mb-0">
                     <ReactMarkdown
                       components={{
                         code({ node, inline, className, children, ...props }: any) {
@@ -284,7 +309,11 @@ export default function ChatPage() {
                     </div>
                   )}
 
-                  <div className="text-xs text-gray-500 mt-2">
+                  <div className={`text-xs text-gray-500 mt-2 ${
+                    message.role === 'assistant' 
+                      ? 'sticky bottom-0 bg-gray-800 pt-2 -mb-4 pb-4 -mx-4 px-4'
+                      : ''
+                  }`}>
                     {message.timestamp.toLocaleTimeString()}
                   </div>
                 </div>
@@ -305,6 +334,9 @@ export default function ChatPage() {
                 </div>
               </div>
             )}
+            
+            {/* Scroll anchor */}
+            <div ref={messagesEndRef} />
           </ScrollArea>
 
           {/* Input */}

@@ -55,10 +55,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if project has any embeddings
+    // Note: We can't filter by summaryEmbedding directly since it's Unsupported("vector") type
+    // So we just check if there are any sourceCodeEmbeddings records
     const embeddingsCount = await prisma.sourceCodeEmbiddings.count({
       where: {
         projectId: projectId,
-        summaryEmbedding: { not: null },
       },
     });
 
