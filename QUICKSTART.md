@@ -1,299 +1,191 @@
-# 🚀 Quick Start Guide
+# ⚡ Quick Start Guide
 
-Your project is now **$100k ready**! Here's what to do next.
+Get RepoDoc running in **5 minutes**!
 
-## ⚡ Immediate Next Steps (5 minutes)
+## Prerequisites Checklist
 
-### 1. Install New Dependencies
+- [ ] Node.js 18+ installed (`node --version`)
+- [ ] PostgreSQL running
+- [ ] Git installed
+- [ ] Code editor (VS Code recommended)
+
+## 🚀 Setup Steps
+
+### 1. Clone & Install (2 minutes)
 
 ```bash
+# Clone the repository
+git clone https://github.com/yourusername/repodoc.git
+cd repodoc
+
+# Install dependencies
 npm install
 ```
 
-### 2. Run Database Migrations
+### 2. Environment Setup (2 minutes)
+
+Create `.env` file:
+
+```env
+# Required - Get from https://dashboard.clerk.com
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_xxxxx
+CLERK_SECRET_KEY=sk_test_xxxxx
+
+# Required - Get from https://aistudio.google.com/app/apikey
+GOOGLE_API_KEY=AIzaSyXXXXXXXXXXXXXX
+
+# Required - Your database
+DATABASE_URL="postgresql://user:pass@localhost:5432/repodoc"
+
+# Optional - Get from https://github.com/settings/tokens
+GITHUB_TOKEN=ghp_xxxxx
+```
+
+### 3. Database Setup (1 minute)
 
 ```bash
 # Generate Prisma client
-npx prisma generate
+npm run db:generate
 
-# If you have a database running:
-npx prisma migrate deploy
-
-# Apply custom indexes (optional but recommended)
-# psql YOUR_DATABASE_URL -f prisma/migrations/add_indexes_and_query_table.sql
+# Run migrations
+npm run db:migrate:dev
 ```
 
-### 3. Start Development Server
+### 4. Run the App! (< 1 minute)
 
 ```bash
 npm run dev
 ```
 
-Visit `http://localhost:3000`
-
-### 4. Test New Features
-
-1. **Create a project** (or use existing)
-2. **Click "Chat with Code"** in sidebar
-3. **Ask a question** like:
-   - "How does authentication work?"
-   - "Explain the database schema"
-   - "What API endpoints are available?"
-4. **Get AI-powered answers** with source references! 🎉
+Open [http://localhost:3000](http://localhost:3000) 🎉
 
 ---
 
-## 🆕 What's New?
+## 🎯 First Steps After Setup
 
-### Major Features Added
+### 1. Create Your Account
+1. Go to `/sign-up`
+2. Create account with email
+3. Verify email
 
-✅ **RAG Query System** - Ask questions about your codebase
-✅ **Chat Interface** - Beautiful UI at `/chat`
-✅ **Error Handling** - Production-grade retry logic
-✅ **Caching** - Smart caching to reduce costs
-✅ **Rate Limiting** - Prevent API abuse
-✅ **Monitoring** - Health checks at `/api/health`
-✅ **Performance** - Database indexes for fast queries
-✅ **Documentation** - Honest README + deployment guide
+### 2. Connect a Repository
+1. Click "Create Project"
+2. Enter GitHub URL
+3. Wait for processing (~30 seconds)
 
-### New API Endpoints
-
-```bash
-# RAG Query
-POST /api/query
-{
-  "projectId": "xxx",
-  "question": "How does auth work?"
-}
-
-# Health Check
-GET /api/health
-# Returns system status, metrics, and performance data
-```
+### 3. Try the Chat
+1. Go to Chat page
+2. Ask: "How does authentication work?"
+3. Get AI-powered answer with code refs!
 
 ---
 
-## 📝 Updated Files
+## 🧪 Verify Everything Works
 
-### Modified
-- `README.md` - Honest, professional documentation
-- `package.json` - Added test scripts
-- `prisma/schema.prisma` - Added database indexes
-- `src/lib/gemini.ts` - Added caching
-- `src/lib/github.ts` - Better error handling & batching
-- `src/components/AppSidebar.tsx` - Added "Chat with Code" link
-
-### New Files
-```
-src/lib/
-├── rag.ts                 ← RAG query system
-├── cache.ts               ← Caching layer  
-├── errors.ts              ← Error handling utilities
-├── rate-limiter.ts        ← Rate limiting
-└── monitoring.ts          ← Performance monitoring
-
-src/app/api/
-├── query/route.ts         ← RAG API endpoint
-└── health/route.ts        ← Health check
-
-src/app/(protected)/
-└── chat/page.tsx          ← Chat interface
-
-Root:
-├── DEPLOYMENT.md          ← Deploy guide
-├── CHANGELOG.md           ← Version history
-├── UPGRADE_SUMMARY.md     ← Detailed changes
-├── QUICKSTART.md          ← This file
-├── jest.config.js         ← Test config
-└── jest.setup.js          ← Test setup
-```
-
----
-
-## 🧪 Testing
+Run the validation script:
 
 ```bash
-# Type checking
-npm run type-check
-
-# Run tests (when you add more)
-npm run test
-
-# Linting
-npm run lint
+npm run validate
 ```
 
----
+This runs:
+- ✅ Type checking
+- ✅ Linting
+- ✅ Tests
+- ✅ Build verification
 
-## 🔍 Verify Everything Works
-
-### 1. Check Health Endpoint
-
-```bash
-curl http://localhost:3000/api/health
-```
-
-Should return:
-```json
-{
-  "status": "healthy",
-  "checks": {
-    "database": { "status": "healthy" },
-    "cache": { "status": "healthy" },
-    ...
-  }
-}
-```
-
-### 2. Test RAG Query (After Creating a Project)
-
-```bash
-curl -X POST http://localhost:3000/api/query \
-  -H "Content-Type: application/json" \
-  -d '{
-    "projectId": "YOUR_PROJECT_ID",
-    "question": "What does this codebase do?"
-  }'
-```
-
-### 3. Test Chat UI
-
-1. Go to http://localhost:3000/chat
-2. Select a project
-3. Ask a question
-4. Get answer with code references!
+All should pass! ✅
 
 ---
 
 ## 🐛 Troubleshooting
 
-### "Module not found" errors
-
+### Database Connection Error
 ```bash
-npm install
-npx prisma generate
+# Make sure PostgreSQL is running
+pg_ctl status
+
+# Or use Docker:
+docker run --name postgres -e POSTGRES_PASSWORD=password -p 5432:5432 -d postgres
 ```
 
-### Database errors
+### Clerk Auth Not Working
+1. Check your Clerk keys are correct
+2. Verify URLs in Clerk dashboard match your local:
+   - Sign In URL: `/sign-in`
+   - Sign Up URL: `/sign-up`
+   - Redirect URLs: `/dashboard`
 
+### Port Already in Use
 ```bash
-# Make sure DATABASE_URL is set in .env.local
-# Run migrations
-npx prisma migrate deploy
+# Change port in package.json or kill process
+lsof -ti:3000 | xargs kill -9
 ```
 
-### "No project selected" in chat
+### Missing API Keys
+Get free keys from:
+- Clerk: https://clerk.com (Free tier)
+- Google AI: https://aistudio.google.com (Free tier)
+- GitHub: https://github.com/settings/tokens (Personal Access Token)
 
-1. Go to `/create`
-2. Add a GitHub repository
-3. Wait for indexing to complete
-4. Then try chat
+---
 
-### Type errors
+## 📚 Useful Commands
 
 ```bash
-npm run type-check
-# Fix any errors shown
+# Development
+npm run dev                 # Start dev server
+npm run build               # Build for production
+npm run start               # Start production server
+
+# Database
+npm run db:studio           # Open Prisma Studio
+npm run db:generate         # Generate Prisma client
+npm run db:migrate:dev      # Create migration
+
+# Testing
+npm test                    # Run tests (watch mode)
+npm run test:ci             # Run tests (CI mode)
+npm run test:coverage       # Generate coverage report
+
+# Code Quality
+npm run lint                # Check linting
+npm run lint:fix            # Fix linting issues
+npm run format              # Format code
+npm run type-check          # Check TypeScript
+
+# Maintenance
+npm run security:audit      # Check for vulnerabilities
+npm run clean               # Clean build artifacts
 ```
 
 ---
 
-## 🚀 Deploy to Production
+## 🎓 Learn More
 
-See `DEPLOYMENT.md` for full guide. Quick version:
-
-```bash
-# Install Vercel CLI
-npm i -g vercel
-
-# Deploy
-vercel --prod
-```
-
-Make sure to:
-1. Set all environment variables in Vercel
-2. Have PostgreSQL with pgvector ready
-3. Run migrations on production database
+- [Full Documentation](README.md)
+- [API Reference](API.md)
+- [Contributing Guide](CONTRIBUTING.md)
+- [Architecture Details](PROJECT_IMPROVEMENTS.md)
 
 ---
 
-## 📚 Learn More
+## 💬 Need Help?
 
-- **README.md** - Full feature list and architecture
-- **DEPLOYMENT.md** - Production deployment guide
-- **UPGRADE_SUMMARY.md** - Detailed list of all changes
-- **CHANGELOG.md** - Version history
-
----
-
-## 💡 Tips for Interviews
-
-When presenting this project:
-
-### Talk About
-1. **RAG Implementation** - "I built a vector-based RAG system using pgvector for semantic search..."
-2. **Production Patterns** - "I implemented retry logic with exponential backoff, caching to reduce costs, and monitoring for observability..."
-3. **Performance** - "I optimized queries with HNSW indexes, reducing latency from 10s to under 3s..."
-4. **Cost Optimization** - "Caching reduces embedding generation costs by 70%..."
-
-### Show Code
-- `src/lib/rag.ts` - RAG implementation
-- `src/lib/errors.ts` - Error handling patterns
-- `src/lib/cache.ts` - Caching strategy
-- `src/app/api/query/route.ts` - API design
-
-### Demo
-1. Show chat interface
-2. Ask a complex question
-3. Point out source references
-4. Show health monitoring
+- 🐛 [Report Issues](https://github.com/yourusername/repodoc/issues)
+- 💬 [Join Discord](https://discord.gg/repodoc)
+- 📧 [Email Support](mailto:support@repodoc.dev)
 
 ---
 
-## ✅ Checklist
+## ✅ Next Steps
 
-Before deploying or presenting:
+Once running:
 
-- [ ] All dependencies installed (`npm install`)
-- [ ] Database migrations applied
-- [ ] Local dev server works (`npm run dev`)
-- [ ] Chat feature tested
-- [ ] Health endpoint returns "healthy"
-- [ ] README.md reviewed
-- [ ] Environment variables documented
-- [ ] Deployment guide read
+1. **Customize**: Update logo, colors, branding
+2. **Deploy**: Push to Vercel (one-click deployment)
+3. **Monitor**: Set up Sentry for error tracking
+4. **Showcase**: Create demo video and screenshots
+5. **Share**: Add to portfolio and resume
 
----
-
-## 🎯 What Makes This $100k Ready?
-
-1. ✅ **Actual RAG System** - Not just docs, real semantic search
-2. ✅ **Production Patterns** - Error handling, caching, monitoring
-3. ✅ **Performance** - Optimized with proper indexes
-4. ✅ **Code Quality** - Clean, typed, well-organized
-5. ✅ **Documentation** - Honest, comprehensive, professional
-6. ✅ **Interview Ready** - Can explain every design decision
-
----
-
-## 🎉 You're All Set!
-
-Your project demonstrates:
-- Full-stack development
-- AI/ML integration (RAG)
-- Production engineering
-- System design
-- Performance optimization
-- Professional documentation
-
-**Now go impress those startup founders!** 🚀
-
----
-
-Need help? Check:
-- GitHub Issues (for bugs)
-- Documentation files
-- Code comments
-
-**Good luck!** 💪
-
+**You're all set! 🚀**

@@ -1,157 +1,169 @@
 /**
- * Rate limiting and cost tracking
+ * Rate Limiting Utility
+ * Protects API routes from abuse and ensures fair usage
  */
 
+import { NextResponse } from 'next/server';
+
 interface RateLimitConfig {
-  maxRequests: number;
-  windowMs: number;
+  windowMs: number; // Time window in milliseconds
+  maxRequests: number; // Maximum number of requests allowed in the window
 }
 
-interface CostTracker {
-  apiCalls: number;
-  estimatedCost: number;
-  lastReset: Date;
+interface RateLimitEntry {
+  count: number;
+  resetTime: number;
 }
 
-class RateLimiter {
-  private requests: Map<string, { count: number; resetTime: number }>;
-  private costs: Map<string, CostTracker>;
+// In-memory store (use Redis in production)
+const rateLimitStore = new Map<string, RateLimitEntry>();
 
-  // API costs (approximate, in USD per 1K tokens/requests)
-  private readonly API_COSTS = {
-    'gemini-embedding': 0.00001, // $0.00001 per embedding
-    'gemini-flash': 0.00001, // $0.00001 per 1K tokens
-    'openrouter-query': 0.00005, // $0.00005 per 1K tokens (varies by model)
-  };
+// Default rate limit configs for different tiers
+export const RATE_LIMITS = {
+  FREE: {
+    windowMs: 60 * 1000, // 1 minute
+    maxRequests: 10,
+  },
+  PRO: {
+    windowMs: 60 * 1000,
+    maxRequests: 100,
+  },
+  ENTERPRISE: {
+    windowMs: 60 * 1000,
+    maxRequests: 1000,
+  },
+  API: {
+    windowMs: 60 * 1000,
+    maxRequests: 20,
+  },
+};
 
-  constructor() {
-    this.requests = new Map();
-    this.costs = new Map();
+/**
+ * Rate limiter middleware
+ */
+export async function rateLimit(
+  identifier: string,
+  config: RateLimitConfig = RATE_LIMITS.FREE
+): Promise<{ success: boolean; remaining: number; resetTime: number }> {
+  const now = Date.now();
+  const entry = rateLimitStore.get(identifier);
 
-    // Cleanup old entries every hour
-    setInterval(() => this.cleanup(), 60 * 60 * 1000);
-  }
-
-  /**
-   * Check if request is allowed under rate limit
-   */
-  async checkLimit(
-    key: string,
-    config: RateLimitConfig = { maxRequests: 100, windowMs: 60000 }
-  ): Promise<{ allowed: boolean; remaining: number; resetIn: number }> {
-    const now = Date.now();
-    const windowStart = now - config.windowMs;
-
-    let entry = this.requests.get(key);
-
-    // Create new entry if doesn't exist or window expired
-    if (!entry || entry.resetTime < now) {
-      entry = {
-        count: 0,
-        resetTime: now + config.windowMs,
-      };
-      this.requests.set(key, entry);
-    }
-
-    // Check if limit exceeded
-    if (entry.count >= config.maxRequests) {
-      return {
-        allowed: false,
-        remaining: 0,
-        resetIn: entry.resetTime - now,
-      };
-    }
-
-    // Increment counter
-    entry.count++;
+  // If no entry or reset time passed, create new entry
+  if (!entry || now > entry.resetTime) {
+    const newEntry: RateLimitEntry = {
+      count: 1,
+      resetTime: now + config.windowMs,
+    };
+    rateLimitStore.set(identifier, newEntry);
 
     return {
-      allowed: true,
-      remaining: config.maxRequests - entry.count,
-      resetIn: entry.resetTime - now,
+      success: true,
+      remaining: config.maxRequests - 1,
+      resetTime: newEntry.resetTime,
     };
   }
 
-  /**
-   * Track API call cost
-   */
-  async trackCost(
-    userId: string,
-    apiType: keyof typeof this.API_COSTS,
-    tokens: number = 1000
-  ): Promise<void> {
-    const cost = (tokens / 1000) * this.API_COSTS[apiType];
-
-    let tracker = this.costs.get(userId);
-
-    if (!tracker) {
-      tracker = {
-        apiCalls: 0,
-        estimatedCost: 0,
-        lastReset: new Date(),
-      };
-      this.costs.set(userId, tracker);
-    }
-
-    tracker.apiCalls++;
-    tracker.estimatedCost += cost;
+  // Check if limit exceeded
+  if (entry.count >= config.maxRequests) {
+    return {
+      success: false,
+      remaining: 0,
+      resetTime: entry.resetTime,
+    };
   }
 
-  /**
-   * Get cost summary for user
-   */
-  async getCostSummary(userId: string): Promise<CostTracker | null> {
-    return this.costs.get(userId) || null;
-  }
+  // Increment count
+  entry.count++;
+  rateLimitStore.set(identifier, entry);
 
-  /**
-   * Reset cost tracking for user
-   */
-  async resetCosts(userId: string): Promise<void> {
-    this.costs.delete(userId);
-  }
-
-  /**
-   * Cleanup expired entries
-   */
-  private cleanup(): void {
-    const now = Date.now();
-
-    for (const [key, entry] of this.requests.entries()) {
-      if (entry.resetTime < now) {
-        this.requests.delete(key);
-      }
-    }
-  }
-
-  /**
-   * Get rate limit status
-   */
-  async getStatus(key: string): Promise<{
-    requests: number;
-    resetTime: number;
-  } | null> {
-    return this.requests.get(key) || null;
-  }
+  return {
+    success: true,
+    remaining: config.maxRequests - entry.count,
+    resetTime: entry.resetTime,
+  };
 }
-
-// Export singleton
-export const rateLimiter = new RateLimiter();
 
 /**
- * Rate limit middleware for API routes
+ * Get rate limit identifier from request
  */
-export async function withRateLimit(
-  userId: string,
-  config?: RateLimitConfig
-): Promise<void> {
-  const result = await rateLimiter.checkLimit(userId, config);
+export function getRateLimitIdentifier(request: Request, userId?: string): string {
+  if (userId) {
+    return `user:${userId}`;
+  }
 
-  if (!result.allowed) {
-    const resetInSeconds = Math.ceil(result.resetIn / 1000);
-    throw new Error(
-      `Rate limit exceeded. Try again in ${resetInSeconds} seconds.`
-    );
+  // Fallback to IP address
+  const ip = request.headers.get('x-forwarded-for') || 
+              request.headers.get('x-real-ip') || 
+              'unknown';
+  
+  return `ip:${ip}`;
+}
+
+/**
+ * Rate limit response helper
+ */
+export function rateLimitResponse(resetTime: number): NextResponse {
+  const resetDate = new Date(resetTime);
+  
+  return NextResponse.json(
+    {
+      error: 'Rate limit exceeded',
+      message: 'Too many requests. Please try again later.',
+      resetAt: resetDate.toISOString(),
+    },
+    {
+      status: 429,
+      headers: {
+        'Retry-After': Math.ceil((resetTime - Date.now()) / 1000).toString(),
+        'X-RateLimit-Reset': resetDate.toISOString(),
+      },
+    }
+  );
+}
+
+/**
+ * Cleanup old entries periodically
+ */
+export function cleanupRateLimitStore() {
+  const now = Date.now();
+  
+  for (const [key, entry] of rateLimitStore.entries()) {
+    if (now > entry.resetTime) {
+      rateLimitStore.delete(key);
+    }
   }
 }
 
+// Run cleanup every 5 minutes
+if (typeof setInterval !== 'undefined') {
+  setInterval(cleanupRateLimitStore, 5 * 60 * 1000);
+}
+
+/**
+ * Usage middleware for API routes
+ */
+export async function withRateLimit(
+  handler: (request: Request) => Promise<NextResponse>,
+  config: RateLimitConfig = RATE_LIMITS.API
+) {
+  return async (request: Request) => {
+    // Get identifier
+    const identifier = getRateLimitIdentifier(request);
+
+    // Check rate limit
+    const { success, remaining, resetTime } = await rateLimit(identifier, config);
+
+    if (!success) {
+      return rateLimitResponse(resetTime);
+    }
+
+    // Add rate limit headers to response
+    const response = await handler(request);
+    
+    response.headers.set('X-RateLimit-Limit', config.maxRequests.toString());
+    response.headers.set('X-RateLimit-Remaining', remaining.toString());
+    response.headers.set('X-RateLimit-Reset', new Date(resetTime).toISOString());
+
+    return response;
+  };
+}
