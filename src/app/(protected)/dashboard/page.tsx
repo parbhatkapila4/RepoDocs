@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import { useProjectsContext } from '@/context/ProjectsContext';
 import { useRepository } from '@/hooks/useRepository';
 import { useUser } from '@/hooks/useUser';
@@ -13,6 +13,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { 
   Github, 
   Star, 
@@ -27,7 +35,10 @@ import {
   BookOpen,
   Archive,
   Lock,
-  ExternalLink
+  ExternalLink,
+  Terminal,
+  Copy,
+  Check
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -41,6 +52,7 @@ function ReposPage() {
     refreshRepository 
   } = useRepository();
   const { user, isLoading: userLoading } = useUser();
+  const [copiedStep, setCopiedStep] = useState<number | null>(null);
 
   const currentProject = projects.find(p => p.id === selectedProjectId);
 
@@ -97,6 +109,13 @@ function ReposPage() {
   const formatFileSize = (sizeInKB: number) => {
     if (sizeInKB < 1024) return `${sizeInKB} KB`;
     return `${(sizeInKB / 1024).toFixed(1)} MB`;
+  };
+
+  const copyToClipboard = (text: string, step: number) => {
+    navigator.clipboard.writeText(text);
+    setCopiedStep(step);
+    toast.success('Copied to clipboard!');
+    setTimeout(() => setCopiedStep(null), 2000);
   };
 
   const getLanguageColor = (language: string) => {
@@ -395,15 +414,173 @@ function ReposPage() {
                   <ExternalLink className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
                   <span className="mobile-no-truncate">View on GitHub</span>
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => window.open(repoInfo.cloneUrl, '_blank')}
-                  className="border-gray-600 text-white hover:bg-gray-700 w-full sm:w-auto text-xs sm:text-sm"
-                >
-                  <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
-                  <span className="mobile-no-truncate">Clone</span>
-                </Button>
+                
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="border-gray-600 text-white hover:bg-gray-700 w-full sm:w-auto text-xs sm:text-sm"
+                    >
+                      <Terminal className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+                      <span className="mobile-no-truncate">How to Clone</span>
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
+                        <Terminal className="h-5 w-5 text-blue-400" />
+                        How to Clone This Repository
+                      </DialogTitle>
+                      <DialogDescription className="text-gray-400">
+                        Follow these steps to clone and set up the repository on your local machine
+                      </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="space-y-4 mt-4">
+                      {/* Step 1 */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-sm font-bold">
+                            1
+                          </div>
+                          <h4 className="font-semibold text-white">Open Terminal</h4>
+                        </div>
+                        <p className="text-sm text-gray-400 ml-8">
+                          Open your terminal or command prompt on your computer.
+                        </p>
+                      </div>
+
+                      {/* Step 2 */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-sm font-bold">
+                            2
+                          </div>
+                          <h4 className="font-semibold text-white">Navigate to Your Directory</h4>
+                        </div>
+                        <p className="text-sm text-gray-400 ml-8 mb-2">
+                          Navigate to the folder where you want to clone the repository:
+                        </p>
+                        <div className="ml-8 relative">
+                          <div className="bg-gray-950 border border-gray-700 rounded-lg p-3 pr-12">
+                            <code className="text-sm text-green-400">cd /path/to/your/folder</code>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="absolute right-2 top-2 h-7 w-7 p-0"
+                            onClick={() => copyToClipboard('cd /path/to/your/folder', 2)}
+                          >
+                            {copiedStep === 2 ? (
+                              <Check className="h-4 w-4 text-green-400" />
+                            ) : (
+                              <Copy className="h-4 w-4 text-gray-400" />
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Step 3 */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-sm font-bold">
+                            3
+                          </div>
+                          <h4 className="font-semibold text-white">Clone the Repository</h4>
+                        </div>
+                        <p className="text-sm text-gray-400 ml-8 mb-2">
+                          Run the following command to clone the repository:
+                        </p>
+                        <div className="ml-8 relative">
+                          <div className="bg-gray-950 border border-gray-700 rounded-lg p-3 pr-12">
+                            <code className="text-sm text-green-400 break-all">
+                              git clone {repoInfo.cloneUrl}
+                            </code>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="absolute right-2 top-2 h-7 w-7 p-0"
+                            onClick={() => copyToClipboard(`git clone ${repoInfo.cloneUrl}`, 3)}
+                          >
+                            {copiedStep === 3 ? (
+                              <Check className="h-4 w-4 text-green-400" />
+                            ) : (
+                              <Copy className="h-4 w-4 text-gray-400" />
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Step 4 */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-sm font-bold">
+                            4
+                          </div>
+                          <h4 className="font-semibold text-white">Navigate into the Repository</h4>
+                        </div>
+                        <p className="text-sm text-gray-400 ml-8 mb-2">
+                          Move into the cloned repository directory:
+                        </p>
+                        <div className="ml-8 relative">
+                          <div className="bg-gray-950 border border-gray-700 rounded-lg p-3 pr-12">
+                            <code className="text-sm text-green-400">
+                              cd {repoInfo.name}
+                            </code>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="absolute right-2 top-2 h-7 w-7 p-0"
+                            onClick={() => copyToClipboard(`cd ${repoInfo.name}`, 4)}
+                          >
+                            {copiedStep === 4 ? (
+                              <Check className="h-4 w-4 text-green-400" />
+                            ) : (
+                              <Copy className="h-4 w-4 text-gray-400" />
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Step 5 */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-sm font-bold">
+                            5
+                          </div>
+                          <h4 className="font-semibold text-white">Start Working!</h4>
+                        </div>
+                        <p className="text-sm text-gray-400 ml-8">
+                          You're all set! You can now start working on the repository. Don't forget to install dependencies if needed.
+                        </p>
+                      </div>
+
+                      {/* Additional Info */}
+                      <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="h-5 w-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                          <div className="space-y-1">
+                            <p className="text-sm font-semibold text-blue-400">Note:</p>
+                            <p className="text-sm text-gray-300">
+                              Make sure you have Git installed on your system. If not, download it from{' '}
+                              <a 
+                                href="https://git-scm.com" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-blue-400 hover:text-blue-300 underline"
+                              >
+                                git-scm.com
+                              </a>
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
             </CardContent>
           </Card>

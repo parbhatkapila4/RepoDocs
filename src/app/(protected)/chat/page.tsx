@@ -248,13 +248,6 @@ export default function ChatPage() {
                       : 'bg-gray-800 text-white rounded-2xl rounded-tl-sm p-4 max-h-[600px] overflow-y-auto'
                   }`}
                 >
-                  {message.role === 'assistant' && (
-                    <div className="flex items-center gap-2 mb-2 text-blue-400 sticky top-0 bg-gray-800 pb-2 -mt-4 pt-4 -mx-4 px-4 z-10">
-                      <Bot className="h-4 w-4" />
-                      <span className="text-xs font-medium">AI Assistant</span>
-                    </div>
-                  )}
-                  
                   <div className="prose prose-invert max-w-none prose-sm [&>*:last-child]:mb-0">
                     <ReactMarkdown
                       components={{
@@ -308,14 +301,6 @@ export default function ChatPage() {
                       </div>
                     </div>
                   )}
-
-                  <div className={`text-xs text-gray-500 mt-2 ${
-                    message.role === 'assistant' 
-                      ? 'sticky bottom-0 bg-gray-800 pt-2 -mb-4 pb-4 -mx-4 px-4'
-                      : ''
-                  }`}>
-                    {message.timestamp.toLocaleTimeString()}
-                  </div>
                 </div>
               </div>
             ))}
@@ -323,12 +308,8 @@ export default function ChatPage() {
             {isLoading && (
               <div className="mb-6 text-left">
                 <div className="inline-block max-w-[85%] bg-gray-800 text-white rounded-2xl rounded-tl-sm p-4">
-                  <div className="flex items-center gap-2 mb-2 text-blue-400">
-                    <Bot className="h-4 w-4" />
-                    <span className="text-xs font-medium">AI Assistant</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                  <div className="flex items-center gap-3">
+                    <Loader2 className="h-5 w-5 animate-spin text-blue-400" />
                     <span className="text-sm">Searching codebase and generating response...</span>
                   </div>
                 </div>

@@ -130,6 +130,17 @@
   body {
     @apply bg-background text-foreground;
   }
+  
+  /* Smooth scrolling optimization */
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  /* GPU acceleration for better performance */
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 }
 
 /* Sleek Black Theme Styles */
@@ -163,8 +174,12 @@
 }
 
 @keyframes floating {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-15px); }
+  0%, 100% { 
+    transform: translate3d(0, 0, 0); 
+  }
+  50% { 
+    transform: translate3d(0, -15px, 0); 
+  }
 }
 
 .glow-subtle {
@@ -191,11 +206,11 @@
 @keyframes spotlight {
   0% {
     opacity: 0;
-    transform: translate(-72%, -62%) scale(0.5);
+    transform: translate3d(-72%, -62%, 0) scale(0.5);
   }
   100% {
     opacity: 1;
-    transform: translate(-50%, -40%) scale(1);
+    transform: translate3d(-50%, -40%, 0) scale(1);
   }
 }
 
@@ -206,15 +221,28 @@
 /* Infinite Scroll Animation */
 @keyframes scroll {
   0% {
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
   100% {
-    transform: translateX(-50%);
+    transform: translate3d(-50%, 0, 0);
   }
 }
 
 .animate-scroll {
   animation: scroll 8s linear infinite;
+  will-change: transform;
+}
+
+/* Optimize loading spinners */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+  will-change: transform;
 }
 
 /* Markdown Styling */
@@ -302,6 +330,82 @@
 .prose td {
   background-color: #1f2937;
   color: #d1d5db;
+}
+
+/* Performance optimizations for smooth scrolling and animations */
+* {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-perspective: 1000;
+  perspective: 1000;
+}
+
+/* Optimize scroll containers */
+[data-radix-scroll-area-viewport],
+.overflow-auto,
+.overflow-y-auto,
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  will-change: scroll-position;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+/* Optimize ScrollArea specifically */
+[data-radix-scroll-area-viewport] > div {
+  transform: translateZ(0);
+}
+
+[data-radix-scroll-area-scrollbar] {
+  will-change: opacity;
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Optimize animations and transitions */
+.transition-all,
+[class*="transition-"],
+button,
+a {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+/* Optimize hover effects */
+button:hover,
+a:hover,
+[role="button"]:hover {
+  transform: translateZ(0) scale(1.02);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Smooth modal/dialog animations */
+[data-radix-dialog-overlay],
+[data-radix-dialog-content] {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+/* Optimize chat scroll performance */
+.prose,
+.prose * {
+  contain: layout style;
+}
+
+/* Optimize card animations */
+[class*="Card"],
+[class*="card"] {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Optimize badge and button transitions */
+[class*="Badge"],
+[class*="badge"],
+button {
+  contain: layout;
+  transform: translateZ(0);
 }
 
 /* Mobile-specific utilities */
