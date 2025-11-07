@@ -391,15 +391,8 @@ Contributions are welcome! Areas that need help:
 
 ---
 
-## License
-
-MIT License - see [LICENSE](LICENSE) file for details
-
----
-
 ## Support & Contact
 
-- **Issues**: [GitHub Issues](https://github.com/parbhatkapila4/RepoDocs/issues)
 - **LinkedIn**: [Parbhat Kapila](https://www.linkedin.com/in/parbhat-kapila/)
 - **Website**: https://repodoc.parbhat.dev/
 
@@ -415,4 +408,4 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 ---
 
-**Made with ❤️ by [@parbhatkapila4](https://github.com/parbhatkapila4)**
+**Made by [@parbhatkapila4](https://github.com/parbhatkapila4)**
