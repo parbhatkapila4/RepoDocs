@@ -163,7 +163,7 @@ export default function Hero() {
       </Vortex>
       
       <VideoModal
-        videoSrc="https://lcbcrithcxdbqynfmtxk.supabase.co/storage/v1/object/public/Videos/Repo-Docs%20Demo-1758239976349%20(1).mp4"
+        videoSrc="/Repo-Doc-1762580822637.mp4"
         isOpen={isVideoModalOpen}
         onClose={() => setIsVideoModalOpen(false)}
       />
