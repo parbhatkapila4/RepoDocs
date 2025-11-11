@@ -22,7 +22,7 @@ export default function Footer() {
           <div>
             <h3 className="text-white font-semibold mb-4">Product</h3>
             <ul className="space-y-2">
-              <li><Link href="/dashboard" className="text-white/60 hover:text-white transition-colors text-sm">Dashboard</Link></li>
+              <li><Link href="/pricing" className="text-white/60 hover:text-white transition-colors text-sm">Pricing</Link></li>
               <li><Link href="/about" className="text-white/60 hover:text-white transition-colors text-sm">About RepoDoc</Link></li>
             </ul>
           </div>

@@ -22,6 +22,11 @@ export default function Navigation() {
           
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-3">
+            <Link href="/pricing">
+              <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-white/10 rounded-xl px-4 py-2 transition-all duration-200">
+                Pricing
+              </Button>
+            </Link>
             {isSignedIn ? (
               <Link href="/dashboard">
                 <HoverBorderGradient
@@ -74,6 +79,11 @@ export default function Navigation() {
         {isMobileMenuOpen && (
           <div className="md:hidden glass-card backdrop-blur-xl">
             <div className="px-4 pt-4 pb-4 space-y-3">
+              <Link href="/pricing" className="w-full">
+                <Button variant="ghost" size="sm" className="w-full justify-start text-white/80 hover:text-white hover:bg-white/10 rounded-xl py-3 transition-all duration-200">
+                  Pricing
+                </Button>
+              </Link>
               {isSignedIn ? (
                 <Link href="/dashboard" className="w-full">
                   <HoverBorderGradient
