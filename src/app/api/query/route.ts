@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
 import { queryCodebase } from '@/lib/rag';
+import { ensureQuotaAvailable, incrementUsage } from '@/lib/quota';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60; // 60 seconds for complex queries
@@ -73,6 +74,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    try {
+      await ensureQuotaAvailable(userId, 'chat');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Chat usage limit reached';
+      return NextResponse.json(
+        {
+          error: 'Usage limit reached',
+          message,
+        },
+        { status: 403 }
+      );
+    }
+
     // Perform RAG query
     const result = await queryCodebase(projectId, question, conversationHistory);
 
@@ -86,6 +100,8 @@ export async function POST(request: NextRequest) {
       // Ignore if table doesn't exist yet - we'll create it later
       console.log('Query tracking not available:', dbError);
     }
+
+    await incrementUsage(userId, 'chat');
 
     return NextResponse.json({
       success: true,

@@ -1,20 +1,7 @@
 import prisma from './prisma';
 import { Project, Prisma } from '@prisma/client';
-import { auth } from '@clerk/nextjs/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import { indexGithubRepository } from './github';
-
-export async function createProject(data: Prisma.ProjectCreateInput): Promise<Project> {
-  try {
-    const project = await prisma.project.create({
-      data,
-    });
-
-    return project;
-  } catch (error) {
-    console.error('Error creating project:', error);
-    throw new Error('Failed to create project');
-  }
-}
 
 export async function createProjectWithAuth(name: string, githubUrl: string, githubToken?: string): Promise<Project> {
   try {
@@ -28,10 +15,50 @@ export async function createProjectWithAuth(name: string, githubUrl: string, git
       throw new Error('Name and GitHub URL are required');
     }
 
+    const clerkUser = await currentUser();
+    if (!clerkUser) {
+      throw new Error('Unable to fetch user information');
+    }
+    const primaryEmail =
+      clerkUser.emailAddresses.find((email) => email.id === clerkUser.primaryEmailAddressId)?.emailAddress ??
+      clerkUser.emailAddresses[0]?.emailAddress;
+
+    if (!primaryEmail) {
+      throw new Error('Unable to create project without a user email address');
+    }
+
+    const existingByEmail = await prisma.user.findUnique({
+      where: { emailAddress: primaryEmail },
+    });
+
+    if (existingByEmail && existingByEmail.id !== userId) {
+      await prisma.user.delete({
+        where: { id: existingByEmail.id },
+      });
+    }
+
+    await prisma.user.upsert({
+      where: { id: userId },
+      update: {
+        emailAddress: primaryEmail,
+        firstName: clerkUser.firstName,
+        lastName: clerkUser.lastName,
+        imageUrl: clerkUser.imageUrl,
+      },
+      create: {
+        id: userId,
+        emailAddress: primaryEmail,
+        firstName: clerkUser.firstName,
+        lastName: clerkUser.lastName,
+        imageUrl: clerkUser.imageUrl,
+      },
+    });
+
     const project = await prisma.project.create({
       data: {
         name,
         repoUrl: githubUrl,
+        githubToken,
         user: {
           connect: {
             id: userId,

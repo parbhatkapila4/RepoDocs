@@ -1,4 +1,4 @@
-import { auth, clerkClient } from '@clerk/nextjs/server'
+import { auth, currentUser } from '@clerk/nextjs/server'
 import { notFound, redirect } from 'next/navigation'
 import prisma from '@/lib/prisma'
 import React from 'react'
@@ -9,9 +9,10 @@ async function page() {
     return redirect('/')
   }
 
-  const client = await clerkClient()
-
-  const user = await client.users.getUser(userId)
+  const user = await currentUser()
+  if (!user) {
+    return notFound()
+  }
 
   if(!user.emailAddresses[0]?.emailAddress) {
     return notFound()

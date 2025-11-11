@@ -1,9 +1,10 @@
 'use server';
 
 import { createProjectWithAuth } from './queries';
-import { auth } from '@clerk/nextjs/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import prisma from './prisma';
 import { getGitHubRepositoryInfo } from './github';
+import { ensureQuotaAvailable, getUsageSnapshot, incrementUsage } from './quota';
 
 export async function createProject(name: string, githubUrl: string, githubToken?: string) {
   return await createProjectWithAuth(name, githubUrl, githubToken);
@@ -28,15 +29,14 @@ export async function getCurrentUser() {
         lastName: true,
         imageUrl: true,
         credits: true,
+        plan: true,
       },
     });
 
     if (!user) {
-      const { clerkClient } = await import('@clerk/nextjs/server');
-      const client = await clerkClient();
-      const clerkUser = await client.users.getUser(userId);
+      const clerkUser = await currentUser();
       
-      if (clerkUser.emailAddresses[0]?.emailAddress) {
+      if (clerkUser?.emailAddresses[0]?.emailAddress) {
         user = await prisma.user.upsert({
           where: {
             emailAddress: clerkUser.emailAddresses[0].emailAddress,
@@ -60,12 +60,29 @@ export async function getCurrentUser() {
             lastName: true,
             imageUrl: true,
             credits: true,
+            plan: true,
           },
         });
       }
     }
 
-    return user;
+    if (!user) {
+      return null;
+    }
+
+    const quota = await getUsageSnapshot(user.id);
+    const nextReset = new Date(Date.UTC(quota.periodStart.getUTCFullYear(), quota.periodStart.getUTCMonth() + 1, 1, 0, 0, 0, 0));
+
+    return {
+      ...user,
+      plan: quota.plan,
+      quota: {
+        limits: quota.limits,
+        usage: quota.usage,
+        periodStart: quota.periodStart.toISOString(),
+        resetAt: nextReset.toISOString(),
+      },
+    };
   } catch (error) {
     console.error('Error fetching current user:', error);
     return null;
@@ -232,6 +249,8 @@ export async function regenerateProjectReadme(projectId: string) {
       throw new Error('Project not found or unauthorized');
     }
 
+    await ensureQuotaAvailable(userId, 'readme');
+
     // Get all source code summaries for the project
     const sourceCodeEmbeddings = await prisma.sourceCodeEmbiddings.findMany({
       where: {
@@ -285,6 +304,8 @@ export async function regenerateProjectReadme(projectId: string) {
         projectId: projectId,
       },
     });
+
+    await incrementUsage(userId, 'readme');
 
     return readme;
   } catch (error) {
@@ -666,6 +687,8 @@ export async function regenerateProjectDocs(projectId: string) {
       throw new Error('Project not found or unauthorized');
     }
 
+    await ensureQuotaAvailable(userId, 'docs');
+
     // Get all source code summaries for the project
     const sourceCodeEmbeddings = await prisma.sourceCodeEmbiddings.findMany({
       where: {
@@ -719,6 +742,8 @@ export async function regenerateProjectDocs(projectId: string) {
         projectId: projectId,
       },
     });
+
+    await incrementUsage(userId, 'docs');
 
     return docs;
   } catch (error) {

@@ -7,6 +7,21 @@ export interface User {
   lastName?: string | null;
   imageUrl?: string | null;
   credits: number;
+  plan: 'FREE' | 'BASIC' | 'PREMIUM' | 'ENTERPRISE';
+  quota?: {
+    limits: {
+      readme: number | null;
+      docs: number | null;
+      chat: number | null;
+    };
+    usage: {
+      readme: number;
+      docs: number;
+      chat: number;
+    };
+    periodStart: string;
+    resetAt: string;
+  };
 }
 
 export interface UserState {

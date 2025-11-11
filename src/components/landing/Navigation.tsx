@@ -6,11 +6,13 @@ import { usePathname } from "next/navigation"
 import { Menu, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { RepoDocLogo } from "@/components/ui/repodoc-logo"
-import { useUser, UserButton, SignInButton } from "@clerk/nextjs"
+import { useUser as useClerkUser, UserButton } from "@clerk/nextjs"
 import { HoverBorderGradient } from "@/components/ui/hover-border-gradient"
 import { cn } from "@/lib/utils"
+import { Badge } from "@/components/ui/badge"
+import { useUser as useAppUser } from "@/hooks/useUser"
 
-const navLinks = [
+const baseNavLinks = [
   { href: "/", label: "Home" },
   { href: "/about", label: "About" },
   { href: "/pricing", label: "Pricing" },
@@ -18,10 +20,22 @@ const navLinks = [
 
 export default function Navigation() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const { isSignedIn } = useUser()
+  const { isSignedIn } = useClerkUser()
+  const { user: appUser, isAuthenticated } = useAppUser()
   const pathname = usePathname()
 
   const handleToggle = () => setIsMobileMenuOpen((open) => !open)
+
+  const navLinks = isSignedIn
+    ? [
+        ...baseNavLinks,
+        { href: "/dashboard", label: "Dashboard" },
+      ]
+    : baseNavLinks
+
+  const planLabel = appUser?.plan
+    ? appUser.plan.charAt(0) + appUser.plan.slice(1).toLowerCase()
+    : null
 
   return (
     <nav className="sticky top-0 z-50 bg-transparent backdrop-blur-xl">
@@ -33,22 +47,24 @@ export default function Navigation() {
 
         <div className="flex items-center gap-4 md:order-2">
           {isSignedIn ? (
-            <UserButton
-              appearance={{
-                elements: {
-                  userButtonAvatarBox:
-                    "h-9 w-9 border border-white/20 shadow-md shadow-blue-500/10",
-                },
-              }}
-              afterSignOutUrl="/"
-            />
+            <div className="flex items-center gap-3">
+              {planLabel && isAuthenticated && (
+                <Badge variant="secondary" className="bg-blue-500/20 text-blue-100 border border-blue-400/40">
+                  {planLabel}
+                </Badge>
+              )}
+              <UserButton
+                appearance={{
+                  elements: {
+                    userButtonAvatarBox:
+                      "h-9 w-9 border border-white/20 shadow-md shadow-blue-500/10",
+                  },
+                }}
+                afterSignOutUrl="/"
+              />
+            </div>
           ) : (
             <div className="hidden items-center gap-3 md:flex">
-              <SignInButton mode="modal">
-                <Button variant="ghost" className="rounded-lg px-4 text-white/80 hover:text-white">
-                  Sign In
-                </Button>
-              </SignInButton>
               <Link href="/sign-up">
                 <HoverBorderGradient
                   containerClassName="rounded-2xl"
@@ -109,13 +125,6 @@ export default function Navigation() {
               )
             })}
 
-            {!isSignedIn && (
-              <li className="md:hidden">
-                <SignInButton mode="modal">
-                  <Button className="w-full rounded-lg bg-white text-black hover:bg-white/90">Sign In</Button>
-                </SignInButton>
-              </li>
-            )}
             {!isSignedIn && (
               <li className="md:hidden">
                 <Link href="/sign-up" onClick={() => setIsMobileMenuOpen(false)}>

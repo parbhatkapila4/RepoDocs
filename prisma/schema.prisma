@@ -9,16 +9,26 @@ datasource db {
   extensions = [vector]
 }
 
+enum PlanType {
+  FREE
+  BASIC
+  PREMIUM
+  ENTERPRISE
+}
+
 model User {
-  id           String    @id @default(uuid())
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id           String        @id @default(uuid())
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
   imageUrl     String?
   firstName    String?
   lastName     String?
-  emailAddress String    @unique
-  credits      Int       @default(150)
+  emailAddress String        @unique
+  credits      Int           @default(150)
+  plan         PlanType      @default(FREE)
+  planUpdated  DateTime      @default(now())
   projects     Project[]
+  usage        UsageQuota[]
 }
 
 model Project {
@@ -115,4 +125,18 @@ model DocsShare {
   isActive   Boolean  @default(true)
   docsId     String   @unique
   docs       Docs     @relation(fields: [docsId], references: [id], onDelete: Cascade)
+}
+
+model UsageQuota {
+  id          String   @id @default(uuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  periodStart DateTime
+  userId      String
+  readmeCount Int      @default(0)
+  docsCount   Int      @default(0)
+  chatCount   Int      @default(0)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, periodStart])
 }

@@ -1,6 +1,6 @@
 import React from 'react'
 import Link from 'next/link'
-import { Github, ExternalLink } from "lucide-react"
+import { Github } from "lucide-react"
 import { RepoDocLogo } from "@/components/ui/repodoc-logo"
 
 export default function Footer() {
@@ -22,27 +22,44 @@ export default function Footer() {
           <div>
             <h3 className="text-white font-semibold mb-4">Product</h3>
             <ul className="space-y-2">
+              <li><Link href="/about" className="text-white/60 hover:text-white transition-colors text-sm">About</Link></li>
               <li><Link href="/pricing" className="text-white/60 hover:text-white transition-colors text-sm">Pricing</Link></li>
-              <li><Link href="/about" className="text-white/60 hover:text-white transition-colors text-sm">About RepoDoc</Link></li>
             </ul>
           </div>
           
-          <div>
-            <h3 className="text-white font-semibold mb-4">Resources</h3>
-            <ul className="space-y-2">
-              <li><Link href="/privacy" className="text-white/60 hover:text-white transition-colors text-sm">Privacy Policy</Link></li>
-              <li><Link href="/terms" className="text-white/60 hover:text-white transition-colors text-sm">Terms of Service</Link></li>
-            </ul>
+          <div className="space-y-8">
+            <div>
+              <h3 className="text-white font-semibold mb-4">Resources</h3>
+              <ul className="space-y-2">
+                <li><Link href="/privacy" className="text-white/60 hover:text-white transition-colors text-sm">Privacy Policy</Link></li>
+                <li><Link href="/terms" className="text-white/60 hover:text-white transition-colors text-sm">Terms of Service</Link></li>
+              </ul>
+            </div>
+            {/* <div>
+              <h3 className="text-white font-semibold mb-4">Support</h3>
+              <ul className="space-y-2">
+                <li><Link href="/contact" className="text-white/60 hover:text-white transition-colors text-sm">Contact Us</Link></li>
+                <li><Link href="/shipping" className="text-white/60 hover:text-white transition-colors text-sm">Shipping Policy</Link></li>
+                <li><Link href="/cancellation" className="text-white/60 hover:text-white transition-colors text-sm">Cancellation & Refund</Link></li>
+              </ul>
+            </div> */}
           </div>
         </div>
         
         <div className="border-t border-white/10 pt-8">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <p className="text-white/60 text-sm">
-              © 2025 RepoDoc. All rights reserved.
-            </p>
-            <div className="flex space-x-6 mt-4 md:mt-0">
-              <a href="https://github.com/parbhatkapila4/RepoDocs" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-white transition-colors">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-wrap items-center gap-4 text-sm text-white/60">
+              <Link href="/contact" className="hover:text-white transition-colors">Contact Us</Link>
+              <span className="hidden h-3 w-px bg-white/20 md:inline-block" />
+              <Link href="/shipping" className="hover:text-white transition-colors">Shipping Policy</Link>
+              <span className="hidden h-3 w-px bg-white/20 md:inline-block" />
+              <Link href="/cancellation" className="hover:text-white transition-colors">Cancellation & Refund</Link>
+            </div>
+            <div className="flex items-center gap-6">
+              <p className="text-white/60 text-sm">
+                © 2025 RepoDoc. All rights reserved.
+              </p>
+              <a href="https://github.com/parbhatkapila4/RepoDocs" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-green-700 transition-colors">
                 <Github className="w-5 h-5" />
               </a>
             </div>

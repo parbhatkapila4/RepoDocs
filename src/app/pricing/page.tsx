@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
+import { ArrowLeft } from "lucide-react"
 
 export const metadata: Metadata = {
   title: "Pricing | RepoDoc",
@@ -22,11 +23,11 @@ const plans = [
     cta: "Start a 7-day trial",
     highlight: false,
     features: [
-      "Unlimited README generations",
-      "AI-powered pull request summaries",
+      "10 README generations per month",
+      "10 documentation builds per month",
+      "40 AI chats with RepoDoc Assistant",
       "GitHub integration",
       "Export to Markdown & PDF",
-      "Email support",
     ],
   },
   {
@@ -38,7 +39,9 @@ const plans = [
     cta: "Upgrade to Premium",
     highlight: true,
     features: [
-      "Everything in Basic",
+      "40 README generations per month",
+      "40 documentation builds per month",
+      "100 AI chats with RepoDoc Assistant",
       "Team workspaces with shared history",
       "Advanced architecture diagrams",
       "Custom templates & branding",
@@ -58,7 +61,7 @@ const plans = [
       "Self-hosting & VPC deployments",
       "Role-based access control (RBAC)",
       "Dedicated success manager",
-      "SLA-backed support",
+      "Custom usage limits & SLA-backed support",
     ],
   },
 ]
@@ -70,12 +73,28 @@ export default function PricingPage() {
         <BackgroundGlow />
         <div className="relative z-10 flex min-h-screen flex-col">
           <main className="mx-auto w-full max-w-7xl flex-1 px-4 pt-24 pb-24 sm:px-6 lg:px-8">
+            <div className="mb-10 flex justify-start">
+              <Button
+                asChild
+                variant="outline"
+                className="border-white/25 bg-white/10 text-white transition hover:bg-white/20 hover:text-white"
+              >
+                <Link href="/" className="flex items-center gap-2">
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to Home
+                </Link>
+              </Button>
+            </div>
+
             <section className="mx-auto max-w-4xl space-y-6 text-center">
               <Badge className="mx-auto border border-white/20 bg-white/10 text-white/90">Pricing</Badge>
               <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Choose the plan that scales with your repo</h1>
               <p className="text-lg text-white/70">
                 Transparent pricing for teams of every size. Start with a trial, level up when your documentation needs grow,
                 and talk to us for enterprise-grade security.
+              </p>
+              <p className="text-sm text-white/55">
+                Every account starts on the Free plan with 3 README generations, 3 documentation builds, and 5 AI chats per month.
               </p>
             </section>
 
@@ -103,7 +122,7 @@ export default function PricingPage() {
                     <ul className="space-y-3 text-sm text-white/75">
                       {plan.features.map((feature) => (
                         <li key={feature} className="flex items-start gap-2">
-                          <span className="mt-1 h-1.5 w-1.5 rounded-full bg-white/60" aria-hidden="true" />
+                          <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-white/60" aria-hidden="true" />
                           <span>{feature}</span>
                         </li>
                       ))}
