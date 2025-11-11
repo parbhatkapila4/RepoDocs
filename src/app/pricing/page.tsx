@@ -1,6 +1,5 @@
 import Link from "next/link"
 import type { Metadata } from "next"
-import Navigation from "@/components/landing/Navigation"
 import Footer from "@/components/landing/Footer"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -70,9 +69,7 @@ export default function PricingPage() {
       <div className="relative min-h-screen w-full overflow-hidden">
         <BackgroundGlow />
         <div className="relative z-10 flex min-h-screen flex-col">
-          <Navigation />
-
-          <main className="mx-auto w-full max-w-7xl flex-1 px-4 pt-16 pb-24 sm:px-6 lg:px-8">
+          <main className="mx-auto w-full max-w-7xl flex-1 px-4 pt-24 pb-24 sm:px-6 lg:px-8">
             <section className="mx-auto max-w-4xl space-y-6 text-center">
               <Badge className="mx-auto border border-white/20 bg-white/10 text-white/90">Pricing</Badge>
               <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Choose the plan that scales with your repo</h1>
@@ -131,7 +128,7 @@ export default function PricingPage() {
               </p>
               <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
                 <Button asChild size="lg">
-                  <Link href="mailto:hello@repodoc.dev">Talk to sales</Link>
+                  <Link href="mailto:parbhat@parbhat.dev">Talk to sales</Link>
                 </Button>
                 <Button asChild variant="ghost" size="lg" className="text-white hover:bg-white/10">
                   <Link href="/about">Learn more about RepoDoc</Link>
