@@ -1,5 +1,5 @@
 "use client";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -69,13 +70,14 @@ function CreatePage() {
   const { createNewProject, isLoading } = useProjects();
   const { loadProjects, selectProject } = useProjectsContext();
   const isSubmittingRef = useRef(false);
-  const [loadingSteps, setLoadingSteps] = useState<LoadingStep[]>([
+  const initialSteps: LoadingStep[] = [
     { id: 1, label: 'Creating project...', status: 'pending', icon: Plus },
     { id: 2, label: 'Loading repository files...', status: 'pending', icon: Github },
     { id: 3, label: 'Analyzing code...', status: 'pending', icon: Code2 },
     { id: 4, label: 'Generating embeddings...', status: 'pending', icon: Sparkles },
     { id: 5, label: 'Creating documentation...', status: 'pending', icon: FileText },
-  ]);
+  ];
+  const [loadingSteps, setLoadingSteps] = useState<LoadingStep[]>(initialSteps);
   const [progress, setProgress] = useState(0);
 
   const form = useForm<CreateProjectForm>({
@@ -88,12 +90,19 @@ function CreatePage() {
   });
 
   const updateStep = (stepId: number, status: 'loading' | 'completed') => {
-    setLoadingSteps(prev => 
-      prev.map(step => 
+    setLoadingSteps(prev =>
+      prev.map(step =>
         step.id === stepId ? { ...step, status } : step
       )
     );
   };
+
+  useEffect(() => {
+    const completedSteps = loadingSteps.filter(step => step.status === 'completed').length;
+    const totalSteps = loadingSteps.length || 1;
+    const calculatedProgress = Math.round((completedSteps / totalSteps) * 100);
+    setProgress(calculatedProgress);
+  }, [loadingSteps]);
 
   const onSubmit = async (data: CreateProjectForm) => {
     if (isLoading || isSubmittingRef.current) {
@@ -103,38 +112,35 @@ function CreatePage() {
     isSubmittingRef.current = true;
     
     try {
+      setLoadingSteps(initialSteps);
+      setProgress(0);
+
       // Step 1: Creating project
       updateStep(1, 'loading');
-      setProgress(10);
       
-      const newProject = await createNewProject(data.name, data.githubUrl, process.env.GITHUB_TOKEN);
+      const newProject = await createNewProject(data.name, data.githubUrl, data.githubToken || undefined);
       
       updateStep(1, 'completed');
-      setProgress(20);
       
       // Step 2: Loading repository (simulate progress)
       updateStep(2, 'loading');
       await new Promise(resolve => setTimeout(resolve, 800));
       updateStep(2, 'completed');
-      setProgress(40);
       
       // Step 3: Analyzing code
       updateStep(3, 'loading');
       await new Promise(resolve => setTimeout(resolve, 1000));
       updateStep(3, 'completed');
-      setProgress(60);
       
       // Step 4: Generating embeddings
       updateStep(4, 'loading');
       await new Promise(resolve => setTimeout(resolve, 1200));
       updateStep(4, 'completed');
-      setProgress(80);
       
       // Step 5: Creating documentation
       updateStep(5, 'loading');
       await new Promise(resolve => setTimeout(resolve, 800));
       updateStep(5, 'completed');
-      setProgress(100);
       
       // Refetch projects to get the updated list
       await loadProjects();
@@ -235,7 +241,33 @@ function CreatePage() {
                   )}
                 />
 
-              
+                <FormField
+                  control={form.control}
+                  name="githubToken"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2 text-white">
+                        <Sparkles className="h-4 w-4" />
+                        GitHub Access Token
+                        <span className="text-xs font-normal text-gray-400">(optional but recommended)</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="password"
+                          placeholder="ghp_XXXXXXXXXXXXXXXXXXXX"
+                          className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 focus:border-blue-500"
+                          autoComplete="off"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription className="text-xs text-gray-400">
+                        Provide a GitHub personal access token with <code className="font-mono">repo</code> scope to
+                        avoid rate limits, especially for large repositories.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 {/* Loading Progress */}
                 {(form.formState.isSubmitting || isLoading) && (

@@ -1,9 +1,29 @@
 import { GithubRepoLoader } from '@langchain/community/document_loaders/web/github'
-import { Document } from '@langchain/core/documents'
 import { getGenerateEmbeddings, getSummariseCode, generateReadmeFromCodebase } from './gemini'
 import prisma from '@/lib/prisma'
 import { Octokit } from 'octokit'
 
+
+function isRateLimitError(error: unknown) {
+    if (!error || typeof error !== 'object') {
+        return false;
+    }
+
+    const err = error as {
+        status?: number;
+        message?: string;
+        response?: {
+            status?: number;
+            data?: {
+                message?: string;
+            };
+        };
+    };
+
+    const status = err.status ?? err.response?.status;
+    const message = typeof err.message === 'string' ? err.message : err.response?.data?.message;
+    return status === 403 && message?.toLowerCase().includes('rate limit')
+}
 
 export async function loadGithubRepository(githubUrl: string, githubToken?: string) {
     const loader = new GithubRepoLoader(githubUrl, {
@@ -186,21 +206,15 @@ export async function indexGithubRepository(projectId: string, githubUrl: string
 
     } catch (error) {
         logError(error, { projectId, githubUrl });
+
+        if (isRateLimitError(error)) {
+            throw new Error(
+                'Unable to fetch repository files: GitHub API rate limit exceeded. Please add a GitHub personal access token with repo scope to this project or try again later.'
+            );
+        }
+
         throw error;
     }
-}
-
-async function generateEmbeddings(docs: Document[]) {
-    return await Promise.allSettled(docs.map(async doc => {
-        const summary = await getSummariseCode(doc)
-        const embedding = await getGenerateEmbeddings(summary)
-        return {
-            summary,
-            embedding,
-            fileName: doc.metadata.source,
-            sourceCode: JSON.parse(JSON.stringify(doc.pageContent))
-        }
-    }))
 }
 
 // GitHub Repository Information Schema

@@ -67,15 +67,16 @@ export async function createProjectWithAuth(name: string, githubUrl: string, git
       },
     });
 
-    // Index the GitHub repository after project creation
-    try {
-      await indexGithubRepository(project.id, githubUrl, githubToken);
-      console.log(`Successfully indexed repository for project: ${project.name}`);
-    } catch (indexingError) {
-      console.error('Error indexing GitHub repository:', indexingError);
-      // Don't throw here - project creation succeeded, indexing failed
-      // The project can still be used, just without the indexed content
-    }
+    // Index the GitHub repository after project creation (run asynchronously)
+    indexGithubRepository(project.id, githubUrl, githubToken)
+      .then(() => {
+        console.log(`Successfully indexed repository for project: ${project.name}`);
+      })
+      .catch((indexingError) => {
+        console.error('Error indexing GitHub repository:', indexingError);
+        // Don't throw here - project creation succeeded, indexing failed
+        // The project can still be used, just without the indexed content
+      });
 
     return project;
   } catch (error) {

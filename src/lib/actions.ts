@@ -3,7 +3,7 @@
 import { createProjectWithAuth } from './queries';
 import { auth, currentUser } from '@clerk/nextjs/server';
 import prisma from './prisma';
-import { getGitHubRepositoryInfo } from './github';
+import { getGitHubRepositoryInfo, indexGithubRepository } from './github';
 import { ensureQuotaAvailable, getUsageSnapshot, incrementUsage } from './quota';
 
 export async function createProject(name: string, githubUrl: string, githubToken?: string) {
@@ -252,7 +252,7 @@ export async function regenerateProjectReadme(projectId: string) {
     await ensureQuotaAvailable(userId, 'readme');
 
     // Get all source code summaries for the project
-    const sourceCodeEmbeddings = await prisma.sourceCodeEmbiddings.findMany({
+    let sourceCodeEmbeddings = await prisma.sourceCodeEmbiddings.findMany({
       where: {
         projectId: projectId,
       },
@@ -262,7 +262,20 @@ export async function regenerateProjectReadme(projectId: string) {
     });
 
     if (sourceCodeEmbeddings.length === 0) {
-      throw new Error('No source code data found for README generation');
+      await indexGithubRepository(project.id, project.repoUrl, project.githubToken ?? undefined);
+
+      sourceCodeEmbeddings = await prisma.sourceCodeEmbiddings.findMany({
+        where: {
+          projectId: projectId,
+        },
+        select: {
+          Summary: true,
+        },
+      });
+
+      if (sourceCodeEmbeddings.length === 0) {
+        throw new Error('No source code data found for README generation');
+      }
     }
 
     const summaries = sourceCodeEmbeddings.map(embedding => embedding.Summary);
@@ -690,7 +703,7 @@ export async function regenerateProjectDocs(projectId: string) {
     await ensureQuotaAvailable(userId, 'docs');
 
     // Get all source code summaries for the project
-    const sourceCodeEmbeddings = await prisma.sourceCodeEmbiddings.findMany({
+    let sourceCodeEmbeddings = await prisma.sourceCodeEmbiddings.findMany({
       where: {
         projectId: projectId,
       },
@@ -700,7 +713,20 @@ export async function regenerateProjectDocs(projectId: string) {
     });
 
     if (sourceCodeEmbeddings.length === 0) {
-      throw new Error('No source code data found for docs generation');
+      await indexGithubRepository(project.id, project.repoUrl, project.githubToken ?? undefined);
+
+      sourceCodeEmbeddings = await prisma.sourceCodeEmbiddings.findMany({
+        where: {
+          projectId: projectId,
+        },
+        select: {
+          Summary: true,
+        },
+      });
+
+      if (sourceCodeEmbeddings.length === 0) {
+        throw new Error('No source code data found for docs generation');
+      }
     }
 
     const summaries = sourceCodeEmbeddings.map(embedding => embedding.Summary);

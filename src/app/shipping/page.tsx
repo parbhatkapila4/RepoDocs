@@ -38,9 +38,9 @@ export default function ShippingPolicyPage() {
             <p className="mt-3">
               Our infrastructure runs on globally distributed servers. Downtime is rare, but in the unlikely event of an
               outage we communicate status updates via{" "} {"This functionaility is coming soon. Demo is below."}
-              <a href="https://status.repodoc.dev" className="text-white underline underline-offset-4">
+              {/* <a href="https://status.repodoc.dev" className="text-white underline underline-offset-4">
                 status.repodoc.dev
-              </a>
+              </a> */}
               .
             </p>
           </div>
@@ -48,9 +48,9 @@ export default function ShippingPolicyPage() {
           <div>
             <h2 className="text-xl font-semibold text-white">Questions</h2>
             <p className="mt-3">
-              If you have questions about your subscription delivery, email{" "}
-              <a href="mailto:help@productsolution.net" className="text-white underline underline-offset-4">
-                help@productsolution.net
+              If you have questions about your subscription delivery, email founder{" "}
+              <a href="mailto:parbhat@parbhat.dev" className="text-white underline underline-offset-4">
+                parbhat@parbhat.dev
               </a>{" "}
               and we&rsquo;ll respond within one business day.
             </p>

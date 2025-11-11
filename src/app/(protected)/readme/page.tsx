@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -94,6 +94,7 @@ function ReadmePage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [qnaToDelete, setQnaToDelete] = useState<string | null>(null);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
+  const [showProcessingNotice, setShowProcessingNotice] = useState(true);
 
   const selectedProject = projects.find(p => p.id === selectedProjectId);
 
@@ -189,7 +190,11 @@ function ReadmePage() {
       });
     } catch (err) {
       console.error('Error regenerating README:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to regenerate README';
+      const rawMessage = err instanceof Error ? err.message : 'Failed to regenerate README';
+      const isRateLimit = rawMessage.toLowerCase().includes('github api rate limit exceeded');
+      const errorMessage = isRateLimit
+        ? 'GitHub rate limit hit. Add a GitHub personal access token (with repo scope) when creating the project to avoid this limit.'
+        : rawMessage;
       setError(errorMessage);
       toast.error('Failed to regenerate README', {
         description: errorMessage,
@@ -442,6 +447,28 @@ function ReadmePage() {
 
   return (
     <div className="h-full flex flex-col mobile-layout">
+      {showProcessingNotice && (
+        <Alert className="mx-2 sm:mx-4 mb-4 border-blue-400/40 bg-blue-500/10 text-blue-100">
+          <AlertTitle className="flex items-center gap-2 text-sm font-semibold text-blue-50">
+            <Loader2 className="h-4 w-4 animate-spin text-blue-200/80" />
+            Heads up
+          </AlertTitle>
+          <AlertDescription className="mt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-blue-100/90">
+            <span>
+              Large repositories can take longer to index, especially on the first load. If GitHub rate limits the request,
+              add a personal access token with <code className="font-mono">repo</code> scope when creating the project to keep things moving quickly.
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowProcessingNotice(false)}
+              className="self-start sm:self-center text-blue-100/70 hover:text-blue-50"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 mt-2 sm:mt-4 px-2 sm:px-4 gap-3 sm:gap-4">
         <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
           <div className="p-2 sm:p-3 bg-white/10 border border-white/20 rounded-xl flex-shrink-0">

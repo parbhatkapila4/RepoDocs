@@ -1,13 +1,13 @@
-import { PlanType } from "@prisma/client"
+import type { PlanType } from "@prisma/client"
 import prisma from "./prisma"
 
 export type UsageKind = "readme" | "docs" | "chat"
 
 const PLAN_LIMITS: Record<PlanType, { readme: number; docs: number; chat: number }> = {
-  [PlanType.FREE]: { readme: 3, docs: 3, chat: 5 },
-  [PlanType.BASIC]: { readme: 10, docs: 10, chat: 40 },
-  [PlanType.PREMIUM]: { readme: 40, docs: 40, chat: 100 },
-  [PlanType.ENTERPRISE]: { readme: Number.POSITIVE_INFINITY, docs: Number.POSITIVE_INFINITY, chat: Number.POSITIVE_INFINITY },
+  FREE: { readme: 3, docs: 3, chat: 5 },
+  BASIC: { readme: 10, docs: 10, chat: 40 },
+  PREMIUM: { readme: 40, docs: 40, chat: 100 },
+  ENTERPRISE: { readme: Number.POSITIVE_INFINITY, docs: Number.POSITIVE_INFINITY, chat: Number.POSITIVE_INFINITY },
 }
 
 const USAGE_LABEL: Record<UsageKind, string> = {
@@ -17,15 +17,15 @@ const USAGE_LABEL: Record<UsageKind, string> = {
 }
 
 const PLAN_LABEL: Record<PlanType, string> = {
-  [PlanType.FREE]: "Free",
-  [PlanType.BASIC]: "Basic",
-  [PlanType.PREMIUM]: "Premium",
-  [PlanType.ENTERPRISE]: "Enterprise",
+  FREE: "Free",
+  BASIC: "Basic",
+  PREMIUM: "Premium",
+  ENTERPRISE: "Enterprise",
 }
 
 export function getPlanLimits(plan: PlanType | null | undefined) {
   if (!plan) {
-    return PLAN_LIMITS[PlanType.FREE]
+    return PLAN_LIMITS.FREE
   }
   return PLAN_LIMITS[plan]
 }
@@ -45,7 +45,7 @@ async function getUserPlan(userId: string) {
     throw new Error("User not found")
   }
 
-  return user.plan ?? PlanType.FREE
+  return user.plan ?? "FREE"
 }
 
 export async function ensureQuotaAvailable(userId: string, kind: UsageKind) {
