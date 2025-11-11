@@ -779,6 +779,47 @@ export async function regenerateProjectDocs(projectId: string) {
   }
 }
 
+export async function updateProjectGithubToken(projectId: string, githubToken: string) {
+  try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      throw new Error('Unauthorized');
+    }
+
+    if (!githubToken || githubToken.length < 20) {
+      throw new Error('Please provide a valid GitHub personal access token.');
+    }
+
+    const project = await prisma.project.findFirst({
+      where: {
+        id: projectId,
+        userId,
+        deletedAt: null,
+      },
+    });
+
+    if (!project) {
+      throw new Error('Project not found or unauthorized');
+    }
+
+    await prisma.project.update({
+      where: {
+        id: projectId,
+      },
+      data: {
+        githubToken,
+      },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating project GitHub token:', error);
+    const message = error instanceof Error ? error.message : 'Failed to update GitHub token';
+    throw new Error(message);
+  }
+}
+
 export async function modifyDocsWithQna(projectId: string, question: string) {
   try {
     const { userId } = await auth();

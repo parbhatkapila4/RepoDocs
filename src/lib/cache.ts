@@ -1,3 +1,5 @@
+import { logger } from "./logger";
+
 /**
  * Caching layer for embeddings and queries
  * Falls back gracefully if Redis is not available
@@ -30,9 +32,9 @@ class CacheManager {
         // For now, we'll use in-memory cache as fallback
         // In production, you'd use @upstash/redis or ioredis
         this.redisAvailable = false;
-        console.log('Using in-memory cache (Redis not configured)');
+        logger.info('Cache using in-memory cache (Redis not configured)');
       } catch (error) {
-        console.log('Redis not available, using in-memory cache');
+        logger.warn('Redis not available, using in-memory cache', { error });
         this.redisAvailable = false;
       }
     }
@@ -67,7 +69,7 @@ class CacheManager {
       
       return null;
     } catch (error) {
-      console.error('Cache get error:', error);
+      logger.error('Cache get error', { error });
       return null;
     }
   }
@@ -83,7 +85,7 @@ class CacheManager {
         ttl,
       });
     } catch (error) {
-      console.error('Cache set error:', error);
+      logger.error('Cache set error', { error });
     }
   }
 
@@ -94,7 +96,7 @@ class CacheManager {
     try {
       this.inMemoryCache.delete(key);
     } catch (error) {
-      console.error('Cache delete error:', error);
+      logger.error('Cache delete error', { error });
     }
   }
 
@@ -105,7 +107,7 @@ class CacheManager {
     try {
       this.inMemoryCache.clear();
     } catch (error) {
-      console.error('Cache clear error:', error);
+      logger.error('Cache clear error', { error });
     }
   }
 

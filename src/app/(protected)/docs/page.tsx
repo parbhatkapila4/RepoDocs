@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useProjectsContext } from '@/context/ProjectsContext';
-import { getProjectDocs, regenerateProjectDocs, modifyDocsWithQna, getDocsQnaHistory, createDocsShare, revokeDocsShare, getDocsShare, deleteDocsQnaRecord, deleteAllDocsQnaHistory } from '@/lib/actions';
+import { getProjectDocs, regenerateProjectDocs, modifyDocsWithQna, getDocsQnaHistory, createDocsShare, revokeDocsShare, getDocsShare, deleteDocsQnaRecord, deleteAllDocsQnaHistory, updateProjectGithubToken } from '@/lib/actions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -110,6 +110,10 @@ function DocsPage() {
   const [qnaToDelete, setQnaToDelete] = useState<string | null>(null);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
   const [showProcessingNotice, setShowProcessingNotice] = useState(true);
+  const [showTokenModal, setShowTokenModal] = useState(false);
+  const [githubTokenInput, setGithubTokenInput] = useState('');
+  const [isSavingToken, setIsSavingToken] = useState(false);
+  const [tokenError, setTokenError] = useState<string | null>(null);
 
   const selectedProject = projects.find(p => p.id === selectedProjectId);
 
@@ -188,7 +192,7 @@ function DocsPage() {
     }
   };
 
-  const handleRegenerateDocs = async () => {
+  const regenerateDocs = async (options?: { suppressRateLimitPrompt?: boolean }) => {
     if (!selectedProjectId) return;
     
     setIsRegenerating(true);
@@ -208,14 +212,55 @@ function DocsPage() {
       const rawMessage = err instanceof Error ? err.message : 'Failed to regenerate documentation';
       const isRateLimit = rawMessage.toLowerCase().includes('github api rate limit exceeded');
       const errorMessage = isRateLimit
-        ? 'GitHub API rate limit hit(this issue is via GitHub API, not RepoDoc). Add a GitHub personal access token when creating the project to avoid this limit.'
+        ? 'GitHub API rate limit hit (this comes from GitHub). Add a GitHub personal access token with repo scope to this project to continue.'
         : rawMessage;
       setError(errorMessage);
-      toast.error('Failed to regenerate documentation', {
+      toast.error(isRateLimit ? 'GitHub rate limit exceeded' : 'Failed to regenerate documentation', {
         description: errorMessage,
       });
+      if (isRateLimit && !options?.suppressRateLimitPrompt) {
+        setGithubTokenInput('');
+        setTokenError(null);
+        setShowTokenModal(true);
+      }
     } finally {
       setIsRegenerating(false);
+    }
+  };
+
+  const handleRegenerateDocs = () => {
+    void regenerateDocs();
+  };
+
+  const handleSaveGithubToken = async () => {
+    if (!selectedProjectId) return;
+
+    const token = githubTokenInput.trim();
+    if (!token) {
+      setTokenError('Please enter your GitHub personal access token.');
+      return;
+    }
+
+    setIsSavingToken(true);
+    setTokenError(null);
+
+    try {
+      await updateProjectGithubToken(selectedProjectId, token);
+      toast.success('GitHub token saved', {
+        description: 'We will use this token for future indexing and regeneration.',
+      });
+      setShowTokenModal(false);
+      setGithubTokenInput('');
+      await regenerateDocs({ suppressRateLimitPrompt: true });
+    } catch (err) {
+      console.error('Error saving GitHub token:', err);
+      const message = err instanceof Error ? err.message : 'Failed to save GitHub token';
+      setTokenError(message);
+      toast.error('Failed to save token', {
+        description: message,
+      });
+    } finally {
+      setIsSavingToken(false);
     }
   };
 
@@ -471,7 +516,7 @@ function DocsPage() {
           <AlertDescription className="mt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-blue-100/90">
             <span>
               Large repositories can take longer to index, especially on the first load. If GitHub rate limits the request,
-              add a personal access token with <code className="font-mono">repo</code> scope when creating the project to keep things moving quickly.
+              add a personal access token with <code className="font-mono">repo</code> scope (use “Manage GitHub Token” above) to keep things moving quickly.
             </span>
             <Button
               variant="ghost"
@@ -499,6 +544,17 @@ function DocsPage() {
           </div>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+          <Button
+            onClick={() => {
+              setShowTokenModal(true);
+              setGithubTokenInput('');
+              setTokenError(null);
+            }}
+            variant="outline"
+            className="border-blue-400/40 text-blue-200 hover:bg-blue-500/10 px-3 sm:px-4 md:px-6 py-2 rounded-lg transition-all duration-200 w-full sm:w-auto text-xs sm:text-sm"
+          >
+            Manage GitHub Token
+          </Button>
           <Button
             onClick={() => setIsQnaPanelOpen(!isQnaPanelOpen)}
             variant="outline"
@@ -1013,6 +1069,75 @@ function DocsPage() {
                   <Trash2 className="h-4 w-4 mr-2" />
                   Delete
                 </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* GitHub Token Modal */}
+      <Dialog open={showTokenModal} onOpenChange={setShowTokenModal}>
+        <DialogContent className="bg-gray-900 border-white/20">
+          <DialogHeader>
+            <DialogTitle className="text-white">Add GitHub Personal Access Token</DialogTitle>
+            <DialogDescription className="text-white/60">
+              We use this token to fetch repository files without hitting GitHub’s rate limits. Generate a token with
+              <span className="font-mono text-white/80"> repo </span> scope and paste it below.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-white/80" htmlFor="github-token-input">
+                Token
+              </label>
+              <Input
+                id="github-token-input"
+                type="password"
+                value={githubTokenInput}
+                onChange={(event) => setGithubTokenInput(event.target.value)}
+                placeholder="ghp_XXXXXXXXXXXXXXXXXXXX"
+                className="bg-white/5 border-white/20 text-white text-sm"
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <p className="text-xs text-white/50">
+                You can create a new token at{' '}
+                <a
+                  href="https://github.com/settings/tokens"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-300 hover:underline"
+                >
+                  github.com/settings/tokens
+                </a>
+                . Keep this token secret—never share it publicly.
+              </p>
+              {tokenError && <p className="text-xs text-red-400">{tokenError}</p>}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowTokenModal(false);
+                setTokenError(null);
+              }}
+              className="bg-white/10 hover:bg-white/20 text-white border-white/20"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveGithubToken}
+              disabled={isSavingToken}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {isSavingToken ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Token'
               )}
             </Button>
           </DialogFooter>

@@ -1,7 +1,8 @@
 import { GithubRepoLoader } from '@langchain/community/document_loaders/web/github'
-import { getGenerateEmbeddings, getSummariseCode, generateReadmeFromCodebase } from './gemini'
+import { getGenerateEmbeddings, getSummariseCode, generateReadmeFromCodebase, generateDocsFromCodebase } from './gemini'
 import prisma from '@/lib/prisma'
 import { Octokit } from 'octokit'
+import { logger } from './logger'
 
 
 function isRateLimitError(error: unknown) {
@@ -40,6 +41,7 @@ export async function loadGithubRepository(githubUrl: string, githubToken?: stri
 
 
 export async function indexGithubRepository(projectId: string, githubUrl: string, githubToken?: string) {
+    const log = logger.scoped('github:index');
     const { retryAsync, logError } = await import('./errors');
     const { cache } = await import('./cache');
     
@@ -67,7 +69,7 @@ export async function indexGithubRepository(projectId: string, githubUrl: string
             throw new Error('No files found in repository');
         }
 
-        console.log(`Loaded ${docs.length} files from repository`);
+        log.info(`Repository fetch complete`, { files: docs.length });
 
         // Process in batches to avoid overwhelming the API
         const BATCH_SIZE = 10;
@@ -77,7 +79,10 @@ export async function indexGithubRepository(projectId: string, githubUrl: string
 
         for (let i = 0; i < docs.length; i += BATCH_SIZE) {
             const batch = docs.slice(i, i + BATCH_SIZE);
-            console.log(`Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(docs.length / BATCH_SIZE)}`);
+            log.debug(`Processing batch`, {
+                batch: Math.floor(i / BATCH_SIZE) + 1,
+                batches: Math.ceil(docs.length / BATCH_SIZE),
+            });
 
             const batchEmbeddings = await Promise.allSettled(
                 batch.map(async (doc) => {
@@ -153,9 +158,9 @@ export async function indexGithubRepository(projectId: string, githubUrl: string
             }
         }
 
-        console.log(`Indexing complete: ${successCount} succeeded, ${failCount} failed`);
+        log.info(`Indexing complete`, { successCount, failCount });
 
-        // Generate README after embeddings are created
+        // Generate README and Docs after embeddings are created
         if (summaries.length > 0) {
             try {
                 const project = await prisma.project.findUnique({
@@ -165,7 +170,7 @@ export async function indexGithubRepository(projectId: string, githubUrl: string
 
                 if (project) {
                     const repoInfo = await getGitHubRepositoryInfo(githubUrl, githubToken);
-                    
+
                     const readmeContent = await retryAsync(
                         () => generateReadmeFromCodebase(project.name, summaries, repoInfo),
                         { maxRetries: 2, initialDelay: 2000 }
@@ -186,7 +191,32 @@ export async function indexGithubRepository(projectId: string, githubUrl: string
                         }
                     });
 
-                    console.log(`Successfully generated and stored README for project: ${project.name}`);
+                    log.info(`README stored`, { project: project.name });
+
+                    try {
+                        const docsContent = await retryAsync(
+                            () => generateDocsFromCodebase(project.name, summaries, repoInfo),
+                            { maxRetries: 2, initialDelay: 2000 }
+                        );
+
+                        await prisma.docs.upsert({
+                            where: { projectId: projectId },
+                            update: {
+                                content: docsContent,
+                                prompt: `Generated comprehensive docs for ${project.name} based on codebase analysis`,
+                                updatedAt: new Date()
+                            },
+                            create: {
+                                content: docsContent,
+                                prompt: `Generated comprehensive docs for ${project.name} based on codebase analysis`,
+                                projectId: projectId
+                            }
+                        });
+
+                        log.info(`Docs stored`, { project: project.name });
+                    } catch (docsError) {
+                        logError(docsError, { projectId, stage: 'docs-generation' });
+                    }
                 }
             } catch (readmeError) {
                 logError(readmeError, { projectId, stage: 'readme-generation' });

@@ -2,6 +2,7 @@ import prisma from './prisma';
 import { Project, Prisma } from '@prisma/client';
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { indexGithubRepository } from './github';
+import { logger } from './logger';
 
 export async function createProjectWithAuth(name: string, githubUrl: string, githubToken?: string): Promise<Project> {
   try {
@@ -70,17 +71,17 @@ export async function createProjectWithAuth(name: string, githubUrl: string, git
     // Index the GitHub repository after project creation (run asynchronously)
     indexGithubRepository(project.id, githubUrl, githubToken)
       .then(() => {
-        console.log(`Successfully indexed repository for project: ${project.name}`);
+        logger.info('Repository indexing complete', { projectId: project.id, projectName: project.name });
       })
       .catch((indexingError) => {
-        console.error('Error indexing GitHub repository:', indexingError);
+        logger.error('Error indexing GitHub repository', { projectId: project.id, projectName: project.name, error: indexingError });
         // Don't throw here - project creation succeeded, indexing failed
         // The project can still be used, just without the indexed content
       });
 
     return project;
   } catch (error) {
-    console.error('Error creating project:', error);
+    logger.error('Error creating project', { error });
     throw new Error('Failed to create project');
   }
 }
@@ -99,7 +100,7 @@ export async function getUserProjects(userId: string): Promise<Project[]> {
 
     return projects;
   } catch (error) {
-    console.error('Error fetching user projects:', error);
+    logger.error('Error fetching user projects', { userId, error });
     throw new Error('Failed to fetch projects');
   }
 }
@@ -116,7 +117,7 @@ export async function getProjectById(projectId: string, userId: string): Promise
 
     return project;
   } catch (error) {
-    console.error('Error fetching project:', error);
+    logger.error('Error fetching project', { projectId, userId, error });
     throw new Error('Failed to fetch project');
   }
 }
@@ -137,7 +138,7 @@ export async function updateProject(
 
     return project;
   } catch (error) {
-    console.error('Error updating project:', error);
+    logger.error('Error updating project', { projectId, userId, error });
     throw new Error('Failed to update project');
   }
 }
@@ -156,7 +157,7 @@ export async function deleteProject(projectId: string, userId: string): Promise<
 
     return project;
   } catch (error) {
-    console.error('Error deleting project:', error);
+    logger.error('Error deleting project', { projectId, userId, error });
     throw new Error('Failed to delete project');
   }
 }

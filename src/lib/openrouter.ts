@@ -1,3 +1,5 @@
+import { logger } from "./logger";
+
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
@@ -67,10 +69,10 @@ export async function openrouterChatCompletion(options: ChatCompletionOptions): 
         return data.choices[0].message.content
     } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
-            console.error("OpenRouter API request timed out after 2 minutes")
+            logger.error("OpenRouter API request timed out after 2 minutes")
             throw new Error("Request timed out. The documentation generation is taking longer than expected. Please try again.")
         }
-        console.error("Error calling OpenRouter chat completion:", error)
+        logger.error("Error calling OpenRouter chat completion", { error })
         throw error
     }
 }
