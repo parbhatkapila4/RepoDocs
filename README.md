@@ -6,7 +6,6 @@
 
 **Transform your GitHub repositories into interactive, intelligent documentation**
 
-[![CI/CD](https://github.com/yourusername/repodoc/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/yourusername/repodoc/actions)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-15.5-black)](https://nextjs.org/)
@@ -107,7 +106,6 @@
 - **Vector Search**: Custom RAG implementation
 
 #### DevOps
-- **CI/CD**: GitHub Actions
 - **Deployment**: Vercel
 - **Monitoring**: Sentry (configured)
 - **Testing**: Jest + React Testing Library
@@ -243,8 +241,6 @@ npm run type-check
 
 ```
 repodoc/
-├── .github/
-│   └── workflows/           # CI/CD pipelines
 ├── __tests__/               # Test files
 │   ├── components/
 │   ├── lib/

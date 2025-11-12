@@ -259,7 +259,6 @@ CRITICAL INSTRUCTIONS - Generate EXTREMELY COMPREHENSIVE documentation:
 - **Database Setup**: Schema creation, migrations, seed data
 - **Docker Setup**: Container configuration, docker-compose setup
 - **Kubernetes Deployment**: K8s manifests, helm charts
-- **CI/CD Pipeline**: GitHub Actions, Jenkins, or other automation
 - **Environment Variables**: Complete list with descriptions and examples
 - **SSL/TLS Setup**: Certificate configuration and security setup
 
