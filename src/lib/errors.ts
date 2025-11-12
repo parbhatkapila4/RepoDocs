@@ -1,5 +1,3 @@
-import { logger } from "./logger";
-
 /**
  * Custom error classes for better error handling
  */
@@ -104,7 +102,7 @@ export async function retryAsync<T>(
       // Exponential backoff
       delay = Math.min(delay * backoffMultiplier, maxDelay);
       
-      logger.debug(`Retry attempt`, { attempt: attempt + 1, maxRetries, nextDelay: delay });
+      console.log(`Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms`);
     }
   }
 
@@ -148,7 +146,7 @@ export function logError(error: any, context?: Record<string, any>) {
     ...context,
   };
 
-  logger.error('Error captured', errorInfo);
+  console.error('Error:', JSON.stringify(errorInfo, null, 2));
 
   // In production, you would send this to a monitoring service like Sentry
   // if (process.env.NODE_ENV === 'production') {

@@ -52,6 +52,3 @@ prisma/.env
 
 # OS
 Thumbs.db
-
-# clerk configuration (can include secrets)
-/.clerk/

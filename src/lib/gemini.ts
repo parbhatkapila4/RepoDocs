@@ -1,7 +1,6 @@
 import { Document } from "@langchain/core/documents"
 import { openrouterSingleMessage } from "@/lib/openrouter"
 import { GoogleGenAI } from "@google/genai";
-import { logger } from "./logger";
 
 // Support both GEMINI_API_KEY and GOOGLE_GENAI_API_KEY for backwards compatibility
 const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENAI_API_KEY;
@@ -14,8 +13,7 @@ const genAi = new GoogleGenAI({ apiKey: geminiApiKey })
 
 
 export async function getSummariseCode(doc: Document) {
-    const log = logger.scoped("gemini:summarise");
-    log.debug("Summarising code", { source: doc.metadata.source });
+    console.log("Summarising code for ", doc.metadata.source)
     try {
         const code = doc.pageContent.slice(0, 10000)
 
@@ -29,14 +27,13 @@ Give a summary no more than 100 words of the code above.`
 
         return openrouterSingleMessage(prompt)
     } catch (error) {
-        logger.error("Error summarising code", { source: doc.metadata.source, error })
+        console.error("Error summarising code for ", doc.metadata.source, error)
         return ""
     }
 }
 
 export async function getGenerateEmbeddings(summary: string, useCache: boolean = true) {
-    const log = logger.scoped("gemini:embed");
-    log.debug("Generating embeddings")
+    console.log("Generating embeddings")
     
     // Check cache first
     if (useCache) {
@@ -44,11 +41,11 @@ export async function getGenerateEmbeddings(summary: string, useCache: boolean =
             const { cache } = await import('./cache');
             const cached = await cache.getCachedEmbedding(summary);
             if (cached) {
-                log.debug("Using cached embedding");
+                console.log("Using cached embedding");
                 return cached;
             }
         } catch (error) {
-            log.debug("Cache miss, generating new embedding");
+            console.log("Cache miss, generating new embedding");
         }
     }
     
@@ -77,20 +74,19 @@ export async function getGenerateEmbeddings(summary: string, useCache: boolean =
                 const { cache } = await import('./cache');
                 await cache.cacheEmbedding(summary, embeddingValues);
             } catch (cacheError) {
-                log.warn("Failed to cache embedding", { error: cacheError });
+                console.log("Failed to cache embedding:", cacheError);
             }
         }
 
         return embeddingValues;
     } catch (error) {
-        logger.error("Error generating embeddings", { error })
+        console.error("Error generating embeddings:", error)
         throw new Error(`Failed to generate embeddings: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 }
 
 export async function generateReadmeFromCodebase(projectName: string, sourceCodeSummaries: string[], repoInfo: any) {
-    const log = logger.scoped("gemini:readme");
-    log.debug("Generating README", { projectName })
+    console.log("Generating README for project:", projectName)
     try {
         const codebaseContext = sourceCodeSummaries.join('\n\n')
         
@@ -135,7 +131,7 @@ Generate a complete, production-ready README.md file:`
         const readmeContent = await openrouterSingleMessage(prompt, "google/gemini-2.5-flash")
         return readmeContent
     } catch (error) {
-        logger.error("Error generating README", { projectName, error })
+        console.error("Error generating README:", error)
         return `# ${projectName}
 
 A ${repoInfo?.language || 'software'} project.
@@ -169,8 +165,7 @@ This project is licensed under the MIT License.
 }
 
 export async function modifyReadmeWithQuery(currentReadme: string, userQuery: string, projectName: string) {
-    const log = logger.scoped("gemini:readme:modify");
-    log.debug("Modifying README with user query", { projectName, userQuery })
+    console.log("Modifying README with user query:", userQuery)
     try {
         const prompt = `You are an expert technical writer and software engineer. You need to modify an existing README.md file based on a user's specific request.
 
@@ -207,14 +202,13 @@ Generate the modified README.md content:`
         const modifiedReadme = await openrouterSingleMessage(prompt, "google/gemini-2.5-flash")
         return modifiedReadme
     } catch (error) {
-        logger.error("Error modifying README", { projectName, error })
+        console.error("Error modifying README:", error)
         throw new Error("Failed to modify README with AI")
     }
 }
 
 export async function generateDocsFromCodebase(projectName: string, sourceCodeSummaries: string[], repoInfo: any) {
-    const log = logger.scoped("gemini:docs");
-    log.debug("Generating docs", { projectName })
+    console.log("Generating comprehensive docs for project:", projectName)
     try {
         const codebaseContext = sourceCodeSummaries.join('\n\n')
         
@@ -389,11 +383,11 @@ Generate the most comprehensive, detailed, and useful technical documentation po
         const docsContent = await openrouterSingleMessage(prompt, "google/gemini-2.5-flash")
         return docsContent
     } catch (error) {
-        logger.error("Error generating docs", { projectName, error })
+        console.error("Error generating docs:", error)
         
         // Try a simpler, faster generation as fallback
         try {
-            log.warn("Docs generation failed, attempting fallback", { projectName })
+            console.log("Attempting fallback docs generation...")
             const fallbackPrompt = `Generate comprehensive technical documentation for "${projectName}".
 
 PROJECT INFO:
@@ -420,7 +414,7 @@ Use markdown format with clear sections and code examples.`
             const fallbackDocs = await openrouterSingleMessage(fallbackPrompt, "google/gemini-2.5-flash-lite")
             return fallbackDocs
         } catch (fallbackError) {
-            logger.error("Fallback docs generation failed", { projectName, error: fallbackError })
+            console.error("Fallback docs generation also failed:", fallbackError)
         }
         
         return `# ${projectName} - Technical Documentation
@@ -575,8 +569,7 @@ This project is licensed under the MIT License.
 }
 
 export async function modifyDocsWithQuery(currentDocs: string, userQuery: string, projectName: string) {
-    const log = logger.scoped("gemini:docs:modify");
-    log.debug("Modifying docs with user query", { projectName, userQuery })
+    console.log("Modifying docs with user query:", userQuery)
     try {
         const prompt = `You are an expert technical writer and software engineer. You need to modify existing technical documentation based on a user's specific request.
 
@@ -615,7 +608,7 @@ Generate the modified technical documentation content:`
         const modifiedDocs = await openrouterSingleMessage(prompt, "google/gemini-2.5-flash")
         return modifiedDocs
     } catch (error) {
-        logger.error("Error modifying docs", { projectName, error })
+        console.error("Error modifying docs:", error)
         throw new Error("Failed to modify docs with AI")
     }
 }

@@ -1,10 +1,9 @@
 'use server';
 
 import { createProjectWithAuth } from './queries';
-import { auth, currentUser } from '@clerk/nextjs/server';
+import { auth } from '@clerk/nextjs/server';
 import prisma from './prisma';
-import { getGitHubRepositoryInfo, indexGithubRepository } from './github';
-import { ensureQuotaAvailable, getUsageSnapshot, incrementUsage } from './quota';
+import { getGitHubRepositoryInfo } from './github';
 
 export async function createProject(name: string, githubUrl: string, githubToken?: string) {
   return await createProjectWithAuth(name, githubUrl, githubToken);
@@ -29,14 +28,15 @@ export async function getCurrentUser() {
         lastName: true,
         imageUrl: true,
         credits: true,
-        plan: true,
       },
     });
 
     if (!user) {
-      const clerkUser = await currentUser();
+      const { clerkClient } = await import('@clerk/nextjs/server');
+      const client = await clerkClient();
+      const clerkUser = await client.users.getUser(userId);
       
-      if (clerkUser?.emailAddresses[0]?.emailAddress) {
+      if (clerkUser.emailAddresses[0]?.emailAddress) {
         user = await prisma.user.upsert({
           where: {
             emailAddress: clerkUser.emailAddresses[0].emailAddress,
@@ -60,29 +60,12 @@ export async function getCurrentUser() {
             lastName: true,
             imageUrl: true,
             credits: true,
-            plan: true,
           },
         });
       }
     }
 
-    if (!user) {
-      return null;
-    }
-
-    const quota = await getUsageSnapshot(user.id);
-    const nextReset = new Date(Date.UTC(quota.periodStart.getUTCFullYear(), quota.periodStart.getUTCMonth() + 1, 1, 0, 0, 0, 0));
-
-    return {
-      ...user,
-      plan: quota.plan,
-      quota: {
-        limits: quota.limits,
-        usage: quota.usage,
-        periodStart: quota.periodStart.toISOString(),
-        resetAt: nextReset.toISOString(),
-      },
-    };
+    return user;
   } catch (error) {
     console.error('Error fetching current user:', error);
     return null;
@@ -249,10 +232,8 @@ export async function regenerateProjectReadme(projectId: string) {
       throw new Error('Project not found or unauthorized');
     }
 
-    await ensureQuotaAvailable(userId, 'readme');
-
     // Get all source code summaries for the project
-    let sourceCodeEmbeddings = await prisma.sourceCodeEmbiddings.findMany({
+    const sourceCodeEmbeddings = await prisma.sourceCodeEmbiddings.findMany({
       where: {
         projectId: projectId,
       },
@@ -262,20 +243,7 @@ export async function regenerateProjectReadme(projectId: string) {
     });
 
     if (sourceCodeEmbeddings.length === 0) {
-      await indexGithubRepository(project.id, project.repoUrl, project.githubToken ?? undefined);
-
-      sourceCodeEmbeddings = await prisma.sourceCodeEmbiddings.findMany({
-        where: {
-          projectId: projectId,
-        },
-        select: {
-          Summary: true,
-        },
-      });
-
-      if (sourceCodeEmbeddings.length === 0) {
-        throw new Error('No source code data found for README generation');
-      }
+      throw new Error('No source code data found for README generation');
     }
 
     const summaries = sourceCodeEmbeddings.map(embedding => embedding.Summary);
@@ -317,8 +285,6 @@ export async function regenerateProjectReadme(projectId: string) {
         projectId: projectId,
       },
     });
-
-    await incrementUsage(userId, 'readme');
 
     return readme;
   } catch (error) {
@@ -700,10 +666,8 @@ export async function regenerateProjectDocs(projectId: string) {
       throw new Error('Project not found or unauthorized');
     }
 
-    await ensureQuotaAvailable(userId, 'docs');
-
     // Get all source code summaries for the project
-    let sourceCodeEmbeddings = await prisma.sourceCodeEmbiddings.findMany({
+    const sourceCodeEmbeddings = await prisma.sourceCodeEmbiddings.findMany({
       where: {
         projectId: projectId,
       },
@@ -713,20 +677,7 @@ export async function regenerateProjectDocs(projectId: string) {
     });
 
     if (sourceCodeEmbeddings.length === 0) {
-      await indexGithubRepository(project.id, project.repoUrl, project.githubToken ?? undefined);
-
-      sourceCodeEmbeddings = await prisma.sourceCodeEmbiddings.findMany({
-        where: {
-          projectId: projectId,
-        },
-        select: {
-          Summary: true,
-        },
-      });
-
-      if (sourceCodeEmbeddings.length === 0) {
-        throw new Error('No source code data found for docs generation');
-      }
+      throw new Error('No source code data found for docs generation');
     }
 
     const summaries = sourceCodeEmbeddings.map(embedding => embedding.Summary);
@@ -769,54 +720,11 @@ export async function regenerateProjectDocs(projectId: string) {
       },
     });
 
-    await incrementUsage(userId, 'docs');
-
     return docs;
   } catch (error) {
     console.error('Error regenerating project docs:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     throw new Error(`Failed to regenerate docs: ${errorMessage}`);
-  }
-}
-
-export async function updateProjectGithubToken(projectId: string, githubToken: string) {
-  try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      throw new Error('Unauthorized');
-    }
-
-    if (!githubToken || githubToken.length < 20) {
-      throw new Error('Please provide a valid GitHub personal access token.');
-    }
-
-    const project = await prisma.project.findFirst({
-      where: {
-        id: projectId,
-        userId,
-        deletedAt: null,
-      },
-    });
-
-    if (!project) {
-      throw new Error('Project not found or unauthorized');
-    }
-
-    await prisma.project.update({
-      where: {
-        id: projectId,
-      },
-      data: {
-        githubToken,
-      },
-    });
-
-    return { success: true };
-  } catch (error) {
-    console.error('Error updating project GitHub token:', error);
-    const message = error instanceof Error ? error.message : 'Failed to update GitHub token';
-    throw new Error(message);
   }
 }
 

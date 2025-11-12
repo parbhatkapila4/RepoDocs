@@ -6,7 +6,6 @@
 import prisma from './prisma';
 import { getGenerateEmbeddings } from './gemini';
 import { openrouterChatCompletion } from './openrouter';
-import { logger } from './logger';
 
 export interface RAGQueryResult {
   answer: string;
@@ -69,31 +68,8 @@ export async function searchCodebase(
       similarity: r.similarity,
     }));
   } catch (error) {
-    logger.error('Error searching codebase', { error, projectId });
-    // Fallback: return most recently indexed files if vector search fails
-    const fallback = await prisma.sourceCodeEmbiddings.findMany({
-      where: { projectId },
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-      select: {
-        fileName: true,
-        sourceCode: true,
-        Summary: true,
-      },
-    });
-
-    if (fallback.length === 0) {
-      throw new Error(
-        'Vector search failed and no indexed source files were found. Re-run indexing or check database configuration.',
-      );
-    }
-
-    return fallback.map((item) => ({
-      fileName: item.fileName,
-      sourceCode: item.sourceCode,
-      summary: item.Summary,
-      similarity: 0,
-    }));
+    console.error('Error searching codebase:', error);
+    throw new Error('Failed to search codebase');
   }
 }
 
@@ -175,7 +151,7 @@ Instructions:
       sources: relevantCode,
     };
   } catch (error) {
-    logger.error('Error in RAG query', { error, projectId });
+    console.error('Error in RAG query:', error);
     throw new Error('Failed to process your question. Please try again.');
   }
 }
@@ -232,7 +208,7 @@ Instructions:
     const answer = await queryCodebase(projectId, question, conversationHistory);
     yield answer.answer;
   } catch (error) {
-    logger.error('Error in RAG streaming query', { error, projectId });
+    console.error('Error in RAG streaming query:', error);
     yield 'Failed to process your question. Please try again.';
   }
 }
