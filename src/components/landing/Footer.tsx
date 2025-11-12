@@ -1,6 +1,6 @@
 import React from 'react'
 import Link from 'next/link'
-import { Github, ExternalLink } from "lucide-react"
+import { Github } from "lucide-react"
 import { RepoDocLogo } from "@/components/ui/repodoc-logo"
 
 export default function Footer() {
@@ -22,8 +22,8 @@ export default function Footer() {
           <div>
             <h3 className="text-white font-semibold mb-4">Product</h3>
             <ul className="space-y-2">
-              <li><Link href="/dashboard" className="text-white/60 hover:text-white transition-colors text-sm">Dashboard</Link></li>
-              <li><Link href="/about" className="text-white/60 hover:text-white transition-colors text-sm">About RepoDoc</Link></li>
+              <li><Link href="/about" className="text-white/60 hover:text-white transition-colors text-sm">About</Link></li>
+              <li><Link href="/contact" className="text-white/60 hover:text-white transition-colors text-sm">Contact</Link></li>
             </ul>
           </div>
           
@@ -42,7 +42,7 @@ export default function Footer() {
               © 2025 RepoDoc. All rights reserved.
             </p>
             <div className="flex space-x-6 mt-4 md:mt-0">
-              <a href="https://github.com/parbhatkapila4/RepoDocs" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-white transition-colors">
+              <a href="https://github.com/parbhatkapila4/RepoDocs" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-green-700 transition-colors">
                 <Github className="w-5 h-5" />
               </a>
             </div>
