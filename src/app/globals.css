@@ -357,6 +357,22 @@
   transform: translateZ(0);
 }
 
+/* Fix chat ScrollArea on mobile */
+@media (max-width: 640px) {
+  [data-slot="scroll-area-viewport"] {
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  [data-slot="scroll-area"] {
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+}
+
 [data-radix-scroll-area-scrollbar] {
   will-change: opacity;
   transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);

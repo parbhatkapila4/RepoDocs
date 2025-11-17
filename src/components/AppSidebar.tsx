@@ -14,7 +14,8 @@ import {
   SidebarMenu, 
   SidebarMenuButton, 
   SidebarMenuItem,
-  SidebarSeparator
+  SidebarSeparator,
+  useSidebar
 } from "@/components/ui/sidebar"
 import {
   AlertDialog,
@@ -35,7 +36,8 @@ import {
   Code,
   Plus,
   Trash2,
-  MessageSquare
+  MessageSquare,
+  X
 } from "lucide-react"
 import { RepoDocLogo } from "@/components/ui/repodoc-logo"
 import { useUser } from "@/hooks/useUser"
@@ -87,6 +89,7 @@ export default function AppSidebar() {
   const pathname = usePathname()
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null)
+  const { setOpenMobile, isMobile } = useSidebar()
 
   const handleDeleteClick = (projectId: string, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -119,14 +122,30 @@ export default function AppSidebar() {
     signOut()
   }
 
+  const handleCloseSidebar = () => {
+    if (isMobile) {
+      setOpenMobile(false)
+    }
+  }
+
   return (
     <Sidebar variant="inset" className="border-white/15 border-r">
       <SidebarHeader className="p-2">
-        <div className="flex items-center gap-3">
-          <RepoDocLogo size="sm" className="text-white" />
-          <Link href="/">
-            <span className="text-xl font-bold text-white">RepoDoc</span>
-          </Link>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <RepoDocLogo size="sm" className="text-white" />
+            <Link href="/">
+              <span className="text-xl font-bold text-white">RepoDoc</span>
+            </Link>
+          </div>
+          <button
+            onClick={handleCloseSidebar}
+            className="md:hidden p-1.5 hover:bg-white/10 rounded transition-colors text-white/70 hover:text-white"
+            aria-label="Close sidebar"
+            type="button"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
       </SidebarHeader>
       

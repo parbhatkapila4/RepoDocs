@@ -266,7 +266,7 @@ function ReposPage() {
   return (
     <div className="w-full p-2 sm:p-4 md:p-6 space-y-2 sm:space-y-4 md:space-y-6 dashboard-mobile mobile-layout">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 text-center sm:text-left">
           <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-white mobile-no-truncate">Repository Information</h1>
           <p className="text-gray-400 mt-1 sm:mt-2 text-xs sm:text-sm md:text-base mobile-no-truncate">
             Detailed information about {currentProject.name}
@@ -315,19 +315,19 @@ function ReposPage() {
           {/* Main Repository Info */}
           <Card className="xl:col-span-2 mobile-card">
             <CardHeader className="mobile-card-content">
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
                 <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
-                  <Github className="h-6 w-6 sm:h-8 sm:w-8 text-white flex-shrink-0" />
+                  <Github className="h-6 w-6 sm:h-8 sm:w-8 text-white flex-shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
-                    <CardTitle className="text-base sm:text-lg md:text-xl text-white mobile-no-truncate">
+                    <CardTitle className="text-base sm:text-lg md:text-xl text-white mobile-no-truncate leading-tight">
                       {repoInfo.fullName}
                     </CardTitle>
-                    <CardDescription className="text-gray-400 text-xs sm:text-sm md:text-base mobile-no-truncate">
+                    <CardDescription className="text-gray-400 text-xs sm:text-sm md:text-base mobile-no-truncate mt-1">
                       {repoInfo.description || 'No description available'}
                     </CardDescription>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-shrink-0">
                   {repoInfo.isPrivate && <Lock className="h-4 w-4 text-yellow-400" />}
                   {repoInfo.isArchived && <Archive className="h-4 w-4 text-gray-400" />}
                   <Badge variant={repoInfo.isPrivate ? "destructive" : "secondary"}>
@@ -336,37 +336,37 @@ function ReposPage() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-3 sm:space-y-4 mobile-card-content">
+            <CardContent className="space-y-4 sm:space-y-5 mobile-card-content">
               {/* Stats */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <Star className="h-3 w-3 sm:h-4 sm:w-4 text-yellow-400 flex-shrink-0" />
-                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">{repoInfo.stars.toLocaleString()}</span>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div className="flex items-center gap-2">
+                  <Star className="h-4 w-4 text-yellow-400 flex-shrink-0" />
+                  <span className="text-white text-sm sm:text-base font-medium">{repoInfo.stars.toLocaleString()}</span>
                 </div>
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <GitFork className="h-3 w-3 sm:h-4 sm:w-4 text-blue-400 flex-shrink-0" />
-                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">{repoInfo.forks.toLocaleString()}</span>
+                <div className="flex items-center gap-2">
+                  <GitFork className="h-4 w-4 text-blue-400 flex-shrink-0" />
+                  <span className="text-white text-sm sm:text-base font-medium">{repoInfo.forks.toLocaleString()}</span>
                 </div>
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <Eye className="h-3 w-3 sm:h-4 sm:w-4 text-green-400 flex-shrink-0" />
-                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">{repoInfo.watchers.toLocaleString()}</span>
+                <div className="flex items-center gap-2">
+                  <Eye className="h-4 w-4 text-green-400 flex-shrink-0" />
+                  <span className="text-white text-sm sm:text-base font-medium">{repoInfo.watchers.toLocaleString()}</span>
                 </div>
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4 text-red-400 flex-shrink-0" />
-                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">{repoInfo.openIssues.toLocaleString()}</span>
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0" />
+                  <span className="text-white text-sm sm:text-base font-medium">{repoInfo.openIssues.toLocaleString()}</span>
                 </div>
               </div>
 
               {/* Languages */}
               {repoInfo.language && (
                 <div>
-                  <h4 className="text-white font-semibold mb-1 sm:mb-2 text-sm sm:text-base">Primary Language</h4>
-                  <div className="flex items-center gap-1 sm:gap-2">
+                  <h4 className="text-white font-semibold mb-2 text-sm sm:text-base">Primary Language</h4>
+                  <div className="flex items-center gap-2">
                     <div 
-                      className="w-2 h-2 sm:w-3 sm:h-3 rounded-full flex-shrink-0" 
+                      className="w-3 h-3 rounded-full flex-shrink-0" 
                       style={{ backgroundColor: getLanguageColor(repoInfo.language) }}
                     />
-                    <span className="text-white text-xs sm:text-sm mobile-no-truncate">{repoInfo.language}</span>
+                    <span className="text-white text-sm sm:text-base">{repoInfo.language}</span>
                   </div>
                 </div>
               )}
@@ -374,15 +374,15 @@ function ReposPage() {
               {/* All Languages */}
               {Object.keys(repoInfo.languages).length > 0 && (
                 <div>
-                  <h4 className="text-white font-semibold mb-1 sm:mb-2 text-sm sm:text-base">Languages</h4>
-                  <div className="flex flex-wrap gap-1 sm:gap-2">
+                  <h4 className="text-white font-semibold mb-2 text-sm sm:text-base">Languages</h4>
+                  <div className="flex flex-wrap gap-2">
                     {Object.entries(repoInfo.languages).map(([lang]) => (
                       <Badge key={lang} variant="outline" className="text-white border-gray-600 text-xs sm:text-sm">
                         <div 
-                          className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full mr-1 sm:mr-2 flex-shrink-0" 
+                          className="w-2 h-2 rounded-full mr-1.5 flex-shrink-0" 
                           style={{ backgroundColor: getLanguageColor(lang) }}
                         />
-                        <span className="mobile-no-truncate">{lang}</span>
+                        <span>{lang}</span>
                       </Badge>
                     ))}
                   </div>
@@ -392,11 +392,11 @@ function ReposPage() {
               {/* Topics */}
               {repoInfo.topics.length > 0 && (
                 <div>
-                  <h4 className="text-white font-semibold mb-1 sm:mb-2 text-sm sm:text-base">Topics</h4>
-                  <div className="flex flex-wrap gap-1 sm:gap-2">
+                  <h4 className="text-white font-semibold mb-2 text-sm sm:text-base">Topics</h4>
+                  <div className="flex flex-wrap gap-2">
                     {repoInfo.topics.map((topic) => (
                       <Badge key={topic} variant="secondary" className="text-white bg-gray-700 text-xs sm:text-sm">
-                        <span className="mobile-no-truncate">{topic}</span>
+                        <span>{topic}</span>
                       </Badge>
                     ))}
                   </div>
@@ -426,135 +426,135 @@ function ReposPage() {
                       <span className="mobile-no-truncate">How to Clone</span>
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-2xl">
-                    <DialogHeader>
-                      <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
-                        <Terminal className="h-5 w-5 text-blue-400" />
+                  <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-[95vw] sm:max-w-lg md:max-w-2xl w-full p-4 sm:p-6">
+                    <DialogHeader className="pr-6 sm:pr-0">
+                      <DialogTitle className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+                        <Terminal className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
                         How to Clone This Repository
                       </DialogTitle>
-                      <DialogDescription className="text-gray-400">
+                      <DialogDescription className="text-sm sm:text-base text-gray-400">
                         Follow these steps to clone and set up the repository on your local machine
                       </DialogDescription>
                     </DialogHeader>
                     
-                    <div className="space-y-4 mt-4">
+                    <div className="space-y-3 sm:space-y-4 mt-2 sm:mt-4 max-h-[70vh] sm:max-h-none overflow-y-auto">
                       {/* Step 1 */}
-                      <div className="space-y-2">
+                      <div className="space-y-1.5 sm:space-y-2">
                         <div className="flex items-center gap-2">
-                          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-sm font-bold">
+                          <div className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-blue-600 text-white text-xs sm:text-sm font-bold flex-shrink-0">
                             1
                           </div>
-                          <h4 className="font-semibold text-white">Open Terminal</h4>
+                          <h4 className="font-semibold text-white text-sm sm:text-base">Open Terminal</h4>
                         </div>
-                        <p className="text-sm text-gray-400 ml-8">
+                        <p className="text-xs sm:text-sm text-gray-400 ml-6 sm:ml-8">
                           Open your terminal or command prompt on your computer.
                         </p>
                       </div>
 
                       {/* Step 2 */}
-                      <div className="space-y-2">
+                      <div className="space-y-1.5 sm:space-y-2">
                         <div className="flex items-center gap-2">
-                          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-sm font-bold">
+                          <div className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-blue-600 text-white text-xs sm:text-sm font-bold flex-shrink-0">
                             2
                           </div>
-                          <h4 className="font-semibold text-white">Navigate to Your Directory</h4>
+                          <h4 className="font-semibold text-white text-sm sm:text-base">Navigate to Your Directory</h4>
                         </div>
-                        <p className="text-sm text-gray-400 ml-8 mb-2">
+                        <p className="text-xs sm:text-sm text-gray-400 ml-6 sm:ml-8 mb-1.5 sm:mb-2">
                           Navigate to the folder where you want to clone the repository:
                         </p>
-                        <div className="ml-8 relative">
-                          <div className="bg-gray-950 border border-gray-700 rounded-lg p-3 pr-12">
-                            <code className="text-sm text-green-400">cd /path/to/your/folder</code>
+                        <div className="ml-6 sm:ml-8 relative">
+                          <div className="bg-gray-950 border border-gray-700 rounded-lg p-2 sm:p-3 pr-10 sm:pr-12">
+                            <code className="text-xs sm:text-sm text-green-400 break-all">cd /path/to/your/folder</code>
                           </div>
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="absolute right-2 top-2 h-7 w-7 p-0"
+                            className="absolute right-1.5 sm:right-2 top-1.5 sm:top-2 h-6 w-6 sm:h-7 sm:w-7 p-0"
                             onClick={() => copyToClipboard('cd /path/to/your/folder', 2)}
                           >
                             {copiedStep === 2 ? (
-                              <Check className="h-4 w-4 text-green-400" />
+                              <Check className="h-3 w-3 sm:h-4 sm:w-4 text-green-400" />
                             ) : (
-                              <Copy className="h-4 w-4 text-gray-400" />
+                              <Copy className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
                             )}
                           </Button>
                         </div>
                       </div>
 
                       {/* Step 3 */}
-                      <div className="space-y-2">
+                      <div className="space-y-1.5 sm:space-y-2">
                         <div className="flex items-center gap-2">
-                          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-sm font-bold">
+                          <div className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-blue-600 text-white text-xs sm:text-sm font-bold flex-shrink-0">
                             3
                           </div>
-                          <h4 className="font-semibold text-white">Clone the Repository</h4>
+                          <h4 className="font-semibold text-white text-sm sm:text-base">Clone the Repository</h4>
                         </div>
-                        <p className="text-sm text-gray-400 ml-8 mb-2">
+                        <p className="text-xs sm:text-sm text-gray-400 ml-6 sm:ml-8 mb-1.5 sm:mb-2">
                           Run the following command to clone the repository:
                         </p>
-                        <div className="ml-8 relative">
-                          <div className="bg-gray-950 border border-gray-700 rounded-lg p-3 pr-12">
-                            <code className="text-sm text-green-400 break-all">
+                        <div className="ml-6 sm:ml-8 relative">
+                          <div className="bg-gray-950 border border-gray-700 rounded-lg p-2 sm:p-3 pr-10 sm:pr-12">
+                            <code className="text-xs sm:text-sm text-green-400 break-all">
                               git clone {repoInfo.cloneUrl}
                             </code>
                           </div>
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="absolute right-2 top-2 h-7 w-7 p-0"
+                            className="absolute right-1.5 sm:right-2 top-1.5 sm:top-2 h-6 w-6 sm:h-7 sm:w-7 p-0"
                             onClick={() => copyToClipboard(`git clone ${repoInfo.cloneUrl}`, 3)}
                           >
                             {copiedStep === 3 ? (
-                              <Check className="h-4 w-4 text-green-400" />
+                              <Check className="h-3 w-3 sm:h-4 sm:w-4 text-green-400" />
                             ) : (
-                              <Copy className="h-4 w-4 text-gray-400" />
+                              <Copy className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
                             )}
                           </Button>
                         </div>
                       </div>
 
                       {/* Step 4 */}
-                      <div className="space-y-2">
+                      <div className="space-y-1.5 sm:space-y-2">
                         <div className="flex items-center gap-2">
-                          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-sm font-bold">
+                          <div className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-blue-600 text-white text-xs sm:text-sm font-bold flex-shrink-0">
                             4
                           </div>
-                          <h4 className="font-semibold text-white">Navigate into the Repository</h4>
+                          <h4 className="font-semibold text-white text-sm sm:text-base">Navigate into the Repository</h4>
                         </div>
-                        <p className="text-sm text-gray-400 ml-8 mb-2">
+                        <p className="text-xs sm:text-sm text-gray-400 ml-6 sm:ml-8 mb-1.5 sm:mb-2">
                           Move into the cloned repository directory:
                         </p>
-                        <div className="ml-8 relative">
-                          <div className="bg-gray-950 border border-gray-700 rounded-lg p-3 pr-12">
-                            <code className="text-sm text-green-400">
+                        <div className="ml-6 sm:ml-8 relative">
+                          <div className="bg-gray-950 border border-gray-700 rounded-lg p-2 sm:p-3 pr-10 sm:pr-12">
+                            <code className="text-xs sm:text-sm text-green-400 break-all">
                               cd {repoInfo.name}
                             </code>
                           </div>
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="absolute right-2 top-2 h-7 w-7 p-0"
+                            className="absolute right-1.5 sm:right-2 top-1.5 sm:top-2 h-6 w-6 sm:h-7 sm:w-7 p-0"
                             onClick={() => copyToClipboard(`cd ${repoInfo.name}`, 4)}
                           >
                             {copiedStep === 4 ? (
-                              <Check className="h-4 w-4 text-green-400" />
+                              <Check className="h-3 w-3 sm:h-4 sm:w-4 text-green-400" />
                             ) : (
-                              <Copy className="h-4 w-4 text-gray-400" />
+                              <Copy className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
                             )}
                           </Button>
                         </div>
                       </div>
 
                       {/* Step 5 */}
-                      <div className="space-y-2">
+                      <div className="space-y-1.5 sm:space-y-2">
                         <div className="flex items-center gap-2">
-                          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-sm font-bold">
+                          <div className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-blue-600 text-white text-xs sm:text-sm font-bold flex-shrink-0">
                             5
                           </div>
-                          <h4 className="font-semibold text-white">Start Working!</h4>
+                          <h4 className="font-semibold text-white text-sm sm:text-base">Start Working!</h4>
                         </div>
-                        <p className="text-sm text-gray-400 ml-8">
-                          You're all set! You can now start working on the repository. Don't forget to install dependencies if needed.
+                        <p className="text-xs sm:text-sm text-gray-400 ml-6 sm:ml-8">
+                          You&apos;re all set! You can now start working on the repository. Don&apos;t forget to install dependencies if needed.
                         </p>
                       </div>
 
