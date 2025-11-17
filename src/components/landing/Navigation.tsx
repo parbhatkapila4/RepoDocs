@@ -12,7 +12,6 @@ import {
 import {
   Sheet,
   SheetContent,
-  SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
 import { usePathname } from 'next/navigation'
@@ -157,73 +156,75 @@ export default function Navigation() {
           </ul>
         </div>
 
-        {/* Mobile Menu - Sheet from right side */}
+        {/* Mobile Menu - Compact Sheet from right side */}
         <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-          <SheetContent side="right" className="w-[280px] sm:w-[300px] bg-gray-900 border-white/10 md:hidden">
-            <SheetHeader>
-              <SheetTitle className="text-white text-left">Menu</SheetTitle>
-            </SheetHeader>
-            <ul className="flex flex-col font-medium mt-8 space-y-2">
-              <li>
-                <Link
-                  href="/"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className={`block py-3 px-4 rounded-lg transition-colors ${
-                    pathname === "/"
-                      ? "text-blue-400 bg-blue-700/20"
-                      : "text-white hover:bg-gray-800"
-                  }`}
-                  aria-current={pathname === "/" ? "page" : undefined}
-                >
-                  Home
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/about"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className={`block py-3 px-4 rounded-lg transition-colors ${
-                    pathname === "/about"
-                      ? "text-blue-400 bg-blue-700/20"
-                      : "text-white hover:bg-gray-800"
-                  }`}
-                  aria-current={pathname === "/about" ? "page" : undefined}
-                >
-                  About
-                </Link>
-              </li>
-              {isSignedIn ? (
+          <SheetContent side="right" className="w-[200px] bg-gray-900 border-white/10 md:hidden p-0 m-2 rounded-lg" data-mobile-menu>
+            <div className="flex flex-col p-2">
+              <div className="p-2 border-b border-white/10 mb-1">
+                <SheetTitle className="text-white text-sm font-semibold">Menu</SheetTitle>
+              </div>
+              <ul className="flex flex-col font-medium p-1 space-y-1">
                 <li>
                   <Link
-                    href="/dashboard"
+                    href="/"
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className={`block py-3 px-4 rounded-lg transition-colors ${
-                      pathname === "/dashboard"
-                        ? "text-blue-400 bg-blue-700/20"
+                    className={`block py-2.5 px-3 rounded-md text-sm transition-colors ${
+                      pathname === "/"
+                        ? "text-blue-400 bg-blue-700/20 font-medium"
                         : "text-white hover:bg-gray-800"
                     }`}
-                    aria-current={pathname === "/dashboard" ? "page" : undefined}
+                    aria-current={pathname === "/" ? "page" : undefined}
                   >
-                    Dashboard
+                    Home
                   </Link>
                 </li>
-              ) : (
                 <li>
                   <Link
-                    href="/contact"
+                    href="/about"
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className={`block py-3 px-4 rounded-lg transition-colors ${
-                      pathname === "/contact"
-                        ? "text-blue-400 bg-blue-700/20"
+                    className={`block py-2.5 px-3 rounded-md text-sm transition-colors ${
+                      pathname === "/about"
+                        ? "text-blue-400 bg-blue-700/20 font-medium"
                         : "text-white hover:bg-gray-800"
                     }`}
-                    aria-current={pathname === "/contact" ? "page" : undefined}
+                    aria-current={pathname === "/about" ? "page" : undefined}
                   >
-                    Contact
+                    About
                   </Link>
                 </li>
-              )}
-            </ul>
+                {isSignedIn ? (
+                  <li>
+                    <Link
+                      href="/dashboard"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={`block py-2.5 px-3 rounded-md text-sm transition-colors ${
+                        pathname === "/dashboard"
+                          ? "text-blue-400 bg-blue-700/20 font-medium"
+                          : "text-white hover:bg-gray-800"
+                      }`}
+                      aria-current={pathname === "/dashboard" ? "page" : undefined}
+                    >
+                      Dashboard
+                    </Link>
+                  </li>
+                ) : (
+                  <li>
+                    <Link
+                      href="/contact"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={`block py-2.5 px-3 rounded-md text-sm transition-colors ${
+                        pathname === "/contact"
+                          ? "text-blue-400 bg-blue-700/20 font-medium"
+                          : "text-white hover:bg-gray-800"
+                      }`}
+                      aria-current={pathname === "/contact" ? "page" : undefined}
+                    >
+                      Contact
+                    </Link>
+                  </li>
+                )}
+              </ul>
+            </div>
           </SheetContent>
         </Sheet>
       </div>

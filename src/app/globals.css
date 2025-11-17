@@ -462,6 +462,104 @@ button {
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
   }
+
+  /* Mobile navigation menu height management */
+  [data-slot="sheet-content"][data-mobile-menu] {
+    height: auto !important;
+    max-height: 300px !important;
+    top: 64px !important;
+    bottom: auto !important;
+    inset-y: auto !important;
+  }
+
+  /* Mobile button text and SVG quality improvements */
+  button,
+  [role="button"],
+  .button,
+  [class*="Button"] {
+    -webkit-font-smoothing: antialiased !important;
+    -moz-osx-font-smoothing: grayscale !important;
+    text-rendering: optimizeLegibility !important;
+    font-smooth: always !important;
+    -webkit-font-smoothing: subpixel-antialiased !important;
+  }
+
+  /* Ensure button text is crisp on mobile */
+  button *,
+  button span,
+  [role="button"] *,
+  [role="button"] span {
+    -webkit-font-smoothing: antialiased !important;
+    -moz-osx-font-smoothing: grayscale !important;
+    text-rendering: optimizeLegibility !important;
+    text-shadow: 0 0 0 transparent !important;
+  }
+
+  /* SVG quality improvements for mobile */
+  svg,
+  [class*="lucide"],
+  button svg,
+  [role="button"] svg {
+    shape-rendering: geometricPrecision !important;
+    text-rendering: optimizeLegibility !important;
+    -webkit-font-smoothing: antialiased !important;
+    -moz-osx-font-smoothing: grayscale !important;
+    image-rendering: -webkit-optimize-contrast !important;
+    transform: translateZ(0) !important;
+    -webkit-transform: translateZ(0) !important;
+    will-change: transform !important;
+    backface-visibility: hidden !important;
+    -webkit-backface-visibility: hidden !important;
+    filter: none !important;
+  }
+
+  /* Force high DPI rendering for buttons and SVGs */
+  button,
+  button svg,
+  [role="button"],
+  [role="button"] svg {
+    transform: translate3d(0, 0, 0) !important;
+    -webkit-transform: translate3d(0, 0, 0) !important;
+  }
+
+  /* Improve text clarity in badges and buttons */
+  .badge,
+  [class*="Badge"],
+  button,
+  [role="button"] {
+    text-rendering: optimizeLegibility !important;
+    -webkit-font-smoothing: subpixel-antialiased !important;
+    font-smooth: always !important;
+  }
+
+  /* Landing page specific quality improvements */
+  .black-bg button,
+  .black-bg [role="button"],
+  .black-bg button svg,
+  .black-bg [role="button"] svg,
+  section button,
+  section [role="button"],
+  section button svg,
+  section [role="button"] svg {
+    -webkit-font-smoothing: antialiased !important;
+    -moz-osx-font-smoothing: grayscale !important;
+    text-rendering: optimizeLegibility !important;
+    shape-rendering: geometricPrecision !important;
+    transform: translate3d(0, 0, 0) !important;
+    -webkit-transform: translate3d(0, 0, 0) !important;
+    will-change: transform !important;
+  }
+
+  /* Ensure button text inside sections is crisp */
+  section button span,
+  section [role="button"] span,
+  .black-bg button span,
+  .black-bg [role="button"] span {
+    -webkit-font-smoothing: antialiased !important;
+    -moz-osx-font-smoothing: grayscale !important;
+    text-rendering: optimizeLegibility !important;
+    display: inline-block !important;
+  }
   
   /* Mobile sidebar improvements */
   .sidebar-mobile {
