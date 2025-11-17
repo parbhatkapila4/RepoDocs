@@ -434,6 +434,34 @@ button {
     grid-template-columns: 1fr;
     gap: 1rem;
   }
+
+  /* Improve rendering quality on mobile */
+  svg,
+  [class*="lucide"],
+  button,
+  .glass-card,
+  .glow-subtle {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    will-change: transform;
+  }
+
+  /* Ensure SVG icons render smoothly and crisply */
+  svg,
+  [class*="lucide"] {
+    shape-rendering: auto;
+  }
+
+  /* Better text rendering on mobile */
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
   
   /* Mobile sidebar improvements */
   .sidebar-mobile {

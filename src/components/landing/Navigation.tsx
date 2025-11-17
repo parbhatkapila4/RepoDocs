@@ -9,6 +9,12 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
 import { usePathname } from 'next/navigation'
 
 export default function Navigation() {
@@ -87,11 +93,12 @@ export default function Navigation() {
           </button>
         </div>
 
+        {/* Desktop Menu - unchanged */}
         <div
-          className={`items-center justify-between w-full md:flex md:w-auto md:order-1 md:-ml-[5rem] ${isMobileMenuOpen ? 'flex' : 'hidden'}`}
-          id="navbar-user"
+          className="items-center justify-between w-full hidden md:flex md:w-auto md:order-1 md:-ml-[5rem]"
+          id="navbar-user-desktop"
         >
-          <ul className="flex flex-col font-medium p-4 md:p-0 mt-4 border border-gray-100 rounded-lg bg-gray-50 md:space-x-8 rtl:space-x-reverse md:flex-row md:mt-0 md:border-0 md:bg-transparent dark:bg-gray-800 md:dark:bg-transparent">
+          <ul className="flex flex-col font-medium md:space-x-8 rtl:space-x-reverse md:flex-row md:mt-0 md:border-0 md:bg-transparent dark:bg-transparent">
             <li>
               <Link
                 href="/"
@@ -149,6 +156,76 @@ export default function Navigation() {
             )}
           </ul>
         </div>
+
+        {/* Mobile Menu - Sheet from right side */}
+        <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+          <SheetContent side="right" className="w-[280px] sm:w-[300px] bg-gray-900 border-white/10 md:hidden">
+            <SheetHeader>
+              <SheetTitle className="text-white text-left">Menu</SheetTitle>
+            </SheetHeader>
+            <ul className="flex flex-col font-medium mt-8 space-y-2">
+              <li>
+                <Link
+                  href="/"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`block py-3 px-4 rounded-lg transition-colors ${
+                    pathname === "/"
+                      ? "text-blue-400 bg-blue-700/20"
+                      : "text-white hover:bg-gray-800"
+                  }`}
+                  aria-current={pathname === "/" ? "page" : undefined}
+                >
+                  Home
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/about"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`block py-3 px-4 rounded-lg transition-colors ${
+                    pathname === "/about"
+                      ? "text-blue-400 bg-blue-700/20"
+                      : "text-white hover:bg-gray-800"
+                  }`}
+                  aria-current={pathname === "/about" ? "page" : undefined}
+                >
+                  About
+                </Link>
+              </li>
+              {isSignedIn ? (
+                <li>
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`block py-3 px-4 rounded-lg transition-colors ${
+                      pathname === "/dashboard"
+                        ? "text-blue-400 bg-blue-700/20"
+                        : "text-white hover:bg-gray-800"
+                    }`}
+                    aria-current={pathname === "/dashboard" ? "page" : undefined}
+                  >
+                    Dashboard
+                  </Link>
+                </li>
+              ) : (
+                <li>
+                  <Link
+                    href="/contact"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`block py-3 px-4 rounded-lg transition-colors ${
+                      pathname === "/contact"
+                        ? "text-blue-400 bg-blue-700/20"
+                        : "text-white hover:bg-gray-800"
+                    }`}
+                    aria-current={pathname === "/contact" ? "page" : undefined}
+                  >
+                    Contact
+                  </Link>
+                </li>
+              )}
+            </ul>
+          </SheetContent>
+        </Sheet>
       </div>
     </nav>
   )
