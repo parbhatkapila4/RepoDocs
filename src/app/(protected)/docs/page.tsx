@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useProjectsContext } from '@/context/ProjectsContext';
 import { getProjectDocs, regenerateProjectDocs, modifyDocsWithQna, getDocsQnaHistory, createDocsShare, revokeDocsShare, getDocsShare, deleteDocsQnaRecord, deleteAllDocsQnaHistory } from '@/lib/actions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -99,6 +99,7 @@ function DocsPage() {
   const [qnaQuestion, setQnaQuestion] = useState('');
   const [isProcessingQna, setIsProcessingQna] = useState(false);
   const [activeTab, setActiveTab] = useState('preview');
+  const qnaInputRef = useRef<HTMLTextAreaElement>(null);
   const [shareToken, setShareToken] = useState<string | null>(null);
   const [isCreatingShare, setIsCreatingShare] = useState(false);
   const [isRevokingShare, setIsRevokingShare] = useState(false);
@@ -215,13 +216,15 @@ function DocsPage() {
   };
 
   const handleQnaSubmit = async () => {
-    if (!selectedProjectId || !qnaQuestion.trim()) return;
+    // Get value from ref if available, otherwise use state
+    const questionValue = qnaInputRef.current?.value || qnaQuestion;
+    if (!selectedProjectId || !questionValue.trim()) return;
     
     setIsProcessingQna(true);
     setError(null);
     
     try {
-      const result = await modifyDocsWithQna(selectedProjectId, qnaQuestion);
+      const result = await modifyDocsWithQna(selectedProjectId, questionValue);
       setDocsData(result.docs);
       if (result.docs.content) {
         setMetadata(parseDocsMetadata(result.docs.content));
@@ -230,6 +233,9 @@ function DocsPage() {
       // Add to Q&A history
       setQnaHistory(prev => [result.qnaRecord, ...prev]);
       setQnaQuestion('');
+      if (qnaInputRef.current) {
+        qnaInputRef.current.value = '';
+      }
       
       // Switch to preview tab to show the updated docs
       setActiveTab('preview');
@@ -248,6 +254,16 @@ function DocsPage() {
       setIsProcessingQna(false);
     }
   };
+
+  // Optimized onChange handler to prevent lag - debounced state update for button disabled state
+  const handleQnaQuestionChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    // Update state with a small delay to prevent blocking the input
+    // The input itself updates immediately (uncontrolled), state syncs for button logic
+    setTimeout(() => {
+      setQnaQuestion(value);
+    }, 0);
+  }, []);
 
   const fetchQnaHistory = async () => {
     if (!selectedProjectId) return;
@@ -529,6 +545,16 @@ function DocsPage() {
         </div>
       </div>
 
+      {/* Regenerating Status Indicator */}
+      {isRegenerating && (
+        <div className="mx-2 sm:mx-4 mb-4 sm:mb-6">
+          <div className="bg-white/10 border border-white/20 rounded-lg px-3 sm:px-4 py-2 sm:py-3 flex items-center gap-2 sm:gap-3">
+            <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 text-white animate-spin flex-shrink-0" />
+            <span className="text-white text-sm sm:text-base mobile-no-truncate">Regenerating documentation...</span>
+          </div>
+        </div>
+      )}
+
       {metadata && (
         <div className="px-2 sm:px-4 mb-4 sm:mb-6">
           <div className="flex flex-wrap gap-1 sm:gap-2 md:gap-3">
@@ -731,8 +757,9 @@ function DocsPage() {
                   <div className="pb-4 sm:pb-6 border-b border-white/10">
                     <div className="space-y-4 sm:space-y-6">
                       <textarea
-                        value={qnaQuestion}
-                        onChange={(e) => setQnaQuestion(e.target.value)}
+                        ref={qnaInputRef}
+                        defaultValue={qnaQuestion}
+                        onChange={handleQnaQuestionChange}
                         placeholder="Which file contains authentication logic?"
                         className="w-full h-[60px] sm:h-[80px] p-2 sm:p-3 bg-black/30 border border-white/20 rounded-lg resize-none text-sm sm:text-base text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent mobile-no-truncate"
                         onKeyDown={(e) => {
@@ -741,10 +768,14 @@ function DocsPage() {
                             handleQnaSubmit();
                           }
                         }}
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck="false"
                       />
                       <Button
                         onClick={handleQnaSubmit}
-                        disabled={isProcessingQna || !qnaQuestion.trim()}
+                        disabled={isProcessingQna || !(qnaInputRef.current?.value || qnaQuestion).trim()}
                         className="w-full bg-red-600 hover:bg-red-700 text-white py-2 sm:py-3 rounded-lg transition-colors h-[40px] sm:h-[48px] text-sm sm:text-base font-medium"
                       >
                         {isProcessingQna ? (
@@ -866,8 +897,8 @@ function DocsPage() {
                 >
                   {isRegenerating ? (
                     <>
-                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                      Generating Documentation...
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin flex-shrink-0" />
+                      <span>Generating Documentation...</span>
                     </>
                   ) : (
                     <>
