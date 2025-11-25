@@ -217,27 +217,27 @@ export default function PricingPage() {
               transition={{ duration: 0.6, delay: index * 0.15 }}
             >
               {/* Card Background */}
-              <div className="glass-card border-subtle">
+              <div className="glass-card border-subtle p-4">
                 
-                {/* Header Section */}
-                <div className={`p-6 pb-8 rounded-t-3xl ${
+                {/* Inner Price Card */}
+                <div className={`p-6 pb-8 rounded-2xl relative overflow-hidden min-h-[160px] ${
                   plan.highlighted 
-                    ? 'bg-gradient-to-br from-amber-400 via-orange-400 to-stone-500 relative overflow-hidden' 
-                    : 'bg-white/5 border-b border-subtle'
+                    ? 'bg-gradient-to-br from-amber-400 via-orange-400/90 to-slate-500' 
+                    : 'bg-gradient-to-r from-gray-200 via-gray-100 to-white'
                 }`}>
                   {/* Gradient Overlay for Pro Plan */}
                   {plan.highlighted && (
-                    <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-slate-600/50"></div>
+                    <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 via-orange-300/10 to-slate-600/60"></div>
                   )}
                   
-                  <div className="relative z-10">
+                  <div className="relative z-10 h-full">
                     {/* Plan Badge */}
                     <Badge 
                       variant="secondary" 
                       className={`mb-6 px-4 py-1.5 text-sm font-medium rounded-full ${
                         plan.highlighted 
                           ? 'bg-white/90 text-gray-800 shadow-md' 
-                          : 'bg-white/10 text-white/90 border-subtle'
+                          : 'bg-white text-gray-700 border border-gray-200'
                       }`}
                     >
                       {plan.name}
@@ -246,21 +246,21 @@ export default function PricingPage() {
                     {/* Price */}
                     <div className="flex items-baseline">
                       <span className={`text-5xl font-bold tracking-tight ${
-                        plan.highlighted ? 'text-white' : 'text-white'
+                        plan.highlighted ? 'text-white' : 'text-gray-900'
                       }`}>
                         {plan.price}
                       </span>
                       <span className={`text-lg ml-1 ${
-                        plan.highlighted ? 'text-white/80' : 'text-white/60'
+                        plan.highlighted ? 'text-white/80' : 'text-gray-500'
                       }`}>
                         {plan.period}
                       </span>
                     </div>
 
-                    {/* Popular Badge for Pro Plan */}
+                    {/* Popular Badge for Pro Plan - positioned at bottom right */}
                     {plan.badge && (
                       <Badge 
-                        className="absolute top-6 right-6 bg-white text-gray-800 shadow-lg px-3 py-1 text-xs font-semibold rounded-full"
+                        className="absolute bottom-4 right-4 bg-white text-gray-800 shadow-lg px-3 py-1 text-xs font-semibold rounded-full"
                       >
                         {plan.badge}
                       </Badge>
@@ -269,7 +269,7 @@ export default function PricingPage() {
                 </div>
 
                 {/* Features Section */}
-                <div className="p-6 pt-8 bg-white/5 rounded-b-3xl">
+                <div className="p-6 pt-6">
                   <p className="text-white font-semibold mb-6">
                     {plan.description}
                   </p>
