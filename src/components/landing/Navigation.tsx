@@ -1,6 +1,7 @@
 "use client"
 import React, { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Menu, X } from "lucide-react"
 import { RepoDocLogo } from "@/components/ui/repodoc-logo"
 import { useUser as useClerkUser, useClerk } from "@clerk/nextjs"
@@ -25,7 +26,7 @@ export default function Navigation() {
   return (
     <nav className="bg-transparent">
       <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto py-4 pl-0 pr-4">
-        <Link href="/" className="flex items-center space-x-3 rtl:space-x-reverse">
+        <Link href="/" className="flex items-center space-x-3 rtl:space-x-reverse pl-4 md:pl-0">
           <RepoDocLogo size="md" className="text-white" />
           <span className="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">RepoDoc</span>
         </Link>
@@ -41,10 +42,13 @@ export default function Navigation() {
                   aria-expanded="false"
                 >
                   <span className="sr-only">Open user menu</span>
-                  <img
+                  <Image
+                    width={32}
+                    height={32}
                     className="w-8 h-8 rounded-full"
                     src={user.imageUrl || "/docs/images/people/profile-picture-3.jpg"}
                     alt="user photo"
+                    unoptimized
                   />
                 </button>
               </DropdownMenuTrigger>

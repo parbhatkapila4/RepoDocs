@@ -111,7 +111,10 @@ export default function Hero() {
               variant="outline" 
               size="lg" 
               className="h-10 sm:h-12 px-6 sm:px-8 text-base sm:text-lg border-subtle text-white/70 hover:text-white hover:bg-white/5 glass-card w-full sm:w-auto"
-              onClick={() => setIsVideoModalOpen(true)}
+              onClick={() => {
+                console.log("Watch Demo button clicked, opening modal");
+                setIsVideoModalOpen(true);
+              }}
             >
               <Play className="w-4 h-4 sm:w-5 sm:h-5 mr-2 border-none" />
               <span className="hidden sm:inline">Watch Demo</span>
@@ -163,7 +166,7 @@ export default function Hero() {
       </Vortex>
       
       <VideoModal
-        videoSrc="/Repo-Doc-1762580822637.mp4"
+        videoSrc="https://lcbcrithcxdbqynfmtxk.supabase.co/storage/v1/object/public/Videos/Repo-Doc-1762580822637.mp4"
         isOpen={isVideoModalOpen}
         onClose={() => setIsVideoModalOpen(false)}
       />
