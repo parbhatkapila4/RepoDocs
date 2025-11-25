@@ -3,6 +3,8 @@
 import React from 'react'
 import { Brain, Code, GitBranch, Shield, Zap } from "lucide-react"
 import { GlowingEffect } from "@/components/ui/glowing-effect"
+import { CardPattern } from "@/components/ui/evervault-card"
+import { useMotionValue, useMotionTemplate, motion } from "motion/react"
 
 export default function Features() {
   return (
@@ -66,6 +68,23 @@ interface GridItemProps {
 }
 
 const GridItem = ({ area, icon, title, description }: GridItemProps) => {
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  const [randomString, setRandomString] = React.useState("");
+
+  React.useEffect(() => {
+    const str = generateRandomString(1500);
+    setRandomString(str);
+  }, []);
+
+  function onMouseMove({ currentTarget, clientX, clientY }: React.MouseEvent<HTMLDivElement>) {
+    const { left, top } = currentTarget.getBoundingClientRect();
+    mouseX.set(clientX - left);
+    mouseY.set(clientY - top);
+    const str = generateRandomString(1500);
+    setRandomString(str);
+  }
+
   return (
     <li className={`min-h-[12rem] sm:min-h-[14rem] list-none ${area}`}>
       <div className="relative h-full rounded-2xl border p-2 md:rounded-3xl md:p-3">
@@ -76,8 +95,19 @@ const GridItem = ({ area, icon, title, description }: GridItemProps) => {
           proximity={64}
           inactiveZone={0.01}
         />
-        <div className="border-0.75 relative flex h-full flex-col justify-between gap-3 sm:gap-4 overflow-hidden rounded-xl p-4 sm:p-6 md:p-6 shadow-[0px_0px_27px_0px_#2D2D2D]">
-          <div className="relative flex flex-1 flex-col justify-between gap-3 sm:gap-4">
+        <div 
+          onMouseMove={onMouseMove}
+          className="group/card border-0.75 relative flex h-full flex-col justify-between gap-3 sm:gap-4 overflow-hidden rounded-xl p-4 sm:p-6 md:p-6 shadow-[0px_0px_27px_0px_#2D2D2D] bg-black/40"
+        >
+          {/* Evervault Card Pattern Effect - positioned absolutely behind content */}
+          <CardPattern
+            mouseX={mouseX}
+            mouseY={mouseY}
+            randomString={randomString}
+          />
+          
+          {/* Content */}
+          <div className="relative z-10 flex flex-1 flex-col justify-between gap-3 sm:gap-4">
             <div className="w-fit rounded-lg border border-gray-600 p-2">
               {icon}
             </div>
@@ -94,4 +124,14 @@ const GridItem = ({ area, icon, title, description }: GridItemProps) => {
       </div>
     </li>
   );
+};
+
+const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+const generateRandomString = (length: number) => {
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    result += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return result;
 };
