@@ -157,6 +157,19 @@ export default function Navigation() {
                 </Link>
               </li>
             )}
+            <li>
+              <Link
+                href="/pricing"
+                className={`block py-2 px-3 rounded-sm md:p-0 ${
+                  pathname === "/pricing"
+                    ? "text-blue-400 bg-blue-700 md:bg-transparent md:text-blue-400"
+                    : "text-white hover:bg-gray-100 md:hover:bg-transparent md:hover:text-blue-400 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent"
+                }`}
+                aria-current={pathname === "/pricing" ? "page" : undefined}
+              >
+                Pricing
+              </Link>
+            </li>
           </ul>
         </div>
 
@@ -227,6 +240,20 @@ export default function Navigation() {
                     </Link>
                   </li>
                 )}
+                <li>
+                  <Link
+                    href="/pricing"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`block py-2.5 px-3 rounded-md text-sm transition-colors ${
+                      pathname === "/pricing"
+                        ? "text-blue-400 bg-blue-700/20 font-medium"
+                        : "text-white hover:bg-gray-800"
+                    }`}
+                    aria-current={pathname === "/pricing" ? "page" : undefined}
+                  >
+                    Pricing
+                  </Link>
+                </li>
               </ul>
             </div>
           </SheetContent>
