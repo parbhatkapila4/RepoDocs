@@ -6,6 +6,33 @@ import { queryCodebase } from '@/lib/rag';
 export const runtime = 'nodejs';
 export const maxDuration = 60; // 60 seconds for complex queries
 
+// Helper function to get the actual database user ID from Clerk userId
+async function getDbUserId(clerkUserId: string): Promise<string | null> {
+  let dbUser = await prisma.user.findUnique({
+    where: { id: clerkUserId },
+    select: { id: true },
+  });
+
+  if (!dbUser) {
+    try {
+      const { clerkClient } = await import('@clerk/nextjs/server');
+      const client = await clerkClient();
+      const clerkUser = await client.users.getUser(clerkUserId);
+      
+      if (clerkUser.emailAddresses[0]?.emailAddress) {
+        dbUser = await prisma.user.findUnique({
+          where: { emailAddress: clerkUser.emailAddresses[0].emailAddress },
+          select: { id: true },
+        });
+      }
+    } catch {
+      return null;
+    }
+  }
+
+  return dbUser?.id || null;
+}
+
 /**
  * POST /api/query
  * RAG query endpoint - answers questions about codebase using vector similarity search
@@ -18,6 +45,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
+      );
+    }
+
+    const dbUserId = await getDbUserId(userId);
+    if (!dbUserId) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
       );
     }
 
@@ -42,7 +77,7 @@ export async function POST(request: NextRequest) {
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: userId,
+        userId: dbUserId,
         deletedAt: null,
       },
     });
@@ -125,6 +160,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const dbUserId = await getDbUserId(userId);
+    if (!dbUserId) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const projectId = searchParams.get('projectId');
 
@@ -139,7 +182,7 @@ export async function GET(request: NextRequest) {
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: userId,
+        userId: dbUserId,
         deletedAt: null,
       },
     });

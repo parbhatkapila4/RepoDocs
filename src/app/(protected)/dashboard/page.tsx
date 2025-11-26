@@ -426,145 +426,145 @@ function ReposPage() {
                       <span className="mobile-no-truncate">How to Clone</span>
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-[95vw] sm:max-w-lg md:max-w-2xl w-full p-4 sm:p-6">
-                    <DialogHeader className="pr-6 sm:pr-0">
-                      <DialogTitle className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
-                        <Terminal className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
+                  <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-[95vw] sm:max-w-lg md:max-w-2xl lg:max-w-xl w-full p-4 sm:p-6 lg:p-5 max-h-[90vh] lg:max-h-[85vh] overflow-hidden flex flex-col">
+                    <DialogHeader className="pr-6 sm:pr-0 lg:pr-6">
+                      <DialogTitle className="text-lg sm:text-xl lg:text-lg font-bold text-white flex items-center gap-2">
+                        <Terminal className="h-4 w-4 sm:h-5 sm:w-5 lg:h-4 lg:w-4 text-blue-400" />
                         How to Clone This Repository
                       </DialogTitle>
-                      <DialogDescription className="text-sm sm:text-base text-gray-400">
+                      <DialogDescription className="text-sm sm:text-base lg:text-sm text-gray-400">
                         Follow these steps to clone and set up the repository on your local machine
                       </DialogDescription>
                     </DialogHeader>
                     
-                    <div className="space-y-3 sm:space-y-4 mt-2 sm:mt-4 max-h-[70vh] sm:max-h-none overflow-y-auto">
+                    <div className="space-y-3 sm:space-y-4 lg:space-y-3 mt-2 sm:mt-4 lg:mt-3 max-h-[60vh] sm:max-h-none lg:max-h-[65vh] overflow-y-auto pr-1 lg:pr-2">
                       {/* Step 1 */}
-                      <div className="space-y-1.5 sm:space-y-2">
+                      <div className="space-y-1.5 sm:space-y-2 lg:space-y-1.5">
                         <div className="flex items-center gap-2">
-                          <div className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-blue-600 text-white text-xs sm:text-sm font-bold flex-shrink-0">
+                          <div className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 lg:w-5 lg:h-5 rounded-full bg-blue-600 text-white text-xs sm:text-sm lg:text-xs font-bold flex-shrink-0">
                             1
                           </div>
-                          <h4 className="font-semibold text-white text-sm sm:text-base">Open Terminal</h4>
+                          <h4 className="font-semibold text-white text-sm sm:text-base lg:text-sm">Open Terminal</h4>
                         </div>
-                        <p className="text-xs sm:text-sm text-gray-400 ml-6 sm:ml-8">
+                        <p className="text-xs sm:text-sm lg:text-xs text-gray-400 ml-6 sm:ml-8 lg:ml-7">
                           Open your terminal or command prompt on your computer.
                         </p>
                       </div>
 
                       {/* Step 2 */}
-                      <div className="space-y-1.5 sm:space-y-2">
+                      <div className="space-y-1.5 sm:space-y-2 lg:space-y-1.5">
                         <div className="flex items-center gap-2">
-                          <div className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-blue-600 text-white text-xs sm:text-sm font-bold flex-shrink-0">
+                          <div className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 lg:w-5 lg:h-5 rounded-full bg-blue-600 text-white text-xs sm:text-sm lg:text-xs font-bold flex-shrink-0">
                             2
                           </div>
-                          <h4 className="font-semibold text-white text-sm sm:text-base">Navigate to Your Directory</h4>
+                          <h4 className="font-semibold text-white text-sm sm:text-base lg:text-sm">Navigate to Your Directory</h4>
                         </div>
-                        <p className="text-xs sm:text-sm text-gray-400 ml-6 sm:ml-8 mb-1.5 sm:mb-2">
+                        <p className="text-xs sm:text-sm lg:text-xs text-gray-400 ml-6 sm:ml-8 lg:ml-7 mb-1.5 sm:mb-2 lg:mb-1.5">
                           Navigate to the folder where you want to clone the repository:
                         </p>
-                        <div className="ml-6 sm:ml-8 relative">
-                          <div className="bg-gray-950 border border-gray-700 rounded-lg p-2 sm:p-3 pr-10 sm:pr-12">
-                            <code className="text-xs sm:text-sm text-green-400 break-all">cd /path/to/your/folder</code>
+                        <div className="ml-6 sm:ml-8 lg:ml-7 relative">
+                          <div className="bg-gray-950 border border-gray-700 rounded-lg p-2 sm:p-3 lg:p-2 pr-10 sm:pr-12 lg:pr-10">
+                            <code className="text-xs sm:text-sm lg:text-xs text-green-400 break-all">cd /path/to/your/folder</code>
                           </div>
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="absolute right-1.5 sm:right-2 top-1.5 sm:top-2 h-6 w-6 sm:h-7 sm:w-7 p-0"
+                            className="absolute right-1.5 sm:right-2 lg:right-1.5 top-1.5 sm:top-2 lg:top-1.5 h-6 w-6 sm:h-7 sm:w-7 lg:h-6 lg:w-6 p-0"
                             onClick={() => copyToClipboard('cd /path/to/your/folder', 2)}
                           >
                             {copiedStep === 2 ? (
-                              <Check className="h-3 w-3 sm:h-4 sm:w-4 text-green-400" />
+                              <Check className="h-3 w-3 sm:h-4 sm:w-4 lg:h-3 lg:w-3 text-green-400" />
                             ) : (
-                              <Copy className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
+                              <Copy className="h-3 w-3 sm:h-4 sm:w-4 lg:h-3 lg:w-3 text-gray-400" />
                             )}
                           </Button>
                         </div>
                       </div>
 
                       {/* Step 3 */}
-                      <div className="space-y-1.5 sm:space-y-2">
+                      <div className="space-y-1.5 sm:space-y-2 lg:space-y-1.5">
                         <div className="flex items-center gap-2">
-                          <div className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-blue-600 text-white text-xs sm:text-sm font-bold flex-shrink-0">
+                          <div className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 lg:w-5 lg:h-5 rounded-full bg-blue-600 text-white text-xs sm:text-sm lg:text-xs font-bold flex-shrink-0">
                             3
                           </div>
-                          <h4 className="font-semibold text-white text-sm sm:text-base">Clone the Repository</h4>
+                          <h4 className="font-semibold text-white text-sm sm:text-base lg:text-sm">Clone the Repository</h4>
                         </div>
-                        <p className="text-xs sm:text-sm text-gray-400 ml-6 sm:ml-8 mb-1.5 sm:mb-2">
+                        <p className="text-xs sm:text-sm lg:text-xs text-gray-400 ml-6 sm:ml-8 lg:ml-7 mb-1.5 sm:mb-2 lg:mb-1.5">
                           Run the following command to clone the repository:
                         </p>
-                        <div className="ml-6 sm:ml-8 relative">
-                          <div className="bg-gray-950 border border-gray-700 rounded-lg p-2 sm:p-3 pr-10 sm:pr-12">
-                            <code className="text-xs sm:text-sm text-green-400 break-all">
+                        <div className="ml-6 sm:ml-8 lg:ml-7 relative">
+                          <div className="bg-gray-950 border border-gray-700 rounded-lg p-2 sm:p-3 lg:p-2 pr-10 sm:pr-12 lg:pr-10">
+                            <code className="text-xs sm:text-sm lg:text-xs text-green-400 break-all">
                               git clone {repoInfo.cloneUrl}
                             </code>
                           </div>
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="absolute right-1.5 sm:right-2 top-1.5 sm:top-2 h-6 w-6 sm:h-7 sm:w-7 p-0"
+                            className="absolute right-1.5 sm:right-2 lg:right-1.5 top-1.5 sm:top-2 lg:top-1.5 h-6 w-6 sm:h-7 sm:w-7 lg:h-6 lg:w-6 p-0"
                             onClick={() => copyToClipboard(`git clone ${repoInfo.cloneUrl}`, 3)}
                           >
                             {copiedStep === 3 ? (
-                              <Check className="h-3 w-3 sm:h-4 sm:w-4 text-green-400" />
+                              <Check className="h-3 w-3 sm:h-4 sm:w-4 lg:h-3 lg:w-3 text-green-400" />
                             ) : (
-                              <Copy className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
+                              <Copy className="h-3 w-3 sm:h-4 sm:w-4 lg:h-3 lg:w-3 text-gray-400" />
                             )}
                           </Button>
                         </div>
                       </div>
 
                       {/* Step 4 */}
-                      <div className="space-y-1.5 sm:space-y-2">
+                      <div className="space-y-1.5 sm:space-y-2 lg:space-y-1.5">
                         <div className="flex items-center gap-2">
-                          <div className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-blue-600 text-white text-xs sm:text-sm font-bold flex-shrink-0">
+                          <div className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 lg:w-5 lg:h-5 rounded-full bg-blue-600 text-white text-xs sm:text-sm lg:text-xs font-bold flex-shrink-0">
                             4
                           </div>
-                          <h4 className="font-semibold text-white text-sm sm:text-base">Navigate into the Repository</h4>
+                          <h4 className="font-semibold text-white text-sm sm:text-base lg:text-sm">Navigate into the Repository</h4>
                         </div>
-                        <p className="text-xs sm:text-sm text-gray-400 ml-6 sm:ml-8 mb-1.5 sm:mb-2">
+                        <p className="text-xs sm:text-sm lg:text-xs text-gray-400 ml-6 sm:ml-8 lg:ml-7 mb-1.5 sm:mb-2 lg:mb-1.5">
                           Move into the cloned repository directory:
                         </p>
-                        <div className="ml-6 sm:ml-8 relative">
-                          <div className="bg-gray-950 border border-gray-700 rounded-lg p-2 sm:p-3 pr-10 sm:pr-12">
-                            <code className="text-xs sm:text-sm text-green-400 break-all">
+                        <div className="ml-6 sm:ml-8 lg:ml-7 relative">
+                          <div className="bg-gray-950 border border-gray-700 rounded-lg p-2 sm:p-3 lg:p-2 pr-10 sm:pr-12 lg:pr-10">
+                            <code className="text-xs sm:text-sm lg:text-xs text-green-400 break-all">
                               cd {repoInfo.name}
                             </code>
                           </div>
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="absolute right-1.5 sm:right-2 top-1.5 sm:top-2 h-6 w-6 sm:h-7 sm:w-7 p-0"
+                            className="absolute right-1.5 sm:right-2 lg:right-1.5 top-1.5 sm:top-2 lg:top-1.5 h-6 w-6 sm:h-7 sm:w-7 lg:h-6 lg:w-6 p-0"
                             onClick={() => copyToClipboard(`cd ${repoInfo.name}`, 4)}
                           >
                             {copiedStep === 4 ? (
-                              <Check className="h-3 w-3 sm:h-4 sm:w-4 text-green-400" />
+                              <Check className="h-3 w-3 sm:h-4 sm:w-4 lg:h-3 lg:w-3 text-green-400" />
                             ) : (
-                              <Copy className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
+                              <Copy className="h-3 w-3 sm:h-4 sm:w-4 lg:h-3 lg:w-3 text-gray-400" />
                             )}
                           </Button>
                         </div>
                       </div>
 
                       {/* Step 5 */}
-                      <div className="space-y-1.5 sm:space-y-2">
+                      <div className="space-y-1.5 sm:space-y-2 lg:space-y-1.5">
                         <div className="flex items-center gap-2">
-                          <div className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-blue-600 text-white text-xs sm:text-sm font-bold flex-shrink-0">
+                          <div className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 lg:w-5 lg:h-5 rounded-full bg-blue-600 text-white text-xs sm:text-sm lg:text-xs font-bold flex-shrink-0">
                             5
                           </div>
-                          <h4 className="font-semibold text-white text-sm sm:text-base">Start Working!</h4>
+                          <h4 className="font-semibold text-white text-sm sm:text-base lg:text-sm">Start Working!</h4>
                         </div>
-                        <p className="text-xs sm:text-sm text-gray-400 ml-6 sm:ml-8">
+                        <p className="text-xs sm:text-sm lg:text-xs text-gray-400 ml-6 sm:ml-8 lg:ml-7">
                           You&apos;re all set! You can now start working on the repository. Don&apos;t forget to install dependencies if needed.
                         </p>
                       </div>
 
                       {/* Additional Info */}
-                      <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                      <div className="mt-6 lg:mt-4 p-4 lg:p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
                         <div className="flex items-start gap-2">
-                          <AlertCircle className="h-5 w-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                          <AlertCircle className="h-5 w-5 lg:h-4 lg:w-4 text-blue-400 flex-shrink-0 mt-0.5" />
                           <div className="space-y-1">
-                            <p className="text-sm font-semibold text-blue-400">Note:</p>
-                            <p className="text-sm text-gray-300">
+                            <p className="text-sm lg:text-xs font-semibold text-blue-400">Note:</p>
+                            <p className="text-sm lg:text-xs text-gray-300">
                               Make sure you have Git installed on your system. If not, download it from{' '}
                               <a 
                                 href="https://git-scm.com" 
