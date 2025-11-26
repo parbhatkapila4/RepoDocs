@@ -3,6 +3,13 @@ import { Project, Prisma } from '@prisma/client';
 import { auth } from '@clerk/nextjs/server';
 import { indexGithubRepository } from './github';
 
+// Plan limits constants
+const PLAN_LIMITS = {
+  starter: { maxProjects: 3 },
+  professional: { maxProjects: Infinity },
+  enterprise: { maxProjects: Infinity },
+} as const;
+
 export async function createProject(data: Prisma.ProjectCreateInput): Promise<Project> {
   try {
     const project = await prisma.project.create({
@@ -28,13 +35,92 @@ export async function createProjectWithAuth(name: string, githubUrl: string, git
       throw new Error('Name and GitHub URL are required');
     }
 
+    // First, ensure the user exists in the database
+    let existingUser = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!existingUser) {
+      // User doesn't exist with this ID - check by email or create
+      console.log('User not found by ID, checking by email...');
+      try {
+        const { clerkClient } = await import('@clerk/nextjs/server');
+        const client = await clerkClient();
+        const clerkUser = await client.users.getUser(userId);
+        
+        if (clerkUser.emailAddresses[0]?.emailAddress) {
+          const userEmail = clerkUser.emailAddresses[0].emailAddress;
+          
+          // Check if user exists with this email
+          existingUser = await prisma.user.findUnique({
+            where: { emailAddress: userEmail },
+          });
+          
+          if (existingUser) {
+            // User exists with email but different ID - update their info
+            console.log('User found by email, updating...');
+            existingUser = await prisma.user.update({
+              where: { emailAddress: userEmail },
+              data: {
+                imageUrl: clerkUser.imageUrl,
+                firstName: clerkUser.firstName,
+                lastName: clerkUser.lastName,
+              },
+            });
+          } else {
+            // Create new user
+            console.log('Creating new user...');
+            existingUser = await prisma.user.create({
+              data: {
+                id: userId,
+                emailAddress: userEmail,
+                imageUrl: clerkUser.imageUrl,
+                firstName: clerkUser.firstName,
+                lastName: clerkUser.lastName,
+              },
+            });
+          }
+          console.log('User ready');
+        } else {
+          throw new Error('User email not found');
+        }
+      } catch (userError) {
+        console.error('Error handling user:', userError);
+        throw new Error('Failed to create user account');
+      }
+    }
+
+    // Now check project limit using the actual user ID from database
+    let plan: keyof typeof PLAN_LIMITS = 'starter';
+    try {
+      const planResult = await prisma.$queryRaw<{plan: string}[]>`SELECT plan FROM "User" WHERE id = ${existingUser.id} LIMIT 1`;
+      if (planResult && planResult[0]?.plan) {
+        plan = planResult[0].plan as keyof typeof PLAN_LIMITS;
+      }
+    } catch {
+      plan = 'starter';
+    }
+
+    const maxProjects = PLAN_LIMITS[plan]?.maxProjects ?? 3;
+
+    const projectCount = await prisma.project.count({
+      where: {
+        userId: existingUser.id, // Use the actual user ID
+        deletedAt: null,
+      },
+    });
+
+    if (projectCount >= maxProjects) {
+      throw new Error(`PROJECT_LIMIT_REACHED: You've reached the maximum of ${maxProjects} projects on the ${plan} plan. Please upgrade to Professional for unlimited projects.`);
+    }
+
     const project = await prisma.project.create({
       data: {
         name,
         repoUrl: githubUrl,
         user: {
           connect: {
-            id: userId,
+            id: existingUser.id, // Use the actual user ID from database
           },
         },
       },
@@ -53,6 +139,9 @@ export async function createProjectWithAuth(name: string, githubUrl: string, git
     return project;
   } catch (error) {
     console.error('Error creating project:', error);
+    if (error instanceof Error && error.message.startsWith('PROJECT_LIMIT_REACHED:')) {
+      throw error;
+    }
     throw new Error('Failed to create project');
   }
 }

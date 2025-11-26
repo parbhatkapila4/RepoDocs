@@ -43,8 +43,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Trash2,
-  MoreVertical
+  MoreVertical,
+  Crown
 } from 'lucide-react';
+import NextLink from 'next/link';
 import { 
   Sheet, 
   SheetContent, 
@@ -110,6 +112,7 @@ function DocsPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [qnaToDelete, setQnaToDelete] = useState<string | null>(null);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
+  const [upgradeRequired, setUpgradeRequired] = useState(false);
 
   const selectedProject = projects.find(p => p.id === selectedProjectId);
 
@@ -193,6 +196,7 @@ function DocsPage() {
     
     setIsRegenerating(true);
     setError(null);
+    setUpgradeRequired(false);
     
     try {
       const newDocs = await regenerateProjectDocs(selectedProjectId);
@@ -206,10 +210,18 @@ function DocsPage() {
     } catch (err) {
       console.error('Error regenerating docs:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to regenerate documentation';
-      setError(errorMessage);
-      toast.error('Failed to regenerate documentation', {
-        description: errorMessage,
-      });
+      
+      if (errorMessage.includes('UPGRADE_REQUIRED')) {
+        setUpgradeRequired(true);
+        toast.error('Upgrade required', {
+          description: 'Upgrade to Professional for unlimited projects.',
+        });
+      } else {
+        setError(errorMessage);
+        toast.error('Failed to regenerate documentation', {
+          description: errorMessage,
+        });
+      }
     } finally {
       setIsRegenerating(false);
     }
@@ -222,6 +234,7 @@ function DocsPage() {
     
     setIsProcessingQna(true);
     setError(null);
+    setUpgradeRequired(false);
     
     try {
       const result = await modifyDocsWithQna(selectedProjectId, questionValue);
@@ -246,10 +259,18 @@ function DocsPage() {
     } catch (err) {
       console.error('Error processing Q&A:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to modify documentation';
-      setError(errorMessage);
-      toast.error('Failed to modify documentation', {
-        description: errorMessage,
-      });
+      
+      if (errorMessage.includes('UPGRADE_REQUIRED')) {
+        setUpgradeRequired(true);
+        toast.error('Upgrade required', {
+          description: 'Upgrade to Professional for unlimited projects.',
+        });
+      } else {
+        setError(errorMessage);
+        toast.error('Failed to modify documentation', {
+          description: errorMessage,
+        });
+      }
     } finally {
       setIsProcessingQna(false);
     }
@@ -611,6 +632,37 @@ function DocsPage() {
             {error}
           </AlertDescription>
         </Alert>
+      )}
+
+      {upgradeRequired && (
+        <div className="mb-6 mx-2 sm:mx-4">
+          <div className="bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/50 rounded-lg p-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="flex items-center gap-3 flex-1">
+                <div className="p-2 bg-amber-500/20 rounded-lg">
+                  <Crown className="h-6 w-6 text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-amber-400">
+                    Upgrade Required
+                  </h3>
+                  <p className="text-amber-300/80 text-sm mt-1">
+                    This project exceeds your starter plan limit. Upgrade to Professional for unlimited AI documentation.
+                  </p>
+                </div>
+              </div>
+              <Button
+                asChild
+                className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold px-6"
+              >
+                <NextLink href="/pricing">
+                  <Crown className="h-4 w-4 mr-2" />
+                  Upgrade Now
+                </NextLink>
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       <Card className="flex-1 flex flex-col border border-white/20 shadow-xl mx-1 sm:mx-2 md:mx-4 mb-2 sm:mb-4 mobile-card">

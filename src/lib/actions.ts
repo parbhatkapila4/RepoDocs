@@ -5,6 +5,35 @@ import { auth } from '@clerk/nextjs/server';
 import prisma from './prisma';
 import { getGitHubRepositoryInfo } from './github';
 
+// Helper function to get the actual database user ID from Clerk userId
+async function getDbUserId(clerkUserId: string): Promise<string | null> {
+  // First try to find user by Clerk ID
+  let dbUser = await prisma.user.findUnique({
+    where: { id: clerkUserId },
+    select: { id: true },
+  });
+
+  // If not found by ID, try to find by email
+  if (!dbUser) {
+    try {
+      const { clerkClient } = await import('@clerk/nextjs/server');
+      const client = await clerkClient();
+      const clerkUser = await client.users.getUser(clerkUserId);
+      
+      if (clerkUser.emailAddresses[0]?.emailAddress) {
+        dbUser = await prisma.user.findUnique({
+          where: { emailAddress: clerkUser.emailAddresses[0].emailAddress },
+          select: { id: true },
+        });
+      }
+    } catch {
+      return null;
+    }
+  }
+
+  return dbUser?.id || null;
+}
+
 export async function createProject(name: string, githubUrl: string, githubToken?: string) {
   return await createProjectWithAuth(name, githubUrl, githubToken);
 }
@@ -17,6 +46,7 @@ export async function getCurrentUser() {
       return null;
     }
 
+    // Query without plan field first to avoid errors if it doesn't exist
     let user = await prisma.user.findUnique({
       where: {
         id: userId,
@@ -65,11 +95,155 @@ export async function getCurrentUser() {
       }
     }
 
-    return user;
+    // Try to get plan separately to handle case where column doesn't exist
+    let plan = 'starter';
+    try {
+      const planResult = await prisma.$queryRaw<{plan: string}[]>`SELECT plan FROM "User" WHERE id = ${userId} LIMIT 1`;
+      if (planResult && planResult[0]?.plan) {
+        plan = planResult[0].plan;
+      }
+    } catch {
+      // Plan column doesn't exist yet, use default
+      plan = 'starter';
+    }
+
+    return user ? { ...user, plan } : null;
   } catch (error) {
     console.error('Error fetching current user:', error);
     return null;
   }
+}
+
+// Plan limits constants
+const PLAN_LIMITS = {
+  starter: { maxProjects: 3 },
+  professional: { maxProjects: Infinity },
+  enterprise: { maxProjects: Infinity },
+} as const;
+
+export async function getUserProjectCount() {
+  try {
+    const { userId } = await auth();
+    
+    if (!userId) {
+      return 0;
+    }
+
+    const count = await prisma.project.count({
+      where: {
+        userId: userId,
+        deletedAt: null,
+      },
+    });
+
+    return count;
+  } catch (error) {
+    console.error('Error getting user project count:', error);
+    return 0;
+  }
+}
+
+export async function checkProjectLimit() {
+  try {
+    const { userId } = await auth();
+    
+    if (!userId) {
+      return { canCreate: false, reason: 'Not authenticated', currentCount: 0, maxProjects: 3, plan: 'starter' };
+    }
+
+    // Try to get the user's plan, but handle case where plan field doesn't exist
+    let plan: keyof typeof PLAN_LIMITS = 'starter';
+    try {
+      // Use raw query to avoid errors if plan column doesn't exist in DB
+      const result = await prisma.$queryRaw<{plan: string}[]>`SELECT plan FROM "User" WHERE id = ${userId} LIMIT 1`;
+      if (result && result[0]?.plan) {
+        plan = result[0].plan as keyof typeof PLAN_LIMITS;
+      }
+    } catch {
+      // If plan field doesn't exist yet in DB, default to starter
+      plan = 'starter';
+    }
+
+    const maxProjects = PLAN_LIMITS[plan]?.maxProjects ?? 3;
+
+    const projectCount = await prisma.project.count({
+      where: {
+        userId: userId,
+        deletedAt: null,
+      },
+    });
+
+    // Only block if they've reached the limit (>= maxProjects means they have 3 or more)
+    if (projectCount >= maxProjects) {
+      return {
+        canCreate: false,
+        reason: `You've reached the maximum of ${maxProjects} projects on the ${plan} plan. Please upgrade to Professional for unlimited projects.`,
+        currentCount: projectCount,
+        maxProjects,
+        plan,
+      };
+    }
+
+    return {
+      canCreate: true,
+      currentCount: projectCount,
+      maxProjects,
+      plan,
+    };
+  } catch (error) {
+    console.error('Error checking project limit:', error);
+    // On error, allow creation to prevent blocking users
+    return { canCreate: true, reason: 'Failed to check project limit', currentCount: 0, maxProjects: 3, plan: 'starter' };
+  }
+}
+
+// Helper function to check if a project is within the user's allowed quota
+async function isProjectWithinQuota(projectId: string, userId: string): Promise<{ allowed: boolean; reason?: string }> {
+  let plan: keyof typeof PLAN_LIMITS = 'starter';
+  try {
+    // Use raw query to avoid errors if plan column doesn't exist in DB
+    const result = await prisma.$queryRaw<{plan: string}[]>`SELECT plan FROM "User" WHERE id = ${userId} LIMIT 1`;
+    if (result && result[0]?.plan) {
+      plan = result[0].plan as keyof typeof PLAN_LIMITS;
+    }
+  } catch {
+    // If plan field doesn't exist yet in DB, default to starter
+    plan = 'starter';
+  }
+  
+  // Professional and Enterprise users have no limits
+  if (plan !== 'starter') {
+    return { allowed: true };
+  }
+
+  const maxProjects = PLAN_LIMITS[plan]?.maxProjects ?? 3;
+
+  // Get the user's projects sorted by creation date
+  const userProjects = await prisma.project.findMany({
+    where: {
+      userId: userId,
+      deletedAt: null,
+    },
+    orderBy: {
+      createdAt: 'asc',
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  // Find the index of the current project
+  const projectIndex = userProjects.findIndex(p => p.id === projectId);
+  
+  // If project is within the first N allowed projects, allow it
+  if (projectIndex !== -1 && projectIndex < maxProjects) {
+    return { allowed: true };
+  }
+
+  return {
+    allowed: false,
+    reason: `This project exceeds your starter plan limit of ${maxProjects} projects. Please upgrade to Professional to generate AI documentation for unlimited projects.`,
+  };
 }
 
 export async function updateUserCredits(credits: number) {
@@ -112,9 +286,38 @@ export async function getUserProjects() {
       return [];
     }
 
+    // First try to find user by Clerk ID
+    let dbUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+
+    // If not found by ID, try to find by email
+    if (!dbUser) {
+      try {
+        const { clerkClient } = await import('@clerk/nextjs/server');
+        const client = await clerkClient();
+        const clerkUser = await client.users.getUser(userId);
+        
+        if (clerkUser.emailAddresses[0]?.emailAddress) {
+          dbUser = await prisma.user.findUnique({
+            where: { emailAddress: clerkUser.emailAddresses[0].emailAddress },
+            select: { id: true },
+          });
+        }
+      } catch {
+        // If we can't get the user, return empty
+        return [];
+      }
+    }
+
+    if (!dbUser) {
+      return [];
+    }
+
     const projects = await prisma.project.findMany({
       where: {
-        userId: userId,
+        userId: dbUser.id, // Use the actual database user ID
         deletedAt: null,
       },
       orderBy: {
@@ -153,10 +356,38 @@ export async function deleteUserProject(projectId: string) {
       throw new Error('Unauthorized');
     }
 
+    // First try to find user by Clerk ID
+    let dbUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+
+    // If not found by ID, try to find by email
+    if (!dbUser) {
+      try {
+        const { clerkClient } = await import('@clerk/nextjs/server');
+        const client = await clerkClient();
+        const clerkUser = await client.users.getUser(userId);
+        
+        if (clerkUser.emailAddresses[0]?.emailAddress) {
+          dbUser = await prisma.user.findUnique({
+            where: { emailAddress: clerkUser.emailAddresses[0].emailAddress },
+            select: { id: true },
+          });
+        }
+      } catch {
+        throw new Error('User not found');
+      }
+    }
+
+    if (!dbUser) {
+      throw new Error('User not found');
+    }
+
     const project = await prisma.project.update({
       where: {
         id: projectId,
-        userId: userId,
+        userId: dbUser.id, // Use the actual database user ID
       },
       data: {
         deletedAt: new Date(),
@@ -178,11 +409,16 @@ export async function getProjectReadme(projectId: string) {
       throw new Error('Unauthorized');
     }
 
+    const dbUserId = await getDbUserId(userId);
+    if (!dbUserId) {
+      throw new Error('User not found');
+    }
+
     // Verify user owns the project
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: userId,
+        userId: dbUserId,
         deletedAt: null,
       },
     });
@@ -219,17 +455,28 @@ export async function regenerateProjectReadme(projectId: string) {
       throw new Error('Unauthorized');
     }
 
+    const dbUserId = await getDbUserId(userId);
+    if (!dbUserId) {
+      throw new Error('User not found');
+    }
+
     // Verify user owns the project
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: userId,
+        userId: dbUserId,
         deletedAt: null,
       },
     });
 
     if (!project) {
       throw new Error('Project not found or unauthorized');
+    }
+
+    // Check if project is within the user's quota
+    const quotaCheck = await isProjectWithinQuota(projectId, dbUserId);
+    if (!quotaCheck.allowed) {
+      throw new Error(`UPGRADE_REQUIRED: ${quotaCheck.reason}`);
     }
 
     // Get all source code summaries for the project
@@ -302,17 +549,28 @@ export async function modifyReadmeWithQna(projectId: string, question: string) {
       throw new Error('Unauthorized');
     }
 
+    const dbUserId = await getDbUserId(userId);
+    if (!dbUserId) {
+      throw new Error('User not found');
+    }
+
     // Verify user owns the project
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: userId,
+        userId: dbUserId,
         deletedAt: null,
       },
     });
 
     if (!project) {
       throw new Error('Project not found or unauthorized');
+    }
+
+    // Check if project is within the user's quota
+    const quotaCheck = await isProjectWithinQuota(projectId, dbUserId);
+    if (!quotaCheck.allowed) {
+      throw new Error(`UPGRADE_REQUIRED: ${quotaCheck.reason}`);
     }
 
     // Get current README
@@ -370,11 +628,16 @@ export async function getReadmeQnaHistory(projectId: string) {
       throw new Error('Unauthorized');
     }
 
+    const dbUserId = await getDbUserId(userId);
+    if (!dbUserId) {
+      throw new Error('User not found');
+    }
+
     // Verify user owns the project
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: userId,
+        userId: dbUserId,
         deletedAt: null,
       },
     });
@@ -412,11 +675,16 @@ export async function getReadmeShare(projectId: string) {
       throw new Error('Unauthorized');
     }
 
+    const dbUserId = await getDbUserId(userId);
+    if (!dbUserId) {
+      throw new Error('User not found');
+    }
+
     // Verify user owns the project
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: userId,
+        userId: dbUserId,
         deletedAt: null,
       },
     });
@@ -458,11 +726,16 @@ export async function createReadmeShare(projectId: string) {
       throw new Error('Unauthorized');
     }
 
+    const dbUserId = await getDbUserId(userId);
+    if (!dbUserId) {
+      throw new Error('User not found');
+    }
+
     // Verify user owns the project
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: userId,
+        userId: dbUserId,
         deletedAt: null,
       },
     });
@@ -561,11 +834,16 @@ export async function revokeReadmeShare(projectId: string) {
       throw new Error('Unauthorized');
     }
 
+    const dbUserId = await getDbUserId(userId);
+    if (!dbUserId) {
+      throw new Error('User not found');
+    }
+
     // Verify user owns the project
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: userId,
+        userId: dbUserId,
         deletedAt: null,
       },
     });
@@ -612,11 +890,16 @@ export async function getProjectDocs(projectId: string) {
       throw new Error('Unauthorized');
     }
 
+    const dbUserId = await getDbUserId(userId);
+    if (!dbUserId) {
+      throw new Error('User not found');
+    }
+
     // Verify user owns the project
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: userId,
+        userId: dbUserId,
         deletedAt: null,
       },
     });
@@ -653,17 +936,28 @@ export async function regenerateProjectDocs(projectId: string) {
       throw new Error('Unauthorized');
     }
 
+    const dbUserId = await getDbUserId(userId);
+    if (!dbUserId) {
+      throw new Error('User not found');
+    }
+
     // Verify user owns the project
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: userId,
+        userId: dbUserId,
         deletedAt: null,
       },
     });
 
     if (!project) {
       throw new Error('Project not found or unauthorized');
+    }
+
+    // Check if project is within the user's quota
+    const quotaCheck = await isProjectWithinQuota(projectId, dbUserId);
+    if (!quotaCheck.allowed) {
+      throw new Error(`UPGRADE_REQUIRED: ${quotaCheck.reason}`);
     }
 
     // Get all source code summaries for the project
@@ -736,17 +1030,28 @@ export async function modifyDocsWithQna(projectId: string, question: string) {
       throw new Error('Unauthorized');
     }
 
+    const dbUserId = await getDbUserId(userId);
+    if (!dbUserId) {
+      throw new Error('User not found');
+    }
+
     // Verify user owns the project
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: userId,
+        userId: dbUserId,
         deletedAt: null,
       },
     });
 
     if (!project) {
       throw new Error('Project not found or unauthorized');
+    }
+
+    // Check if project is within the user's quota
+    const quotaCheck = await isProjectWithinQuota(projectId, dbUserId);
+    if (!quotaCheck.allowed) {
+      throw new Error(`UPGRADE_REQUIRED: ${quotaCheck.reason}`);
     }
 
     // Get current docs
@@ -804,11 +1109,16 @@ export async function getDocsQnaHistory(projectId: string) {
       throw new Error('Unauthorized');
     }
 
+    const dbUserId = await getDbUserId(userId);
+    if (!dbUserId) {
+      throw new Error('User not found');
+    }
+
     // Verify user owns the project
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: userId,
+        userId: dbUserId,
         deletedAt: null,
       },
     });
@@ -846,11 +1156,16 @@ export async function getDocsShare(projectId: string) {
       throw new Error('Unauthorized');
     }
 
+    const dbUserId = await getDbUserId(userId);
+    if (!dbUserId) {
+      throw new Error('User not found');
+    }
+
     // Verify user owns the project
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: userId,
+        userId: dbUserId,
         deletedAt: null,
       },
     });
@@ -892,11 +1207,16 @@ export async function createDocsShare(projectId: string) {
       throw new Error('Unauthorized');
     }
 
+    const dbUserId = await getDbUserId(userId);
+    if (!dbUserId) {
+      throw new Error('User not found');
+    }
+
     // Verify user owns the project
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: userId,
+        userId: dbUserId,
         deletedAt: null,
       },
     });
@@ -995,11 +1315,16 @@ export async function revokeDocsShare(projectId: string) {
       throw new Error('Unauthorized');
     }
 
+    const dbUserId = await getDbUserId(userId);
+    if (!dbUserId) {
+      throw new Error('User not found');
+    }
+
     // Verify user owns the project
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: userId,
+        userId: dbUserId,
         deletedAt: null,
       },
     });
@@ -1045,11 +1370,16 @@ export async function deleteReadmeQnaRecord(projectId: string, qnaId: string) {
       throw new Error('Unauthorized');
     }
 
+    const dbUserId = await getDbUserId(userId);
+    if (!dbUserId) {
+      throw new Error('User not found');
+    }
+
     // Verify user owns the project
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: userId,
+        userId: dbUserId,
         deletedAt: null,
       },
     });
@@ -1092,11 +1422,16 @@ export async function deleteAllReadmeQnaHistory(projectId: string) {
       throw new Error('Unauthorized');
     }
 
+    const dbUserId = await getDbUserId(userId);
+    if (!dbUserId) {
+      throw new Error('User not found');
+    }
+
     // Verify user owns the project
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: userId,
+        userId: dbUserId,
         deletedAt: null,
       },
     });
@@ -1138,11 +1473,16 @@ export async function deleteDocsQnaRecord(projectId: string, qnaId: string) {
       throw new Error('Unauthorized');
     }
 
+    const dbUserId = await getDbUserId(userId);
+    if (!dbUserId) {
+      throw new Error('User not found');
+    }
+
     // Verify user owns the project
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: userId,
+        userId: dbUserId,
         deletedAt: null,
       },
     });
@@ -1185,11 +1525,16 @@ export async function deleteAllDocsQnaHistory(projectId: string) {
       throw new Error('Unauthorized');
     }
 
+    const dbUserId = await getDbUserId(userId);
+    if (!dbUserId) {
+      throw new Error('User not found');
+    }
+
     // Verify user owns the project
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: userId,
+        userId: dbUserId,
         deletedAt: null,
       },
     });

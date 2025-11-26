@@ -18,6 +18,7 @@ model User {
   lastName     String?
   emailAddress String    @unique
   credits      Int       @default(150)
+  plan         String    @default("starter") // "starter", "professional", "enterprise"
   projects     Project[]
 }
 

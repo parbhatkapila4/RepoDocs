@@ -1,11 +1,12 @@
 "use client";
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
 import { useProjects } from "@/hooks/useProjects";
 import { useProjectsContext } from "@/context/ProjectsContext";
+import { checkProjectLimit } from "@/lib/actions";
 import {
   Card,
   CardContent,
@@ -23,9 +24,10 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Github, Plus, Loader2, CheckCircle2, Circle, Code2, FileText, Sparkles } from "lucide-react";
+import { Github, Plus, Loader2, CheckCircle2, Circle, Code2, FileText, Sparkles, AlertTriangle, Crown } from "lucide-react";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
+import Link from "next/link";
 
 // Form validation schema
 const createProjectSchema = z.object({
@@ -64,6 +66,14 @@ type LoadingStep = {
   icon: React.ComponentType<{ className?: string }>;
 };
 
+interface ProjectLimitStatus {
+  canCreate: boolean;
+  reason?: string;
+  currentCount?: number;
+  maxProjects?: number;
+  plan?: string;
+}
+
 function CreatePage() {
   const router = useRouter();
   const { createNewProject, isLoading } = useProjects();
@@ -77,6 +87,24 @@ function CreatePage() {
     { id: 5, label: 'Creating documentation...', status: 'pending', icon: FileText },
   ]);
   const [progress, setProgress] = useState(0);
+  const [projectLimit, setProjectLimit] = useState<ProjectLimitStatus | null>(null);
+  const [isCheckingLimit, setIsCheckingLimit] = useState(true);
+
+  // Check project limit on mount
+  useEffect(() => {
+    const checkLimit = async () => {
+      try {
+        setIsCheckingLimit(true);
+        const limitStatus = await checkProjectLimit();
+        setProjectLimit(limitStatus);
+      } catch (error) {
+        console.error('Error checking project limit:', error);
+      } finally {
+        setIsCheckingLimit(false);
+      }
+    };
+    checkLimit();
+  }, []);
 
   const form = useForm<CreateProjectForm>({
     resolver: zodResolver(createProjectSchema),
@@ -159,9 +187,22 @@ function CreatePage() {
       setLoadingSteps(prev => prev.map(step => ({ ...step, status: 'pending' })));
       setProgress(0);
       
-      toast.error("Failed to create project", {
-        description: error instanceof Error ? error.message : "Please try again or check your connection.",
-      });
+      // Check if this is a project limit error
+      const errorMessage = error instanceof Error ? error.message : "Please try again or check your connection.";
+      
+      if (errorMessage.includes('PROJECT_LIMIT_REACHED')) {
+        // Refresh the limit status
+        const limitStatus = await checkProjectLimit();
+        setProjectLimit(limitStatus);
+        
+        toast.error("Project limit reached", {
+          description: "Upgrade to Professional for unlimited projects.",
+        });
+      } else {
+        toast.error("Failed to create project", {
+          description: errorMessage,
+        });
+      }
     } finally {
       isSubmittingRef.current = false;
     }
@@ -178,6 +219,67 @@ function CreatePage() {
             Add a new project by providing its name and GitHub repository URL
           </p>
         </div>
+
+        {/* Project Limit Warning */}
+        {!isCheckingLimit && projectLimit && !projectLimit.canCreate && (
+          <Card className="mb-6 border-amber-500/50 bg-amber-500/10">
+            <CardContent className="pt-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <div className="flex items-center gap-3 flex-1">
+                  <div className="p-2 bg-amber-500/20 rounded-lg">
+                    <AlertTriangle className="h-6 w-6 text-amber-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-amber-400">
+                      Project Limit Reached
+                    </h3>
+                    <p className="text-amber-300/80 text-sm mt-1">
+                      You&apos;ve used {projectLimit.currentCount} of {projectLimit.maxProjects} projects on the {projectLimit.plan} plan.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  asChild
+                  className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold px-6"
+                >
+                  <Link href="/pricing">
+                    <Crown className="h-4 w-4 mr-2" />
+                    Upgrade to Professional
+                  </Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Project Usage Indicator */}
+        {!isCheckingLimit && projectLimit && projectLimit.canCreate && projectLimit.plan === 'starter' && (
+          <Card className="mb-6 border-blue-500/30 bg-blue-500/5">
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="text-sm text-blue-300">
+                    <span className="font-semibold text-blue-400">{projectLimit.currentCount}</span>
+                    <span className="text-blue-300/70"> / {projectLimit.maxProjects} projects used</span>
+                  </div>
+                </div>
+                {projectLimit.currentCount !== undefined && projectLimit.maxProjects !== undefined && projectLimit.currentCount >= 2 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    asChild
+                    className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+                  >
+                    <Link href="/pricing">
+                      <Crown className="h-3 w-3 mr-1" />
+                      Upgrade for unlimited
+                    </Link>
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className=" ">
           <CardHeader>
@@ -278,13 +380,23 @@ function CreatePage() {
                 <div className="flex flex-col sm:flex-row gap-4 pt-4">
                   <Button
                     type="submit"
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                    disabled={form.formState.isSubmitting || isLoading}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={form.formState.isSubmitting || isLoading || isCheckingLimit || (projectLimit !== null && !projectLimit.canCreate)}
                   >
-                    {form.formState.isSubmitting || isLoading ? (
+                    {isCheckingLimit ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Checking...
+                      </>
+                    ) : form.formState.isSubmitting || isLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Creating...
+                      </>
+                    ) : projectLimit !== null && !projectLimit.canCreate ? (
+                      <>
+                        <AlertTriangle className="mr-2 h-4 w-4" />
+                        Upgrade Required
                       </>
                     ) : (
                       <>

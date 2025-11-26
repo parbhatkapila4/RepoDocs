@@ -1,5 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
+export type UserPlan = 'starter' | 'professional' | 'enterprise';
+
 export interface User {
   id: string;
   emailAddress: string;
@@ -7,7 +9,24 @@ export interface User {
   lastName?: string | null;
   imageUrl?: string | null;
   credits: number;
+  plan: UserPlan;
 }
+
+// Plan limits constants
+export const PLAN_LIMITS = {
+  starter: {
+    maxProjects: 3,
+    name: 'Starter',
+  },
+  professional: {
+    maxProjects: Infinity,
+    name: 'Professional',
+  },
+  enterprise: {
+    maxProjects: Infinity,
+    name: 'Enterprise',
+  },
+} as const;
 
 export interface UserState {
   currentUser: User | null;

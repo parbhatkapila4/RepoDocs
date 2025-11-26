@@ -1,8 +1,8 @@
 "use client"
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Menu, X } from "lucide-react"
+import { Menu, X, Crown, Sparkles } from "lucide-react"
 import { RepoDocLogo } from "@/components/ui/repodoc-logo"
 import { useUser as useClerkUser, useClerk } from "@clerk/nextjs"
 import {
@@ -16,12 +16,60 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { usePathname } from 'next/navigation'
+import { getCurrentUser } from '@/lib/actions'
+import { Badge } from "@/components/ui/badge"
 
 export default function Navigation() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [userPlan, setUserPlan] = useState<string | null>(null)
   const { user, isSignedIn } = useClerkUser()
   const { signOut } = useClerk()
   const pathname = usePathname()
+
+  // Fetch user plan when signed in
+  useEffect(() => {
+    const fetchUserPlan = async () => {
+      if (isSignedIn) {
+        try {
+          const dbUser = await getCurrentUser()
+          if (dbUser?.plan) {
+            setUserPlan(dbUser.plan)
+          }
+        } catch (error) {
+          console.error('Error fetching user plan:', error)
+        }
+      }
+    }
+    fetchUserPlan()
+  }, [isSignedIn])
+
+  const getPlanBadge = () => {
+    if (!userPlan) return null
+    
+    switch (userPlan) {
+      case 'professional':
+        return (
+          <Badge className="absolute -bottom-1 -right-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[8px] px-1.5 py-0 font-bold border-0 shadow-lg">
+            <Crown className="h-2 w-2 mr-0.5" />
+            PRO
+          </Badge>
+        )
+      case 'enterprise':
+        return (
+          <Badge className="absolute -bottom-1 -right-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[8px] px-1.5 py-0 font-bold border-0 shadow-lg">
+            <Sparkles className="h-2 w-2 mr-0.5" />
+            ENT
+          </Badge>
+        )
+      case 'starter':
+      default:
+        return (
+          <Badge className="absolute -bottom-1 -right-1 bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-[8px] px-1.5 py-0 font-bold border-0 shadow-lg">
+            FREE
+          </Badge>
+        )
+    }
+  }
 
   return (
     <nav className="bg-transparent">
@@ -37,7 +85,7 @@ export default function Navigation() {
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="flex text-sm bg-gray-800 rounded-full md:me-0 focus:ring-4 focus:ring-gray-300 dark:focus:ring-gray-600"
+                  className="relative flex text-sm bg-gray-800 rounded-full md:me-0 focus:ring-4 focus:ring-gray-300 dark:focus:ring-gray-600"
                   id="user-menu-button"
                   aria-expanded="false"
                 >
@@ -50,13 +98,51 @@ export default function Navigation() {
                     alt="user photo"
                     unoptimized
                   />
+                  {getPlanBadge()}
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
                 className="z-50 my-4 text-base list-none bg-white divide-y divide-gray-100 rounded-lg shadow-sm dark:bg-gray-700 dark:divide-gray-600 w-56"
               >
+                {/* User Info & Plan */}
+                <div className="px-4 py-3">
+                  <span className="block text-sm text-gray-900 dark:text-white font-medium truncate">
+                    {user.firstName || user.username || 'User'}
+                  </span>
+                  <span className="block text-sm text-gray-500 truncate dark:text-gray-400">
+                    {user.emailAddresses[0]?.emailAddress}
+                  </span>
+                  <div className="mt-2 flex items-center gap-2">
+                    {userPlan === 'professional' ? (
+                      <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs px-2 py-0.5 font-semibold border-0">
+                        <Crown className="h-3 w-3 mr-1" />
+                        Professional
+                      </Badge>
+                    ) : userPlan === 'enterprise' ? (
+                      <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs px-2 py-0.5 font-semibold border-0">
+                        <Sparkles className="h-3 w-3 mr-1" />
+                        Enterprise
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-xs px-2 py-0.5 font-semibold border-0">
+                        Starter
+                      </Badge>
+                    )}
+                  </div>
+                </div>
                 <ul className="py-2" aria-labelledby="user-menu-button">
+                  {userPlan === 'starter' && (
+                    <li>
+                      <Link
+                        href="/pricing"
+                        className="flex items-center w-full text-left px-4 py-2 text-sm text-amber-600 hover:bg-gray-100 dark:hover:bg-gray-600 dark:text-amber-400 font-medium"
+                      >
+                        <Crown className="h-4 w-4 mr-2" />
+                        Upgrade to Pro
+                      </Link>
+                    </li>
+                  )}
                   <li>
                     <button
                       onClick={() => signOut()}
