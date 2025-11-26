@@ -5,7 +5,7 @@ generator client {
 
 datasource db {
   provider   = "postgresql"
-  url        = env("DATABASE_URL")
+  url        = env("DATABASE_URL") // Required for Prisma 6 - linter shows false positive for Prisma 7
   extensions = [vector]
 }
 

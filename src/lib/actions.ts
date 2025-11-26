@@ -129,9 +129,37 @@ export async function getUserProjectCount() {
       return 0;
     }
 
+    // First try to find user by Clerk ID
+    let dbUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+
+    // If not found by ID, try to find by email
+    if (!dbUser) {
+      try {
+        const { clerkClient } = await import('@clerk/nextjs/server');
+        const client = await clerkClient();
+        const clerkUser = await client.users.getUser(userId);
+        
+        if (clerkUser.emailAddresses[0]?.emailAddress) {
+          dbUser = await prisma.user.findUnique({
+            where: { emailAddress: clerkUser.emailAddresses[0].emailAddress },
+            select: { id: true },
+          });
+        }
+      } catch {
+        return 0;
+      }
+    }
+
+    if (!dbUser) {
+      return 0;
+    }
+
     const count = await prisma.project.count({
       where: {
-        userId: userId,
+        userId: dbUser.id, // Use the actual database user ID
         deletedAt: null,
       },
     });
@@ -151,11 +179,40 @@ export async function checkProjectLimit() {
       return { canCreate: false, reason: 'Not authenticated', currentCount: 0, maxProjects: 3, plan: 'starter' };
     }
 
+    // First try to find user by Clerk ID
+    let dbUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+
+    // If not found by ID, try to find by email
+    if (!dbUser) {
+      try {
+        const { clerkClient } = await import('@clerk/nextjs/server');
+        const client = await clerkClient();
+        const clerkUser = await client.users.getUser(userId);
+        
+        if (clerkUser.emailAddresses[0]?.emailAddress) {
+          dbUser = await prisma.user.findUnique({
+            where: { emailAddress: clerkUser.emailAddresses[0].emailAddress },
+            select: { id: true },
+          });
+        }
+      } catch {
+        // If we can't get the user, return default
+        return { canCreate: false, reason: 'User not found', currentCount: 0, maxProjects: 3, plan: 'starter' };
+      }
+    }
+
+    if (!dbUser) {
+      return { canCreate: false, reason: 'User not found', currentCount: 0, maxProjects: 3, plan: 'starter' };
+    }
+
     // Try to get the user's plan, but handle case where plan field doesn't exist
     let plan: keyof typeof PLAN_LIMITS = 'starter';
     try {
       // Use raw query to avoid errors if plan column doesn't exist in DB
-      const result = await prisma.$queryRaw<{plan: string}[]>`SELECT plan FROM "User" WHERE id = ${userId} LIMIT 1`;
+      const result = await prisma.$queryRaw<{plan: string}[]>`SELECT plan FROM "User" WHERE id = ${dbUser.id} LIMIT 1`;
       if (result && result[0]?.plan) {
         plan = result[0].plan as keyof typeof PLAN_LIMITS;
       }
@@ -168,7 +225,7 @@ export async function checkProjectLimit() {
 
     const projectCount = await prisma.project.count({
       where: {
-        userId: userId,
+        userId: dbUser.id, // Use the actual database user ID
         deletedAt: null,
       },
     });
