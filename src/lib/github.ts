@@ -261,34 +261,80 @@ export async function getGitHubRepositoryInfo(repoUrl: string, githubToken?: str
         // Extract owner and repo name from URL
         const urlMatch = repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/)
         if (!urlMatch) {
-            throw new Error('Invalid GitHub repository URL')
+            console.error('Invalid GitHub repository URL:', repoUrl)
+            return null
         }
 
         const [, owner, repo] = urlMatch
         const cleanRepo = repo.replace('.git', '')
 
-        // Initialize Octokit
+        // Initialize Octokit with token (try provided token, then env token, then no auth for public repos)
+        const token = githubToken || process.env.GITHUB_TOKEN
         const octokit = new Octokit({
-            auth: githubToken || process.env.GITHUB_TOKEN
+            auth: token || undefined
         })
 
-        // Get repository information
-        const { data: repoData } = await octokit.rest.repos.get({
-            owner,
-            repo: cleanRepo
-        })
+        // Get repository information with error handling
+        let repoData;
+        try {
+            const response = await octokit.rest.repos.get({
+                owner,
+                repo: cleanRepo
+            })
+            repoData = response.data
+        } catch (error: any) {
+            // If 404, repo doesn't exist or is private without auth
+            if (error?.status === 404) {
+                console.error(`Repository not found or private: ${owner}/${cleanRepo}`)
+                return null
+            }
+            // If 403, rate limit or forbidden
+            if (error?.status === 403) {
+                console.error(`GitHub API rate limit or forbidden: ${owner}/${cleanRepo}`)
+                // Try without auth for public repos
+                if (token) {
+                    console.log('Retrying without token for public repo...')
+                    const publicOctokit = new Octokit()
+                    try {
+                        const response = await publicOctokit.rest.repos.get({
+                            owner,
+                            repo: cleanRepo
+                        })
+                        repoData = response.data
+                    } catch (retryError) {
+                        throw error // Throw original error
+                    }
+                } else {
+                    throw error
+                }
+            } else {
+                throw error
+            }
+        }
 
-        // Get repository languages
-        const { data: languages } = await octokit.rest.repos.listLanguages({
-            owner,
-            repo: cleanRepo
-        })
+        // Get repository languages (optional, don't fail if this fails)
+        let languages: Record<string, number> = {}
+        try {
+            const { data: languagesData } = await octokit.rest.repos.listLanguages({
+                owner,
+                repo: cleanRepo
+            })
+            languages = languagesData
+        } catch (error) {
+            console.warn('Failed to fetch repository languages:', error)
+        }
 
-        // Get repository topics
-        const { data: topics } = await octokit.rest.repos.getAllTopics({
-            owner,
-            repo: cleanRepo
-        })
+        // Get repository topics (optional, don't fail if this fails)
+        let topics: { names: string[] } = { names: [] }
+        try {
+            const { data: topicsData } = await octokit.rest.repos.getAllTopics({
+                owner,
+                repo: cleanRepo
+            })
+            topics = topicsData
+        } catch (error) {
+            console.warn('Failed to fetch repository topics:', error)
+        }
 
         // Transform the data to our schema
         const repoInfo: GitHubRepoInfo = {

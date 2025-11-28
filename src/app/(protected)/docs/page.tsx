@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useProjectsContext } from '@/context/ProjectsContext';
+import { useRepository } from '@/hooks/useRepository';
 import { getProjectDocs, regenerateProjectDocs, modifyDocsWithQna, getDocsQnaHistory, createDocsShare, revokeDocsShare, getDocsShare, deleteDocsQnaRecord, deleteAllDocsQnaHistory } from '@/lib/actions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -91,6 +92,10 @@ interface DocsWithQna extends DocsData {
 
 function DocsPage() {
   const { selectedProjectId, projects } = useProjectsContext();
+  const { 
+    currentRepository: repoInfo, 
+    fetchRepository 
+  } = useRepository();
   const [docsData, setDocsData] = useState<DocsData | null>(null);
   const [metadata, setMetadata] = useState<DocsMetadata | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -116,30 +121,16 @@ function DocsPage() {
 
   const selectedProject = projects.find(p => p.id === selectedProjectId);
 
-  const parseDocsMetadata = (content: string): DocsMetadata => {
+  const parseDocsMetadata = useCallback((content: string): DocsMetadata => {
     const lines = content.split('\n');
     let title = 'Technical Documentation';
     let description = '';
-    let stars = 0;
-    let forks = 0;
-    let language = 'Unknown';
-    let license = 'Unknown';
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
       
       if (line.startsWith('# ')) {
         title = line.substring(2);
-      } else if (line.includes('stars') && line.includes('img.shields.io')) {
-        const match = line.match(/stars\/(\d+)/);
-        if (match) stars = parseInt(match[1]);
-      } else if (line.includes('forks') && line.includes('img.shields.io')) {
-        const match = line.match(/forks\/(\d+)/);
-        if (match) forks = parseInt(match[1]);
-      } else if (line.includes('Language-TypeScript')) {
-        language = 'TypeScript';
-      } else if (line.includes('License-MIT')) {
-        license = 'MIT';
       } else if (line.startsWith('## ') && line.toLowerCase().includes('overview')) {
         if (i + 1 < lines.length) {
           description = lines[i + 1].trim();
@@ -147,8 +138,14 @@ function DocsPage() {
       }
     }
 
+    // Use actual repository info from GitHub API instead of parsing from content
+    const stars = repoInfo?.stars || repoInfo?.stargazersCount || 0;
+    const forks = repoInfo?.forks || repoInfo?.forksCount || 0;
+    const language = repoInfo?.language || 'Unknown';
+    const license = repoInfo?.license?.name || 'Unknown';
+
     return { title, description, stars, forks, language, license };
-  };
+  }, [repoInfo]);
 
   const handleCopyCode = async () => {
     if (!docsData?.content) return;
@@ -178,6 +175,12 @@ function DocsPage() {
     setError(null);
     
     try {
+      // Fetch repository info first
+      if (selectedProject?.repoUrl) {
+        await fetchRepository(selectedProject.repoUrl);
+      }
+      
+      // Then fetch docs
       const docs = await getProjectDocs(selectedProjectId);
       setDocsData(docs);
       if (docs?.content) {
@@ -455,6 +458,13 @@ function DocsPage() {
     fetchQnaHistory();
     fetchShareData();
   }, [selectedProjectId]);
+
+  // Update metadata when repoInfo or docsData changes
+  useEffect(() => {
+    if (docsData?.content) {
+      setMetadata(parseDocsMetadata(docsData.content));
+    }
+  }, [repoInfo, docsData, parseDocsMetadata]);
 
   if (!selectedProjectId) {
     return (

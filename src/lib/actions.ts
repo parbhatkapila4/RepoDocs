@@ -3,7 +3,7 @@
 import { createProjectWithAuth } from './queries';
 import { auth } from '@clerk/nextjs/server';
 import prisma from './prisma';
-import { getGitHubRepositoryInfo } from './github';
+import { getGitHubRepositoryInfo, type GitHubRepoInfo } from './github';
 
 // Helper function to get the actual database user ID from Clerk userId
 async function getDbUserId(clerkUserId: string): Promise<string | null> {
@@ -552,17 +552,28 @@ export async function regenerateProjectReadme(projectId: string) {
 
     const summaries = sourceCodeEmbeddings.map(embedding => embedding.Summary);
     
-    // Get repository info with fallback
-    let repoInfo;
+    // Get repository info with retry and proper token
+    let repoInfo: Partial<GitHubRepoInfo> | null = null;
     try {
-      repoInfo = await getGitHubRepositoryInfo(project.repoUrl);
+      // Try with project's GitHub token first, then fallback to env token
+      repoInfo = await getGitHubRepositoryInfo(project.repoUrl, project.githubToken || undefined);
+      
+      // If that fails, try again without token (public repos)
+      if (!repoInfo) {
+        console.log('Retrying repo info fetch without token...');
+        repoInfo = await getGitHubRepositoryInfo(project.repoUrl);
+      }
     } catch (repoError) {
       console.error('Error fetching repo info:', repoError);
-      // Use fallback if GitHub API fails
+    }
+    
+    // Only use minimal fallback if we absolutely can't get repo info
+    if (!repoInfo) {
+      console.warn('Using minimal fallback for repo info - some data may be missing');
       repoInfo = {
         name: project.name,
         htmlUrl: project.repoUrl,
-        description: 'Repository information unavailable',
+        description: null,
         language: null,
         stars: 0,
         forks: 0,
@@ -1033,17 +1044,28 @@ export async function regenerateProjectDocs(projectId: string) {
 
     const summaries = sourceCodeEmbeddings.map(embedding => embedding.Summary);
     
-    // Get repository info
-    let repoInfo;
+    // Get repository info with retry and proper token
+    let repoInfo: Partial<GitHubRepoInfo> | null = null;
     try {
-      repoInfo = await getGitHubRepositoryInfo(project.repoUrl);
+      // Try with project's GitHub token first, then fallback to env token
+      repoInfo = await getGitHubRepositoryInfo(project.repoUrl, project.githubToken || undefined);
+      
+      // If that fails, try again without token (public repos)
+      if (!repoInfo) {
+        console.log('Retrying repo info fetch without token...');
+        repoInfo = await getGitHubRepositoryInfo(project.repoUrl);
+      }
     } catch (repoError) {
       console.error('Error fetching repo info:', repoError);
-      // Use fallback if GitHub API fails
+    }
+    
+    // Only use minimal fallback if we absolutely can't get repo info
+    if (!repoInfo) {
+      console.warn('Using minimal fallback for repo info - some data may be missing');
       repoInfo = {
         name: project.name,
         htmlUrl: project.repoUrl,
-        description: 'Repository information unavailable',
+        description: null,
         language: null,
         stars: 0,
         forks: 0,

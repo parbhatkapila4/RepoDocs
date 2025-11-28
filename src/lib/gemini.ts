@@ -399,28 +399,68 @@ Generate the most comprehensive, detailed, and useful technical documentation po
         // Use higher max_tokens for comprehensive documentation (32000 tokens = ~24000 words)
         let docsContent = await openrouterSingleMessage(prompt, "google/gemini-2.5-flash", 32000)
         
-        // Check if response seems truncated (common indicators)
+        // Enhanced truncation detection - check for various incomplete patterns
+        const trimmedContent = docsContent?.trim() || ''
+        const endsWithIncompleteTable = trimmedContent.endsWith('|') || 
+                                       trimmedContent.endsWith('||') ||
+                                       trimmedContent.endsWith('| |') ||
+                                       /^\|.*\|$/.test(trimmedContent.split('\n').pop() || '') || // Last line is table header
+                                       /^-+$/.test(trimmedContent.split('\n').pop() || ''); // Last line is dashes (table separator)
+        
+        const endsWithIncompleteSection = trimmedContent.endsWith('##') ||
+                                          trimmedContent.endsWith('###') ||
+                                          trimmedContent.endsWith('####') ||
+                                          trimmedContent.endsWith('...') ||
+                                          trimmedContent.endsWith('---');
+        
+        const missingKeySections = !trimmedContent.includes('## 📖') && 
+                                   !trimmedContent.includes('## License') && 
+                                   !trimmedContent.includes('## 10.') &&
+                                   !trimmedContent.includes('## Contributing') &&
+                                   trimmedContent.length > 5000;
+        
+        const sectionCount = trimmedContent.split('##').length - 1; // Count major sections
+        const hasInsufficientSections = sectionCount < 8 && trimmedContent.length > 3000;
+        
         const isTruncated = !docsContent || 
                            docsContent.length < 2000 ||
-                           docsContent.trim().endsWith('...') || 
-                           docsContent.trim().endsWith('##') ||
-                           (!docsContent.includes('## 📖') && !docsContent.includes('## License') && !docsContent.includes('## 10.') && docsContent.length > 5000) ||
-                           (docsContent.split('##').length < 8 && docsContent.length > 3000); // Should have at least 8 major sections
+                           endsWithIncompleteTable ||
+                           endsWithIncompleteSection ||
+                           missingKeySections ||
+                           hasInsufficientSections;
         
         // If truncated, retry with explicit instruction to complete
         if (isTruncated && docsContent && docsContent.length > 500) {
             console.warn("First attempt may be incomplete, retrying with completion instruction...")
+            console.log(`Truncation indicators: endsWithTable=${endsWithIncompleteTable}, endsWithSection=${endsWithIncompleteSection}, missingSections=${missingKeySections}, insufficientSections=${hasInsufficientSections}`)
             
             const retryPrompt = `${prompt}
 
-IMPORTANT: The previous response was incomplete. Please ensure you generate the COMPLETE documentation including ALL sections (1-10) and additional sections. Do not truncate the response. Generate the full, comprehensive documentation from start to finish.`
+CRITICAL: The previous response was INCOMPLETE and ended abruptly. You MUST generate the COMPLETE documentation including:
+- ALL 10 main sections (1. PROJECT OVERVIEW through 10. COMPLETE REFERENCE)
+- ALL additional sections mentioned
+- Proper closing for all tables, code blocks, and sections
+- License information and Contributing guidelines
+- Complete all sentences and paragraphs - do not leave tables, sections, or content incomplete
+
+Do NOT truncate the response. Generate the FULL, COMPLETE documentation from start to finish with proper endings.`
             
             try {
                 const retryContent = await openrouterSingleMessage(retryPrompt, "google/gemini-2.5-flash", 32000)
                 
-                // Use retry content if it's longer and more complete
-                if (retryContent && retryContent.length > docsContent.length && retryContent.split('##').length >= docsContent.split('##').length) {
+                // Enhanced validation for retry content
+                const retryTrimmed = retryContent?.trim() || ''
+                const retryEndsWithTable = retryTrimmed.endsWith('|') || retryTrimmed.endsWith('||') || /^\|.*\|$/.test(retryTrimmed.split('\n').pop() || '')
+                const retryEndsWithSection = retryTrimmed.endsWith('##') || retryTrimmed.endsWith('###')
+                const retryIsComplete = !retryEndsWithTable && !retryEndsWithSection && retryContent.length > docsContent.length
+                
+                // Use retry content if it's more complete
+                if (retryContent && retryIsComplete && retryContent.split('##').length >= docsContent.split('##').length) {
                     console.log("Retry successful - using complete documentation")
+                    docsContent = retryContent
+                } else if (retryContent && retryContent.length > docsContent.length * 1.2) {
+                    // If retry is significantly longer, use it even if it has minor issues
+                    console.log("Retry is significantly longer, using it despite minor issues")
                     docsContent = retryContent
                 } else {
                     console.warn("Retry did not improve completeness, using original response")
@@ -429,6 +469,18 @@ IMPORTANT: The previous response was incomplete. Please ensure you generate the 
                 console.error("Retry failed, using original response:", retryError)
                 // Continue with original content
             }
+        }
+        
+        // Final validation - check if still incomplete after retry
+        const finalTrimmed = docsContent?.trim() || ''
+        const stillIncomplete = finalTrimmed.endsWith('|') || 
+                               finalTrimmed.endsWith('||') ||
+                               finalTrimmed.endsWith('##') ||
+                               finalTrimmed.endsWith('---') ||
+                               /^\|.*\|$/.test(finalTrimmed.split('\n').pop() || '');
+        
+        if (stillIncomplete && docsContent.length > 5000) {
+            console.warn("Documentation still appears incomplete after retry, but proceeding with available content")
         }
         
         if (!docsContent || docsContent.length < 1000) {
