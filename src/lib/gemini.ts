@@ -1,6 +1,7 @@
 import { Document } from "@langchain/core/documents"
 import { openrouterSingleMessage } from "@/lib/openrouter"
 import { GoogleGenAI } from "@google/genai";
+import type { GitHubRepoInfo } from "@/lib/github";
 
 // Support both GEMINI_API_KEY and GOOGLE_GENAI_API_KEY for backwards compatibility
 const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENAI_API_KEY;
@@ -44,7 +45,7 @@ export async function getGenerateEmbeddings(summary: string, useCache: boolean =
                 console.log("Using cached embedding");
                 return cached;
             }
-        } catch (error) {
+        } catch {
             console.log("Cache miss, generating new embedding");
         }
     }
@@ -85,7 +86,7 @@ export async function getGenerateEmbeddings(summary: string, useCache: boolean =
     }
 }
 
-export async function generateReadmeFromCodebase(projectName: string, sourceCodeSummaries: string[], repoInfo: any) {
+export async function generateReadmeFromCodebase(projectName: string, sourceCodeSummaries: string[], repoInfo: Partial<GitHubRepoInfo> | null) {
     console.log("Generating README for project:", projectName)
     try {
         const codebaseContext = sourceCodeSummaries.join('\n\n')
@@ -207,10 +208,26 @@ Generate the modified README.md content:`
     }
 }
 
-export async function generateDocsFromCodebase(projectName: string, sourceCodeSummaries: string[], repoInfo: any) {
+export async function generateDocsFromCodebase(projectName: string, sourceCodeSummaries: string[], repoInfo: Partial<GitHubRepoInfo> | null) {
     console.log("Generating comprehensive docs for project:", projectName)
     try {
-        const codebaseContext = sourceCodeSummaries.join('\n\n')
+        // Limit context size to prevent prompt from being too long (keep last 100 summaries or ~200k chars)
+        const maxContextLength = 200000; // ~200k characters
+        let codebaseContext = sourceCodeSummaries.join('\n\n')
+        
+        // If context is too long, truncate intelligently (keep most recent summaries)
+        if (codebaseContext.length > maxContextLength) {
+            console.log(`Codebase context too long (${codebaseContext.length} chars), truncating to ${maxContextLength} chars`)
+            // Keep the most recent summaries (they're usually more relevant)
+            const summariesToKeep = Math.max(50, Math.floor(sourceCodeSummaries.length * 0.7))
+            const recentSummaries = sourceCodeSummaries.slice(-summariesToKeep)
+            codebaseContext = recentSummaries.join('\n\n')
+            
+            // If still too long, truncate the string itself
+            if (codebaseContext.length > maxContextLength) {
+                codebaseContext = codebaseContext.substring(0, maxContextLength) + '\n\n[... codebase context truncated for length ...]'
+            }
+        }
         
         const prompt = `You are an expert technical writer, software architect, and senior developer with 15+ years of experience. Generate the most comprehensive, detailed, and professional technical documentation possible for the project "${projectName}".
 
@@ -379,7 +396,45 @@ CRITICAL FORMATTING REQUIREMENTS:
 
 Generate the most comprehensive, detailed, and useful technical documentation possible. This should be the definitive guide that any developer can use to understand, implement, and maintain this project.`
 
-        const docsContent = await openrouterSingleMessage(prompt, "google/gemini-2.5-flash")
+        // Use higher max_tokens for comprehensive documentation (32000 tokens = ~24000 words)
+        let docsContent = await openrouterSingleMessage(prompt, "google/gemini-2.5-flash", 32000)
+        
+        // Check if response seems truncated (common indicators)
+        const isTruncated = !docsContent || 
+                           docsContent.length < 2000 ||
+                           docsContent.trim().endsWith('...') || 
+                           docsContent.trim().endsWith('##') ||
+                           (!docsContent.includes('## 📖') && !docsContent.includes('## License') && !docsContent.includes('## 10.') && docsContent.length > 5000) ||
+                           (docsContent.split('##').length < 8 && docsContent.length > 3000); // Should have at least 8 major sections
+        
+        // If truncated, retry with explicit instruction to complete
+        if (isTruncated && docsContent && docsContent.length > 500) {
+            console.warn("First attempt may be incomplete, retrying with completion instruction...")
+            
+            const retryPrompt = `${prompt}
+
+IMPORTANT: The previous response was incomplete. Please ensure you generate the COMPLETE documentation including ALL sections (1-10) and additional sections. Do not truncate the response. Generate the full, comprehensive documentation from start to finish.`
+            
+            try {
+                const retryContent = await openrouterSingleMessage(retryPrompt, "google/gemini-2.5-flash", 32000)
+                
+                // Use retry content if it's longer and more complete
+                if (retryContent && retryContent.length > docsContent.length && retryContent.split('##').length >= docsContent.split('##').length) {
+                    console.log("Retry successful - using complete documentation")
+                    docsContent = retryContent
+                } else {
+                    console.warn("Retry did not improve completeness, using original response")
+                }
+            } catch (retryError) {
+                console.error("Retry failed, using original response:", retryError)
+                // Continue with original content
+            }
+        }
+        
+        if (!docsContent || docsContent.length < 1000) {
+            throw new Error("Generated documentation is too short or empty. Please try regenerating.")
+        }
+        
         return docsContent
     } catch (error) {
         console.error("Error generating docs:", error)

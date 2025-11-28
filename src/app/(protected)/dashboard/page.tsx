@@ -38,7 +38,11 @@ import {
   ExternalLink,
   Terminal,
   Copy,
-  Check
+  Check,
+  Info,
+  Sparkles,
+  TrendingUp,
+  Zap
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -311,9 +315,117 @@ function ReposPage() {
       )}
 
       {repoInfo && !loading && (
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
+        <div className="space-y-4 sm:space-y-6">
+          {/* Repository Details Cards - Moved to Top */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            {/* Owner Info */}
+            <Card className="mobile-card">
+              <CardHeader className="mobile-card-content">
+                <CardTitle className="text-sm sm:text-base md:text-lg text-white">Owner</CardTitle>
+              </CardHeader>
+              <CardContent className="mobile-card-content">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <img 
+                    src={repoInfo.owner.avatarUrl} 
+                    alt={repoInfo.owner.login}
+                    width={32}
+                    height={32}
+                    className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex-shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-medium text-xs sm:text-sm mobile-no-truncate">{repoInfo.owner.login}</p>
+                    <p className="text-gray-400 text-xs sm:text-sm capitalize mobile-no-truncate">{repoInfo.owner.type}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Repository Details */}
+            <Card className="mobile-card">
+              <CardHeader className="mobile-card-content">
+                <CardTitle className="text-sm sm:text-base md:text-lg text-white">Repository Details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 sm:space-y-3 mobile-card-content">
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Code className="h-3 w-3 sm:h-4 sm:w-4 text-blue-400 flex-shrink-0" />
+                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Size: {formatFileSize(repoInfo.size)}</span>
+                </div>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <GitFork className="h-3 w-3 sm:h-4 sm:w-4 text-blue-400 flex-shrink-0" />
+                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Default Branch: {repoInfo.defaultBranch}</span>
+                </div>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-blue-400 flex-shrink-0" />
+                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Created: {formatDate(repoInfo.createdAt)}</span>
+                </div>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-blue-400 flex-shrink-0" />
+                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Updated: {formatDate(repoInfo.updatedAt)}</span>
+                </div>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-blue-400 flex-shrink-0" />
+                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Pushed: {formatDate(repoInfo.pushedAt)}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Features */}
+            <Card className="mobile-card">
+              <CardHeader className="mobile-card-content">
+                <CardTitle className="text-sm sm:text-base md:text-lg text-white">Features</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1 sm:space-y-2 mobile-card-content">
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <AlertCircle className={`h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 ${repoInfo.hasIssues ? 'text-green-400' : 'text-gray-400'}`} />
+                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Issues {repoInfo.hasIssues ? 'Enabled' : 'Disabled'}</span>
+                </div>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <BookOpen className={`h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 ${repoInfo.hasWiki ? 'text-green-400' : 'text-gray-400'}`} />
+                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Wiki {repoInfo.hasWiki ? 'Enabled' : 'Disabled'}</span>
+                </div>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Download className={`h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 ${repoInfo.hasDownloads ? 'text-green-400' : 'text-gray-400'}`} />
+                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Downloads {repoInfo.hasDownloads ? 'Enabled' : 'Disabled'}</span>
+                </div>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Globe className={`h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 ${repoInfo.hasPages ? 'text-green-400' : 'text-gray-400'}`} />
+                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Pages {repoInfo.hasPages ? 'Enabled' : 'Disabled'}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* License */}
+            {repoInfo.license ? (
+              <Card className="mobile-card">
+                <CardHeader className="mobile-card-content">
+                  <CardTitle className="text-sm sm:text-base md:text-lg text-white">License</CardTitle>
+                </CardHeader>
+                <CardContent className="mobile-card-content">
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    <Shield className="h-3 w-3 sm:h-4 sm:w-4 text-blue-400 flex-shrink-0" />
+                    <span className="text-white text-xs sm:text-sm mobile-no-truncate">{repoInfo.license.name}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="mobile-card">
+                <CardHeader className="mobile-card-content">
+                  <CardTitle className="text-sm sm:text-base md:text-lg text-white">License</CardTitle>
+                </CardHeader>
+                <CardContent className="mobile-card-content">
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    <Shield className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400 flex-shrink-0" />
+                    <span className="text-gray-400 text-xs sm:text-sm mobile-no-truncate">No license specified</span>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* Main Content Area */}
+          <div className="grid grid-cols-1 gap-4 sm:gap-6">
           {/* Main Repository Info */}
-          <Card className="xl:col-span-2 mobile-card">
+          <Card className="mobile-card">
             <CardHeader className="mobile-card-content">
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
                 <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
@@ -328,11 +440,18 @@ function ReposPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  {repoInfo.isPrivate && <Lock className="h-4 w-4 text-yellow-400" />}
+                  {repoInfo.isPrivate ? (
+                    <Badge variant="destructive" className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 border border-red-500/50 text-red-400 hover:bg-red-500/30 shadow-sm">
+                      <Lock className="h-3.5 w-3.5" />
+                      <span className="font-semibold text-xs sm:text-sm">{repoInfo.visibility}</span>
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/20 border border-green-500/50 text-green-400 hover:bg-green-500/30 shadow-sm">
+                      <Globe className="h-3.5 w-3.5" />
+                      <span className="font-semibold text-xs sm:text-sm">{repoInfo.visibility}</span>
+                    </Badge>
+                  )}
                   {repoInfo.isArchived && <Archive className="h-4 w-4 text-gray-400" />}
-                  <Badge variant={repoInfo.isPrivate ? "destructive" : "secondary"}>
-                    {repoInfo.visibility}
-                  </Badge>
                 </div>
               </div>
             </CardHeader>
@@ -585,98 +704,156 @@ function ReposPage() {
             </CardContent>
           </Card>
 
-          {/* Repository Details */}
-          <div className="space-y-3 sm:space-y-4 md:space-y-6">
-            {/* Owner Info */}
-            <Card className="mobile-card">
-              <CardHeader className="mobile-card-content">
-                <CardTitle className="text-sm sm:text-base md:text-lg text-white">Owner</CardTitle>
-              </CardHeader>
-              <CardContent className="mobile-card-content">
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <img 
-                    src={repoInfo.owner.avatarUrl} 
-                    alt={repoInfo.owner.login}
-                    width={32}
-                    height={32}
-                    className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex-shrink-0"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white font-medium text-xs sm:text-sm mobile-no-truncate">{repoInfo.owner.login}</p>
-                    <p className="text-gray-400 text-xs sm:text-sm capitalize mobile-no-truncate">{repoInfo.owner.type}</p>
+          {/* About This Repository Section */}
+          <Card className="mobile-card">
+            <CardHeader className="mobile-card-content">
+              <div className="flex items-center gap-2">
+                <Info className="h-5 w-5 text-blue-400" />
+                <CardTitle className="text-sm sm:text-base md:text-lg text-white">About This Repository</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4 mobile-card-content">
+              <div className="prose prose-invert max-w-none">
+                <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
+                  {repoInfo.description || `This is a ${repoInfo.language || 'software'} project`} 
+                  {repoInfo.language && ` built primarily with ${repoInfo.language}`}
+                  {repoInfo.topics.length > 0 && `, focusing on ${repoInfo.topics.slice(0, 3).join(', ')}`}.
+                  {repoInfo.stars > 100 && ` With ${repoInfo.stars.toLocaleString()} stars, this repository has gained significant community attention.`}
+                  {repoInfo.forks > 50 && ` It has been forked ${repoInfo.forks.toLocaleString()} times, indicating active development and collaboration.`}
+                </p>
+                
+                {repoInfo.topics.length > 0 && (
+                  <div className="mt-4">
+                    <h4 className="text-white font-semibold mb-2 text-sm sm:text-base">Key Focus Areas</h4>
+                    <p className="text-gray-300 text-sm sm:text-base">
+                      This repository covers several important areas: <span className="text-blue-400 font-medium">{repoInfo.topics.join(', ')}</span>.
+                      {repoInfo.topics.includes('api') && ' It provides robust API functionality and integration capabilities.'}
+                      {repoInfo.topics.includes('documentation') && ' Comprehensive documentation is available to help developers get started quickly.'}
+                      {repoInfo.topics.includes('rest-api') && ' The REST API implementation follows industry best practices.'}
+                    </p>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                )}
 
-            {/* Repository Details */}
-            <Card className="mobile-card">
-              <CardHeader className="mobile-card-content">
-                <CardTitle className="text-sm sm:text-base md:text-lg text-white">Repository Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 sm:space-y-3 mobile-card-content">
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <Code className="h-3 w-3 sm:h-4 sm:w-4 text-blue-400 flex-shrink-0" />
-                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Size: {formatFileSize(repoInfo.size)}</span>
-                </div>
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <GitFork className="h-3 w-3 sm:h-4 sm:w-4 text-blue-400 flex-shrink-0" />
-                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Default Branch: {repoInfo.defaultBranch}</span>
-                </div>
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-blue-400 flex-shrink-0" />
-                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Created: {formatDate(repoInfo.createdAt)}</span>
-                </div>
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-blue-400 flex-shrink-0" />
-                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Updated: {formatDate(repoInfo.updatedAt)}</span>
-                </div>
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-blue-400 flex-shrink-0" />
-                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Pushed: {formatDate(repoInfo.pushedAt)}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Features */}
-            <Card className="mobile-card">
-              <CardHeader className="mobile-card-content">
-                <CardTitle className="text-sm sm:text-base md:text-lg text-white">Features</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1 sm:space-y-2 mobile-card-content">
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <AlertCircle className={`h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 ${repoInfo.hasIssues ? 'text-green-400' : 'text-gray-400'}`} />
-                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Issues {repoInfo.hasIssues ? 'Enabled' : 'Disabled'}</span>
-                </div>
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <BookOpen className={`h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 ${repoInfo.hasWiki ? 'text-green-400' : 'text-gray-400'}`} />
-                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Wiki {repoInfo.hasWiki ? 'Enabled' : 'Disabled'}</span>
-                </div>
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <Download className={`h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 ${repoInfo.hasDownloads ? 'text-green-400' : 'text-gray-400'}`} />
-                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Downloads {repoInfo.hasDownloads ? 'Enabled' : 'Disabled'}</span>
-                </div>
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <Globe className={`h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 ${repoInfo.hasPages ? 'text-green-400' : 'text-gray-400'}`} />
-                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Pages {repoInfo.hasPages ? 'Enabled' : 'Disabled'}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* License */}
-            {repoInfo.license && (
-              <Card className="mobile-card">
-                <CardHeader className="mobile-card-content">
-                  <CardTitle className="text-sm sm:text-base md:text-lg text-white">License</CardTitle>
-                </CardHeader>
-                <CardContent className="mobile-card-content">
-                  <div className="flex items-center gap-1 sm:gap-2">
-                    <Shield className="h-3 w-3 sm:h-4 sm:w-4 text-blue-400 flex-shrink-0" />
-                    <span className="text-white text-xs sm:text-sm mobile-no-truncate">{repoInfo.license.name}</span>
+                {Object.keys(repoInfo.languages).length > 1 && (
+                  <div className="mt-4">
+                    <h4 className="text-white font-semibold mb-2 text-sm sm:text-base">Technology Stack</h4>
+                    <p className="text-gray-300 text-sm sm:text-base">
+                      Built with a diverse technology stack including {Object.keys(repoInfo.languages).slice(0, 5).join(', ')}
+                      {Object.keys(repoInfo.languages).length > 5 && ` and ${Object.keys(repoInfo.languages).length - 5} more`}, 
+                      demonstrating a modern and versatile approach to development.
+                    </p>
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* What Makes This Special */}
+          <Card className="mobile-card">
+            <CardHeader className="mobile-card-content">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-purple-400" />
+                <CardTitle className="text-sm sm:text-base md:text-lg text-white">What Makes This Special</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3 mobile-card-content">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {repoInfo.stars > 0 && (
+                  <div className="flex items-start gap-3 p-3 bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 rounded-lg">
+                    <Star className="h-5 w-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-white font-semibold text-sm sm:text-base">{repoInfo.stars.toLocaleString()} Stars</p>
+                      <p className="text-gray-400 text-xs sm:text-sm">
+                        {repoInfo.stars > 1000 ? 'Highly popular' : repoInfo.stars > 100 ? 'Well-received' : 'Growing'} repository with strong community support
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {repoInfo.forks > 0 && (
+                  <div className="flex items-start gap-3 p-3 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-lg">
+                    <GitFork className="h-5 w-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-white font-semibold text-sm sm:text-base">{repoInfo.forks.toLocaleString()} Forks</p>
+                      <p className="text-gray-400 text-xs sm:text-sm">
+                        Active development with {repoInfo.forks > 50 ? 'extensive' : 'growing'} community contributions
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {repoInfo.watchers > 0 && (
+                  <div className="flex items-start gap-3 p-3 bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-lg">
+                    <Eye className="h-5 w-5 text-green-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-white font-semibold text-sm sm:text-base">{repoInfo.watchers.toLocaleString()} Watchers</p>
+                      <p className="text-gray-400 text-xs sm:text-sm">
+                        {repoInfo.watchers > 100 ? 'High' : 'Steady'} developer interest and engagement
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {repoInfo.openIssues > 0 && (
+                  <div className="flex items-start gap-3 p-3 bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-lg">
+                    <Zap className="h-5 w-5 text-purple-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-white font-semibold text-sm sm:text-base">{repoInfo.openIssues} Open Issues</p>
+                      <p className="text-gray-400 text-xs sm:text-sm">
+                        {repoInfo.openIssues < 10 ? 'Well-maintained' : 'Active'} project with ongoing development
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Additional Highlights */}
+              <div className="mt-4 pt-4 border-t border-gray-700">
+                <h4 className="text-white font-semibold mb-3 text-sm sm:text-base flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-blue-400" />
+                  Key Highlights
+                </h4>
+                <ul className="space-y-2">
+                  {repoInfo.hasIssues && (
+                    <li className="flex items-start gap-2 text-gray-300 text-sm sm:text-base">
+                      <Check className="h-4 w-4 text-green-400 flex-shrink-0 mt-0.5" />
+                      <span>Issue tracking enabled for community feedback and bug reports</span>
+                    </li>
+                  )}
+                  {repoInfo.hasWiki && (
+                    <li className="flex items-start gap-2 text-gray-300 text-sm sm:text-base">
+                      <Check className="h-4 w-4 text-green-400 flex-shrink-0 mt-0.5" />
+                      <span>Comprehensive wiki documentation available</span>
+                    </li>
+                  )}
+                  {repoInfo.hasPages && (
+                    <li className="flex items-start gap-2 text-gray-300 text-sm sm:text-base">
+                      <Check className="h-4 w-4 text-green-400 flex-shrink-0 mt-0.5" />
+                      <span>GitHub Pages enabled for project documentation</span>
+                    </li>
+                  )}
+                  {repoInfo.license && (
+                    <li className="flex items-start gap-2 text-gray-300 text-sm sm:text-base">
+                      <Check className="h-4 w-4 text-green-400 flex-shrink-0 mt-0.5" />
+                      <span>Open source license: {repoInfo.license.name}</span>
+                    </li>
+                  )}
+                  {repoInfo.language && (
+                    <li className="flex items-start gap-2 text-gray-300 text-sm sm:text-base">
+                      <Check className="h-4 w-4 text-green-400 flex-shrink-0 mt-0.5" />
+                      <span>Primary language: {repoInfo.language} - modern and maintainable</span>
+                    </li>
+                  )}
+                  {new Date(repoInfo.pushedAt) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) && (
+                    <li className="flex items-start gap-2 text-gray-300 text-sm sm:text-base">
+                      <Check className="h-4 w-4 text-green-400 flex-shrink-0 mt-0.5" />
+                      <span>Recently updated - actively maintained project</span>
+                    </li>
+                  )}
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
           </div>
         </div>
       )}

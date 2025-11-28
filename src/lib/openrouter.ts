@@ -27,12 +27,16 @@ export async function openrouterChatCompletion(options: ChatCompletionOptions): 
         model = "google/gemini-2.5-flash-lite",
         messages,
         temperature = 0.7,
+        max_tokens = 8000,
     } = options
+
+    // Determine timeout based on max_tokens (longer for comprehensive docs)
+    const timeout = max_tokens > 16000 ? 300000 : max_tokens > 8000 ? 240000 : 120000; // 5 min, 4 min, or 2 min
 
     try {
         // Create AbortController for timeout handling
         const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 120000) // 2 minutes timeout
+        const timeoutId = setTimeout(() => controller.abort(), timeout)
 
         const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
             method: 'POST',
@@ -46,7 +50,7 @@ export async function openrouterChatCompletion(options: ChatCompletionOptions): 
                 model,
                 messages,
                 temperature,
-                max_tokens: 8000, // Increase token limit for comprehensive docs
+                max_tokens, // Use the provided max_tokens or default
             }),
             signal: controller.signal
         })
@@ -67,8 +71,9 @@ export async function openrouterChatCompletion(options: ChatCompletionOptions): 
         return data.choices[0].message.content
     } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
-            console.error("OpenRouter API request timed out after 2 minutes")
-            throw new Error("Request timed out. The documentation generation is taking longer than expected. Please try again.")
+            const timeoutMinutes = Math.round(timeout / 60000);
+            console.error(`OpenRouter API request timed out after ${timeoutMinutes} minutes`)
+            throw new Error(`Request timed out after ${timeoutMinutes} minutes. The documentation generation is taking longer than expected. Please try again.`)
         }
         console.error("Error calling OpenRouter chat completion:", error)
         throw error
@@ -76,7 +81,7 @@ export async function openrouterChatCompletion(options: ChatCompletionOptions): 
 }
 
 
-export async function openrouterSingleMessage(prompt: string, model?: string): Promise<string> {
+export async function openrouterSingleMessage(prompt: string, model?: string, maxTokens?: number): Promise<string> {
     return openrouterChatCompletion({
         model,
         messages: [
@@ -84,6 +89,7 @@ export async function openrouterSingleMessage(prompt: string, model?: string): P
                 role: "user",
                 content: prompt
             }
-        ]
+        ],
+        max_tokens: maxTokens
     })
 }
