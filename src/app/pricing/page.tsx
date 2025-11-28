@@ -26,7 +26,7 @@ const plans = [
   },
   {
     name: "Professional",
-    price: "$49",
+    price: "$20",
     period: "/month",
     description: "Perfect for Professionals",
     features: [
@@ -45,7 +45,7 @@ const plans = [
   },
   {
     name: "Enterprise",
-    price: "$99",
+    price: "$49",
     period: "/month",
     description: "Built for large Enterprises",
     features: [
@@ -55,7 +55,7 @@ const plans = [
       "Integration with popular platforms",
       "SLA Guarantees"
     ],
-    buttonText: "Check Details",
+    buttonText: "Buy Now",
     buttonStyle: "default",
     highlighted: false
   }
