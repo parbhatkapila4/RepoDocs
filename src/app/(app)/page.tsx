@@ -1,4 +1,7 @@
-import React from 'react'
+"use client"
+import React, { useEffect, Suspense } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import {
   Navigation,
   Hero,
@@ -11,7 +14,28 @@ import {
   Footer
 } from '@/components/landing'
 
-export default function LandingPage() {
+function PaymentStatusHandler() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+
+  useEffect(() => {
+    const paymentStatus = searchParams.get('payment')
+    
+    if (paymentStatus === 'failed') {
+      toast.error('Payment Failed', {
+        description: 'Your payment could not be processed. Please try again.',
+        duration: 5000,
+      })
+      
+      // Clean up the URL by removing the query parameter
+      router.replace('/', { scroll: false })
+    }
+  }, [searchParams, router])
+
+  return null
+}
+
+function LandingPageContent() {
   return (
     <div className="min-h-screen black-bg relative overflow-hidden">
       {/* Subtle Background Elements */}
@@ -31,5 +55,14 @@ export default function LandingPage() {
       <FinalCTA />
       <Footer />
     </div>
+  )
+}
+
+export default function LandingPage() {
+  return (
+    <Suspense fallback={null}>
+      <PaymentStatusHandler />
+      <LandingPageContent />
+    </Suspense>
   )
 }

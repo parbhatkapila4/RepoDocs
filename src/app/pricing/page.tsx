@@ -38,7 +38,7 @@ const plans = [
       "High Security Features",
       "Priority Support"
     ],
-    buttonText: "Buy Now",
+    buttonText: "Pay $20",
     buttonStyle: "primary",
     highlighted: true,
     badge: "Popular"
@@ -47,7 +47,7 @@ const plans = [
     name: "Enterprise",
     price: "$49",
     period: "/month",
-    description: "Built for large Enterprises",
+    description: "Advanced tools and dedicated support for growing teams.",
     features: [
       "Access to all the Tools and Features",
       "Unlimited Projects",
@@ -55,7 +55,7 @@ const plans = [
       "Integration with popular platforms",
       "SLA Guarantees"
     ],
-    buttonText: "Buy Now",
+    buttonText: "Pay $49",
     buttonStyle: "default",
     highlighted: false
   }
@@ -73,8 +73,13 @@ export default function PricingPage() {
         router.push('/sign-up')
       }
     } else if (plan.name === "Professional") {
-      // Handle payment flow
-      router.push('/contact')
+      // Redirect to Stripe Checkout
+      // Note: Success and cancel URLs must be configured in Stripe Dashboard
+      window.location.href = 'https://buy.stripe.com/test_eVq00leeag3bep2dMx6AM01'
+    } else if (plan.name === "Enterprise") {
+      // Redirect to Stripe Checkout
+      // Note: Success and cancel URLs must be configured in Stripe Dashboard
+      window.location.href = 'https://buy.stripe.com/test_9B6dRb5HEbMV80E8sd6AM00'
     } else {
       router.push('/contact')
     }
