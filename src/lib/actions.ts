@@ -5,6 +5,25 @@ import { auth } from '@clerk/nextjs/server';
 import prisma from './prisma';
 import { getGitHubRepositoryInfo, type GitHubRepoInfo } from './github';
 
+// Plan limits constants
+const PLAN_LIMITS = {
+  starter: { maxProjects: 3 },
+  professional: { maxProjects: 10 },
+  enterprise: { maxProjects: Infinity },
+} as const;
+
+// Normalize plan names (handles variations like "pro" -> "professional")
+function normalizePlanName(plan: string): keyof typeof PLAN_LIMITS {
+  const planLower = plan.toLowerCase();
+  if (planLower === 'pro' || planLower === 'professional') {
+    return 'professional';
+  }
+  if (planLower === 'enterprise' || planLower === 'ent') {
+    return 'enterprise';
+  }
+  return 'starter';
+}
+
 // Helper function to get the actual database user ID from Clerk userId
 async function getDbUserId(clerkUserId: string): Promise<string | null> {
   // First try to find user by Clerk ID
@@ -46,7 +65,7 @@ export async function getCurrentUser() {
       return null;
     }
 
-    // Query without plan field first to avoid errors if it doesn't exist
+    // Query user including plan field
     let user = await prisma.user.findUnique({
       where: {
         id: userId,
@@ -58,6 +77,7 @@ export async function getCurrentUser() {
         lastName: true,
         imageUrl: true,
         credits: true,
+        plan: true,
       },
     });
 
@@ -90,36 +110,23 @@ export async function getCurrentUser() {
             lastName: true,
             imageUrl: true,
             credits: true,
+            plan: true,
           },
         });
       }
     }
 
-    // Try to get plan separately to handle case where column doesn't exist
-    let plan = 'starter';
-    try {
-      const planResult = await prisma.$queryRaw<{plan: string}[]>`SELECT plan FROM "User" WHERE id = ${userId} LIMIT 1`;
-      if (planResult && planResult[0]?.plan) {
-        plan = planResult[0].plan;
-      }
-    } catch {
-      // Plan column doesn't exist yet, use default
-      plan = 'starter';
+    // Ensure plan is set and normalized, default to 'starter' if not available
+    if (user) {
+      const normalizedPlan = user.plan ? normalizePlanName(user.plan) : 'starter';
+      return { ...user, plan: normalizedPlan };
     }
-
-    return user ? { ...user, plan } : null;
+    return null;
   } catch (error) {
     console.error('Error fetching current user:', error);
     return null;
   }
 }
-
-// Plan limits constants
-const PLAN_LIMITS = {
-  starter: { maxProjects: 3 },
-  professional: { maxProjects: 10 },
-  enterprise: { maxProjects: Infinity },
-} as const;
 
 export async function getUserProjectCount() {
   try {
@@ -214,7 +221,7 @@ export async function checkProjectLimit() {
       // Use raw query to avoid errors if plan column doesn't exist in DB
       const result = await prisma.$queryRaw<{plan: string}[]>`SELECT plan FROM "User" WHERE id = ${dbUser.id} LIMIT 1`;
       if (result && result[0]?.plan) {
-        plan = result[0].plan as keyof typeof PLAN_LIMITS;
+        plan = normalizePlanName(result[0].plan);
       }
     } catch {
       // If plan field doesn't exist yet in DB, default to starter
@@ -230,7 +237,17 @@ export async function checkProjectLimit() {
       },
     });
 
-    // Only block if they've reached the limit (>= maxProjects means they have 3 or more)
+    // If maxProjects is Infinity, allow unlimited projects
+    if (maxProjects === Infinity) {
+      return {
+        canCreate: true,
+        currentCount: projectCount,
+        maxProjects: Infinity,
+        plan,
+      };
+    }
+
+    // Only block if they've reached the limit
     if (projectCount >= maxProjects) {
       return {
         canCreate: false,
@@ -263,7 +280,7 @@ async function isProjectWithinQuota(projectId: string, userId: string): Promise<
     // Use raw query to avoid errors if plan column doesn't exist in DB
     const result = await prisma.$queryRaw<{plan: string}[]>`SELECT plan FROM "User" WHERE id = ${userId} LIMIT 1`;
     if (result && result[0]?.plan) {
-      plan = result[0].plan as keyof typeof PLAN_LIMITS;
+      plan = normalizePlanName(result[0].plan);
     }
   } catch {
     // If plan field doesn't exist yet in DB, default to starter
@@ -801,6 +818,17 @@ export async function createReadmeShare(projectId: string) {
       throw new Error('User not found');
     }
 
+    // Check user plan - sharing is only for Professional and Enterprise
+    const user = await prisma.user.findUnique({
+      where: { id: dbUserId },
+      select: { plan: true },
+    });
+    
+    const userPlan = user?.plan ? normalizePlanName(user.plan) : 'starter';
+    if (userPlan === 'starter') {
+      throw new Error('Sharing is only available for Professional and Enterprise plans. Please upgrade to share your README.');
+    }
+
     // Verify user owns the project
     const project = await prisma.project.findFirst({
       where: {
@@ -1291,6 +1319,17 @@ export async function createDocsShare(projectId: string) {
     const dbUserId = await getDbUserId(userId);
     if (!dbUserId) {
       throw new Error('User not found');
+    }
+
+    // Check user plan - sharing is only for Professional and Enterprise
+    const user = await prisma.user.findUnique({
+      where: { id: dbUserId },
+      select: { plan: true },
+    });
+    
+    const userPlan = user?.plan ? normalizePlanName(user.plan) : 'starter';
+    if (userPlan === 'starter') {
+      throw new Error('Sharing is only available for Professional and Enterprise plans. Please upgrade to share your documentation.');
     }
 
     // Verify user owns the project

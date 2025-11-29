@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useProjectsContext } from '@/context/ProjectsContext';
 import { useRepository } from '@/hooks/useRepository';
+import { useUser } from '@/hooks/useUser';
 import { getProjectDocs, regenerateProjectDocs, modifyDocsWithQna, getDocsQnaHistory, createDocsShare, revokeDocsShare, getDocsShare, deleteDocsQnaRecord, deleteAllDocsQnaHistory } from '@/lib/actions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,7 +46,8 @@ import {
   ChevronRight,
   Trash2,
   MoreVertical,
-  Crown
+  Crown,
+  Lock
 } from 'lucide-react';
 import NextLink from 'next/link';
 import { 
@@ -96,6 +98,7 @@ function DocsPage() {
     currentRepository: repoInfo, 
     fetchRepository 
   } = useRepository();
+  const { user } = useUser();
   const [docsData, setDocsData] = useState<DocsData | null>(null);
   const [metadata, setMetadata] = useState<DocsMetadata | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -518,6 +521,14 @@ function DocsPage() {
             </p>
           </div>
         </div>
+        
+        {/* Quality disclaimer */}
+        <div className="hidden lg:flex items-center justify-start flex-1 -ml-16">
+          <p className="text-white/40 text-xs italic text-center animate-pulse">
+            ✨ This may take time because we focus on quality documentation
+          </p>
+        </div>
+        
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
           <Button
             onClick={() => setIsQnaPanelOpen(!isQnaPanelOpen)}
@@ -528,7 +539,17 @@ function DocsPage() {
             <span className="mobile-no-truncate">Need Help?</span>
           </Button>
           
-          {shareToken ? (
+          {user?.plan === 'starter' ? (
+            <Button
+              asChild
+              className="bg-gray-600 hover:bg-gray-500 text-white px-3 sm:px-4 md:px-6 py-2 rounded-lg transition-all duration-200 w-full sm:w-auto text-xs sm:text-sm"
+            >
+              <NextLink href="/pricing">
+                <Lock className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+                <span className="mobile-no-truncate">Upgrade to Share</span>
+              </NextLink>
+            </Button>
+          ) : shareToken ? (
             <Button
               onClick={() => setShowShareModal(true)}
               className="bg-green-600 hover:bg-green-700 text-white px-3 sm:px-4 md:px-6 py-2 rounded-lg transition-all duration-200 w-full sm:w-auto text-xs sm:text-sm"

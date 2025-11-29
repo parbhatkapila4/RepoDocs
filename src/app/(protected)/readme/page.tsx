@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useProjectsContext } from '@/context/ProjectsContext';
+import { useUser } from '@/hooks/useUser';
 import { getProjectReadme, regenerateProjectReadme, modifyReadmeWithQna, getReadmeQnaHistory, createReadmeShare, revokeReadmeShare, getReadmeShare, deleteReadmeQnaRecord, deleteAllReadmeQnaHistory } from '@/lib/actions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,7 +40,8 @@ import {
   X,
   Trash2,
   MoreVertical,
-  Crown
+  Crown,
+  Lock
 } from 'lucide-react';
 import NextLink from 'next/link';
 import { toast } from 'sonner';
@@ -77,6 +79,7 @@ interface ReadmeWithQna extends ReadmeData {
 
 function ReadmePage() {
   const { selectedProjectId, projects } = useProjectsContext();
+  const { user } = useUser();
   const [readmeData, setReadmeData] = useState<ReadmeData | null>(null);
   const [metadata, setMetadata] = useState<ReadmeMetadata | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -477,8 +480,19 @@ function ReadmePage() {
             </p>
           </div>
         </div>
+        
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
-          {shareToken ? (
+          {user?.plan === 'starter' ? (
+            <Button
+              asChild
+              className="bg-gray-600 hover:bg-gray-500 text-white px-3 sm:px-4 md:px-6 py-2 rounded-lg transition-all duration-200 w-full sm:w-auto text-xs sm:text-sm"
+            >
+              <NextLink href="/pricing">
+                <Lock className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+                <span className="mobile-no-truncate">Upgrade to Share</span>
+              </NextLink>
+            </Button>
+          ) : shareToken ? (
             <Button
               onClick={() => setShowShareModal(true)}
               className="bg-green-600 hover:bg-green-700 text-white px-3 sm:px-4 md:px-6 py-2 rounded-lg transition-all duration-200 w-full sm:w-auto text-xs sm:text-sm"

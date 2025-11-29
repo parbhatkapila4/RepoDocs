@@ -100,7 +100,21 @@ const GlowingEffect = memo(
     useEffect(() => {
       if (disabled) return;
 
-      const handleScroll = () => handleMove();
+      // Use RAF-based throttling for smooth 60-100hz performance
+      let scrollRafId: number | null = null;
+      let isScrolling = false;
+
+      const handleScroll = () => {
+        // Only queue one update per frame
+        if (!isScrolling) {
+          isScrolling = true;
+          scrollRafId = requestAnimationFrame(() => {
+            handleMove();
+            isScrolling = false;
+          });
+        }
+      };
+
       const handlePointerMove = (e: PointerEvent) => handleMove(e);
 
       window.addEventListener("scroll", handleScroll, { passive: true });
@@ -111,6 +125,9 @@ const GlowingEffect = memo(
       return () => {
         if (animationFrameRef.current) {
           cancelAnimationFrame(animationFrameRef.current);
+        }
+        if (scrollRafId !== null) {
+          cancelAnimationFrame(scrollRafId);
         }
         window.removeEventListener("scroll", handleScroll);
         document.body.removeEventListener("pointermove", handlePointerMove);

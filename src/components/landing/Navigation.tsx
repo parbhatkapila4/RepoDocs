@@ -1,8 +1,8 @@
 "use client"
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Menu, X, Crown, Sparkles } from "lucide-react"
+import { Menu, X, Crown, Sparkles, Zap } from "lucide-react"
 import { RepoDocLogo } from "@/components/ui/repodoc-logo"
 import { useUser as useClerkUser, useClerk } from "@clerk/nextjs"
 import {
@@ -15,7 +15,7 @@ import {
   SheetContent,
   SheetTitle,
 } from "@/components/ui/sheet"
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { getCurrentUser } from '@/lib/actions'
 import { Badge } from "@/components/ui/badge"
 
@@ -25,23 +25,50 @@ export default function Navigation() {
   const { user, isSignedIn } = useClerkUser()
   const { signOut } = useClerk()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
+  
+  // Check if we just completed a payment
+  const paymentStatus = searchParams.get('payment')
+  const planFromUrl = searchParams.get('plan')
 
-  // Fetch user plan when signed in
-  useEffect(() => {
-    const fetchUserPlan = async () => {
-      if (isSignedIn) {
-        try {
-          const dbUser = await getCurrentUser()
-          if (dbUser?.plan) {
-            setUserPlan(dbUser.plan)
-          }
-        } catch (error) {
-          console.error('Error fetching user plan:', error)
+  // Check if we're in a payment success state - if so, don't fetch from DB
+  const isPaymentSuccess = paymentStatus === 'success' && planFromUrl
+
+  // Fetch user plan function - but skip if we're handling a payment success
+  const fetchUserPlan = useCallback(async () => {
+    // IMPORTANT: If we just completed a payment, DON'T fetch from DB
+    // The PaymentStatusHandler will sync and redirect to dashboard
+    if (isPaymentSuccess) {
+      console.log('Skipping fetchUserPlan - payment success in progress')
+      return
+    }
+    
+    if (isSignedIn) {
+      try {
+        const dbUser = await getCurrentUser()
+        if (dbUser?.plan) {
+          setUserPlan(dbUser.plan)
         }
+      } catch (error) {
+        console.error('Error fetching user plan:', error)
       }
     }
-    fetchUserPlan()
-  }, [isSignedIn])
+  }, [isSignedIn, isPaymentSuccess])
+
+  // Handle successful payment - set plan from URL IMMEDIATELY and lock it
+  useEffect(() => {
+    if (paymentStatus === 'success' && planFromUrl) {
+      console.log('Payment success detected, setting plan to:', planFromUrl)
+      setUserPlan(planFromUrl)
+    }
+  }, [paymentStatus, planFromUrl])
+
+  // Fetch user plan when signed in (but not during payment success)
+  useEffect(() => {
+    if (!isPaymentSuccess) {
+      fetchUserPlan()
+    }
+  }, [fetchUserPlan, isPaymentSuccess])
 
   const getPlanBadge = () => {
     if (!userPlan) return null
@@ -49,25 +76,25 @@ export default function Navigation() {
     switch (userPlan) {
       case 'professional':
         return (
-          <Badge className="absolute -bottom-1 -right-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[8px] px-1.5 py-0 font-bold border-0 shadow-lg">
-            <Crown className="h-2 w-2 mr-0.5" />
-            PRO
-          </Badge>
+          <div className="absolute -bottom-1.5 -right-1.5">
+            <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 rounded-full shadow-lg shadow-amber-500/30">
+              <Zap className="h-2 w-2 text-white" />
+              <span className="text-[7px] font-black text-white tracking-wider">PRO</span>
+            </div>
+          </div>
         )
       case 'enterprise':
         return (
-          <Badge className="absolute -bottom-1 -right-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[8px] px-1.5 py-0 font-bold border-0 shadow-lg">
-            <Sparkles className="h-2 w-2 mr-0.5" />
-            ENT
-          </Badge>
+          <div className="absolute -bottom-1.5 -right-1.5">
+            <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 rounded-full shadow-lg shadow-purple-500/30">
+              <Crown className="h-2 w-2 text-white" />
+              <span className="text-[7px] font-black text-white tracking-wider">ENT</span>
+            </div>
+          </div>
         )
       case 'starter':
       default:
-        return (
-          <Badge className="absolute -bottom-1 -right-1 bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-[8px] px-1.5 py-0 font-bold border-0 shadow-lg">
-            FREE
-          </Badge>
-        )
+        return null // No badge for free users
     }
   }
 

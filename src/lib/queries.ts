@@ -10,6 +10,18 @@ const PLAN_LIMITS = {
   enterprise: { maxProjects: Infinity },
 } as const;
 
+// Normalize plan names (handles variations like "pro" -> "professional")
+function normalizePlanName(plan: string): keyof typeof PLAN_LIMITS {
+  const planLower = plan.toLowerCase();
+  if (planLower === 'pro' || planLower === 'professional') {
+    return 'professional';
+  }
+  if (planLower === 'enterprise' || planLower === 'ent') {
+    return 'enterprise';
+  }
+  return 'starter';
+}
+
 export async function createProject(data: Prisma.ProjectCreateInput): Promise<Project> {
   try {
     const project = await prisma.project.create({
@@ -95,7 +107,7 @@ export async function createProjectWithAuth(name: string, githubUrl: string, git
     try {
       const planResult = await prisma.$queryRaw<{plan: string}[]>`SELECT plan FROM "User" WHERE id = ${existingUser.id} LIMIT 1`;
       if (planResult && planResult[0]?.plan) {
-        plan = planResult[0].plan as keyof typeof PLAN_LIMITS;
+        plan = normalizePlanName(planResult[0].plan);
       }
     } catch {
       plan = 'starter';
@@ -103,20 +115,23 @@ export async function createProjectWithAuth(name: string, githubUrl: string, git
 
     const maxProjects = PLAN_LIMITS[plan]?.maxProjects ?? 3;
 
-    const projectCount = await prisma.project.count({
-      where: {
-        userId: existingUser.id, // Use the actual user ID
-        deletedAt: null,
-      },
-    });
+    // If maxProjects is Infinity, allow unlimited projects (skip limit check)
+    if (maxProjects !== Infinity) {
+      const projectCount = await prisma.project.count({
+        where: {
+          userId: existingUser.id, // Use the actual user ID
+          deletedAt: null,
+        },
+      });
 
-    if (projectCount >= maxProjects) {
-      const upgradeMessage = plan === 'starter' 
-        ? 'Please upgrade to Professional for 10 projects or Enterprise for unlimited projects.'
-        : plan === 'professional'
-        ? 'Please upgrade to Enterprise for unlimited projects.'
-        : '';
-      throw new Error(`PROJECT_LIMIT_REACHED: You've reached the maximum of ${maxProjects} projects on the ${plan} plan. ${upgradeMessage}`);
+      if (projectCount >= maxProjects) {
+        const upgradeMessage = plan === 'starter' 
+          ? 'Please upgrade to Professional for 10 projects or Enterprise for unlimited projects.'
+          : plan === 'professional'
+          ? 'Please upgrade to Enterprise for unlimited projects.'
+          : '';
+        throw new Error(`PROJECT_LIMIT_REACHED: You've reached the maximum of ${maxProjects} projects on the ${plan} plan. ${upgradeMessage}`);
+      }
     }
 
     const project = await prisma.project.create({

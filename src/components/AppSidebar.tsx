@@ -37,12 +37,17 @@ import {
   Plus,
   Trash2,
   MessageSquare,
-  X
+  X,
+  Crown,
+  Zap,
+  RefreshCw
 } from "lucide-react"
 import { RepoDocLogo } from "@/components/ui/repodoc-logo"
 import { useUser } from "@/hooks/useUser"
 import { useProjectsContext } from "@/context/ProjectsContext"
 import { useClerk } from "@clerk/nextjs"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 
 type NavigationItem = {
   title: string
@@ -83,13 +88,55 @@ const navigationItems: NavigationItem[] = [
 
 
 export default function AppSidebar() {
-  const { user, isLoading: userLoading } = useUser()
+  const { user, isLoading: userLoading, refreshUser } = useUser()
   const { projects, selectedProjectId, selectProject, deleteProject } = useProjectsContext()
   const { signOut } = useClerk()
   const pathname = usePathname()
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null)
+  const [isSyncing, setIsSyncing] = useState(false)
   const { setOpenMobile, isMobile } = useSidebar()
+
+  const handleSyncPlan = async (forcePlan?: string) => {
+    setIsSyncing(true)
+    try {
+      const response = await fetch('/api/sync-plan', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: forcePlan ? JSON.stringify({ forcePlan }) : undefined
+      })
+      const data = await response.json()
+      console.log('Sync result:', data)
+      
+      if (data.success) {
+        await refreshUser()
+      }
+    } catch (error) {
+      console.error('Error syncing plan:', error)
+    } finally {
+      setIsSyncing(false)
+    }
+  }
+  
+  // Handle clicking on Pro badge sync button - try to sync, if still pro after sync, 
+  // show option to force enterprise
+  const handleProSyncClick = async () => {
+    // First try normal sync
+    await handleSyncPlan()
+    
+    // If user claims they purchased enterprise but still showing pro,
+    // offer a quick prompt (using browser confirm for simplicity)
+    setTimeout(() => {
+      if (user?.plan === 'professional' || user?.plan === 'pro') {
+        const shouldForce = window.confirm(
+          'Still showing Pro? If you just purchased Enterprise, click OK to force update to Enterprise.'
+        )
+        if (shouldForce) {
+          handleSyncPlan('enterprise')
+        }
+      }
+    }, 1500)
+  }
 
   const handleDeleteClick = (projectId: string, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -234,28 +281,68 @@ export default function AppSidebar() {
       <SidebarFooter className=" p-4">
         <SidebarMenu>
           <SidebarMenuItem>
-            <div className="flex items-center justify-between w-full">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center">
-                  {userLoading ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  ) : (
-                    <span className="text-white text-sm font-medium">
+            <div className="flex flex-col gap-2 w-full">
+              <div className="flex items-center justify-between w-full">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <Avatar className="w-8 h-8">
+                    <AvatarImage 
+                      src={user?.imageUrl || undefined} 
+                      alt={user?.firstName || user?.emailAddress || "User"} 
+                    />
+                    <AvatarFallback className="bg-gray-700 text-white text-sm">
                       {user?.firstName?.charAt(0) || user?.emailAddress?.charAt(0)?.toUpperCase() || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="text-white font-medium text-sm truncate">
+                      {userLoading ? "Loading..." : (user?.firstName || user?.emailAddress?.split('@')[0] || "User")}
                     </span>
-                  )}
+                    {/* Plan Badge */}
+                    {!userLoading && user?.plan && (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        {user.plan === 'professional' ? (
+                          <>
+                            <div className="flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 rounded-full shadow-lg shadow-amber-500/20">
+                              <Zap className="w-3 h-3 text-white" />
+                              <span className="text-[10px] font-bold text-white tracking-wide uppercase">Pro</span>
+                            </div>
+                            <button
+                              onClick={handleProSyncClick}
+                              disabled={isSyncing}
+                              className="p-1 hover:bg-white/10 rounded-full transition-colors"
+                              title="Sync plan (click if you upgraded to Enterprise)"
+                            >
+                              <RefreshCw className={`w-3 h-3 text-gray-400 hover:text-white ${isSyncing ? 'animate-spin' : ''}`} />
+                            </button>
+                          </>
+                        ) : user.plan === 'enterprise' ? (
+                          <div className="flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 rounded-full shadow-lg shadow-purple-500/20">
+                            <Crown className="w-3 h-3 text-white" />
+                            <span className="text-[10px] font-bold text-white tracking-wide uppercase">Enterprise</span>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleSyncPlan()}
+                            disabled={isSyncing}
+                            className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-300 transition-colors"
+                            title="Sync plan from Stripe"
+                          >
+                            <RefreshCw className={`w-2.5 h-2.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                            {isSyncing ? 'Syncing...' : 'Sync Plan'}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <span className="text-white font-medium">
-                  {userLoading ? "Loading..." : (user?.firstName || user?.emailAddress?.split('@')[0] || "User")}
-                </span>
+                <button 
+                  onClick={handleLogout}
+                  className="p-1 hover:bg-gray-800 rounded transition-colors flex-shrink-0"
+                  title="Logout"
+                >
+                  <LogOut className="w-4 h-4 text-gray-400" />
+                </button>
               </div>
-              <button 
-                onClick={handleLogout}
-                className="p-1 hover:bg-gray-800 rounded transition-colors"
-                title="Logout"
-              >
-                <LogOut className="w-4 h-4 text-gray-400" />
-              </button>
             </div>
           </SidebarMenuItem>
         </SidebarMenu>

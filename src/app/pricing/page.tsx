@@ -1,12 +1,13 @@
 "use client"
-import React from 'react'
+import React, { useState } from 'react'
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Check, ArrowLeft } from "lucide-react"
+import { Check, ArrowLeft, Loader2 } from "lucide-react"
 import Link from 'next/link'
 import { motion } from "motion/react"
 import { useUser } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 const plans = [
   {
@@ -68,22 +69,56 @@ const plans = [
 export default function PricingPage() {
   const { isSignedIn } = useUser()
   const router = useRouter()
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
 
-  const handleButtonClick = (plan: typeof plans[0]) => {
+  const handleButtonClick = async (plan: typeof plans[0]) => {
     if (plan.name === "Starter") {
       if (isSignedIn) {
         router.push('/dashboard')
       } else {
         router.push('/sign-up')
       }
-    } else if (plan.name === "Professional") {
-      // Redirect to Stripe Checkout
-      // Note: Success and cancel URLs must be configured in Stripe Dashboard
-      window.location.href = 'https://buy.stripe.com/test_eVq00leeag3bep2dMx6AM01'
-    } else if (plan.name === "Enterprise") {
-      // Redirect to Stripe Checkout
-      // Note: Success and cancel URLs must be configured in Stripe Dashboard
-      window.location.href = 'https://buy.stripe.com/test_9B6dRb5HEbMV80E8sd6AM00'
+      return
+    }
+
+    // For paid plans, user must be signed in
+    if (!isSignedIn) {
+      toast.error('Please sign in first', {
+        description: 'You need to be signed in to purchase a plan.',
+      })
+      router.push('/sign-up')
+      return
+    }
+
+    if (plan.name === "Professional" || plan.name === "Enterprise") {
+      const planKey = plan.name.toLowerCase()
+      setLoadingPlan(plan.name)
+
+      try {
+        // Create checkout session via API
+        const response = await fetch('/api/create-checkout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ plan: planKey }),
+        })
+
+        const data = await response.json()
+
+        if (data.url) {
+          // Redirect to Stripe Checkout
+          window.location.href = data.url
+        } else if (data.error) {
+          throw new Error(data.error)
+        }
+      } catch (error) {
+        console.error('Error creating checkout:', error)
+        toast.error('Failed to start checkout', {
+          description: 'Please try again or contact support.',
+        })
+        setLoadingPlan(null)
+      }
     } else {
       router.push('/contact')
     }
@@ -91,11 +126,10 @@ export default function PricingPage() {
 
   return (
     <div className="min-h-screen black-bg relative overflow-hidden">
-      {/* Subtle Background Elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/5 rounded-full blur-3xl floating"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-white/3 rounded-full blur-3xl floating" style={{animationDelay: '3s'}}></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-white/2 rounded-full blur-3xl floating" style={{animationDelay: '6s'}}></div>
+      {/* Subtle Background Elements - Optimized */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/3 rounded-full blur-2xl"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-white/2 rounded-full blur-2xl"></div>
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -126,9 +160,8 @@ export default function PricingPage() {
           transition={{ duration: 0.8, ease: "easeOut" }}
         >
           <div className="inline-block relative px-8 py-4">
-            {/* Glowing background effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/30 via-purple-500/30 to-pink-500/30 rounded-full blur-3xl animate-pulse"></div>
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 rounded-full blur-2xl"></div>
+            {/* Subtle background glow - optimized */}
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 rounded-full blur-2xl"></div>
             
             {/* Main text with gradient */}
             <motion.h1
@@ -138,7 +171,7 @@ export default function PricingPage() {
               transition={{ duration: 1, delay: 0.3 }}
             >
               <motion.span
-                className="block bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent animate-gradient bg-[length:200%_auto] text-glow-subtle"
+                className="block bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent bg-[length:200%_auto] text-glow-subtle"
                 initial={{ opacity: 0, x: -50 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.8, delay: 0.4 }}
@@ -146,7 +179,7 @@ export default function PricingPage() {
                 COMING
               </motion.span>
               <motion.span
-                className="block bg-gradient-to-r from-pink-400 via-purple-400 to-blue-400 bg-clip-text text-transparent animate-gradient bg-[length:200%_auto] text-glow-subtle"
+                className="block bg-gradient-to-r from-pink-400 via-purple-400 to-blue-400 bg-clip-text text-transparent bg-[length:200%_auto] text-glow-subtle"
                 initial={{ opacity: 0, x: 50 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.8, delay: 0.6 }}
@@ -155,30 +188,27 @@ export default function PricingPage() {
               </motion.span>
             </motion.h1>
             
-            {/* Decorative elements */}
+            {/* Decorative elements - static for performance */}
             <motion.div
-              className="absolute -top-4 -left-4 w-4 h-4 bg-blue-400 rounded-full animate-ping shadow-lg shadow-blue-400/50"
+              className="absolute -top-4 -left-4 w-4 h-4 bg-blue-400 rounded-full shadow-lg shadow-blue-400/50"
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ duration: 0.5, delay: 0.8 }}
             ></motion.div>
             <motion.div
-              className="absolute -top-2 -right-8 w-3 h-3 bg-purple-400 rounded-full animate-pulse shadow-lg shadow-purple-400/50"
-              style={{animationDelay: '0.5s'}}
+              className="absolute -top-2 -right-8 w-3 h-3 bg-purple-400 rounded-full shadow-lg shadow-purple-400/50"
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ duration: 0.5, delay: 1 }}
             ></motion.div>
             <motion.div
-              className="absolute -bottom-2 -left-8 w-3 h-3 bg-pink-400 rounded-full animate-pulse shadow-lg shadow-pink-400/50"
-              style={{animationDelay: '1s'}}
+              className="absolute -bottom-2 -left-8 w-3 h-3 bg-pink-400 rounded-full shadow-lg shadow-pink-400/50"
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ duration: 0.5, delay: 1.2 }}
             ></motion.div>
             <motion.div
-              className="absolute -bottom-4 -right-4 w-4 h-4 bg-purple-400 rounded-full animate-ping shadow-lg shadow-purple-400/50"
-              style={{animationDelay: '1.5s'}}
+              className="absolute -bottom-4 -right-4 w-4 h-4 bg-purple-400 rounded-full shadow-lg shadow-purple-400/50"
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ duration: 0.5, delay: 1.4 }}
@@ -302,8 +332,16 @@ export default function PricingPage() {
                         : 'bg-white/10 hover:bg-white/20 text-white border border-subtle'
                     }`}
                     onClick={() => handleButtonClick(plan)}
+                    disabled={loadingPlan !== null}
                   >
-                    {plan.buttonText}
+                    {loadingPlan === plan.name ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      plan.buttonText
+                    )}
                   </Button>
 
                   {/* Cancel Anytime text for Pro plan */}

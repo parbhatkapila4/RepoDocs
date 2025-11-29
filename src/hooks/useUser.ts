@@ -43,6 +43,26 @@ export const useUser = () => {
     }
   }, [dispatch]);
 
+  // Force refresh user data (bypasses retry limit) - useful after plan upgrade
+  const refreshUser = useCallback(async () => {
+    retryCountRef.current = 0; // Reset retry count
+    try {
+      dispatch(setLoading(true));
+      dispatch(setError(null));
+      
+      const user = await getCurrentUser();
+      
+      if (user) {
+        dispatch(setUser(user));
+      }
+    } catch (error) {
+      console.error('Error refreshing user:', error);
+      dispatch(setError('Failed to refresh user'));
+    } finally {
+      dispatch(setLoading(false));
+    }
+  }, [dispatch]);
+
   const logout = useCallback(() => {
     dispatch(clearUser());
     retryCountRef.current = 0;
@@ -64,6 +84,7 @@ export const useUser = () => {
     error,
     isAuthenticated,
     loadUser,
+    refreshUser,
     logout,
     resetRetryCount,
   };

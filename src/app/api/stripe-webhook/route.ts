@@ -1,5 +1,6 @@
 import Stripe from 'stripe';
 import { NextRequest, NextResponse } from 'next/server';
+import prisma from '@/lib/prisma';
 
 export const runtime = 'nodejs';
 
@@ -45,10 +46,88 @@ export async function POST(req: NextRequest) {
       const session = event.data.object as Stripe.Checkout.Session;
       console.log('✅ Payment successful, session id:', session.id);
       
-      // You can add additional logic here, such as:
-      // - Update user subscription status in database
-      // - Send confirmation email
-      // - Grant access to premium features
+      // Get customer email from session
+      const customerEmail = session.customer_email || session.customer_details?.email;
+      
+      // Determine which plan was purchased from metadata (set in our checkout API)
+      let planToAssign: 'professional' | 'enterprise' | null = null;
+      
+      // Check if plan is in metadata (this is set by our /api/create-checkout endpoint)
+      if (session.metadata?.plan) {
+        planToAssign = session.metadata.plan as 'professional' | 'enterprise';
+        console.log('Plan found in metadata:', planToAssign);
+      }
+      
+      // Fallback: check by amount (professional = $20, enterprise = $49)
+      if (!planToAssign && session.amount_total) {
+        const amount = session.amount_total / 100; // Convert from cents
+        if (amount >= 49) {
+          planToAssign = 'enterprise';
+        } else if (amount >= 20) {
+          planToAssign = 'professional';
+        }
+        console.log('Plan determined by amount:', planToAssign, '(amount:', amount, ')');
+      }
+
+      if (!planToAssign) {
+        console.error('Could not determine plan for session:', session.id);
+        // Default to professional if we can't determine
+        planToAssign = 'professional';
+      }
+
+      // Try to find user - first by userId in metadata, then by email
+      let userUpdated = false;
+      
+      // Method 1: Use userId from metadata (most reliable)
+      if (session.metadata?.userId) {
+        try {
+          const updatedUser = await prisma.user.update({
+            where: { id: session.metadata.userId },
+            data: { plan: planToAssign },
+          });
+          console.log(`✅ Updated user ${updatedUser.id} to ${planToAssign} plan (via userId)`);
+          userUpdated = true;
+        } catch (err) {
+          console.log('Could not update by userId, trying email...');
+        }
+      }
+
+      // Method 2: Use customer email
+      if (!userUpdated && customerEmail) {
+        try {
+          // Try exact match first
+          const updatedUser = await prisma.user.update({
+            where: { emailAddress: customerEmail },
+            data: { plan: planToAssign },
+          });
+          console.log(`✅ Updated user ${customerEmail} to ${planToAssign} plan (via email)`);
+          userUpdated = true;
+        } catch (dbError: unknown) {
+          // If exact match fails, try case-insensitive search
+          const existingUser = await prisma.user.findFirst({
+            where: {
+              emailAddress: {
+                equals: customerEmail,
+                mode: 'insensitive',
+              },
+            },
+          });
+
+          if (existingUser) {
+            await prisma.user.update({
+              where: { id: existingUser.id },
+              data: { plan: planToAssign },
+            });
+            console.log(`✅ Updated user ${existingUser.id} to ${planToAssign} plan (via case-insensitive email)`);
+            userUpdated = true;
+          }
+        }
+      }
+
+      if (!userUpdated) {
+        console.error('Could not find user to update. Session:', session.id, 'Email:', customerEmail);
+        // Still return 200 to acknowledge the webhook
+      }
     }
 
     // Return 200 to acknowledge receipt of the event

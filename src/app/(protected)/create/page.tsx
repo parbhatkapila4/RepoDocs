@@ -195,8 +195,13 @@ function CreatePage() {
         const limitStatus = await checkProjectLimit();
         setProjectLimit(limitStatus);
         
+        // Show appropriate upgrade message based on user's plan
+        const upgradeMessage = limitStatus.plan === 'professional'
+          ? "Upgrade to Enterprise for unlimited projects."
+          : "Upgrade to Professional for 10 projects or Enterprise for unlimited.";
+        
         toast.error("Project limit reached", {
-          description: "Upgrade to Professional for 10 projects or Enterprise for unlimited.",
+          description: upgradeMessage,
         });
       } else {
         toast.error("Failed to create project", {
@@ -234,7 +239,7 @@ function CreatePage() {
                       Project Limit Reached
                     </h3>
                     <p className="text-amber-300/80 text-sm mt-1">
-                      You&apos;ve used {projectLimit.currentCount} of {projectLimit.maxProjects} projects on the {projectLimit.plan} plan.
+                      You&apos;ve used {projectLimit.currentCount} of {projectLimit.maxProjects} projects on the {projectLimit.plan === 'professional' ? 'Professional' : projectLimit.plan === 'enterprise' ? 'Enterprise' : 'Starter'} plan.
                     </p>
                   </div>
                 </div>
@@ -244,7 +249,9 @@ function CreatePage() {
                 >
                   <Link href="/pricing">
                     <Crown className="h-4 w-4 mr-2" />
-                    Upgrade to Professional
+                    {projectLimit.plan === 'professional' 
+                      ? 'Upgrade to Enterprise' 
+                      : 'Upgrade to Professional'}
                   </Link>
                 </Button>
               </div>
@@ -253,7 +260,7 @@ function CreatePage() {
         )}
 
         {/* Project Usage Indicator */}
-        {!isCheckingLimit && projectLimit && projectLimit.canCreate && projectLimit.plan === 'starter' && (
+        {!isCheckingLimit && projectLimit && projectLimit.canCreate && (projectLimit.plan === 'starter' || projectLimit.plan === 'professional') && (
           <Card className="mb-6 border-blue-500/30 bg-blue-500/5">
             <CardContent className="pt-4 pb-4">
               <div className="flex items-center justify-between gap-4">
@@ -263,18 +270,32 @@ function CreatePage() {
                     <span className="text-blue-300/70"> / {projectLimit.maxProjects} projects used</span>
                   </div>
                 </div>
-                {projectLimit.currentCount !== undefined && projectLimit.maxProjects !== undefined && projectLimit.currentCount >= 2 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    asChild
-                    className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
-                  >
-                    <Link href="/pricing">
-                      <Crown className="h-3 w-3 mr-1" />
-                      Upgrade for more projects
-                    </Link>
-                  </Button>
+                {projectLimit.currentCount !== undefined && projectLimit.maxProjects !== undefined && (
+                  projectLimit.plan === 'starter' && projectLimit.currentCount >= 2 ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      asChild
+                      className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+                    >
+                      <Link href="/pricing">
+                        <Crown className="h-3 w-3 mr-1" />
+                        Upgrade for more projects
+                      </Link>
+                    </Button>
+                  ) : projectLimit.plan === 'professional' && projectLimit.currentCount >= 8 ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      asChild
+                      className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+                    >
+                      <Link href="/pricing">
+                        <Crown className="h-3 w-3 mr-1" />
+                        Upgrade to Enterprise
+                      </Link>
+                    </Button>
+                  ) : null
                 )}
               </div>
             </CardContent>

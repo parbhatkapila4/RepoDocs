@@ -127,13 +127,32 @@
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
   
-  /* Smooth scrolling optimization */
+  /* Ultra-smooth scrolling optimization - 100hz ready */
   html {
     scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scroll-padding-top: 0;
+    /* Enable GPU acceleration at root level */
+    transform: translate3d(0, 0, 0);
+    -webkit-transform: translate3d(0, 0, 0);
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    /* Enable hardware acceleration for the whole page */
+    transform: translate3d(0, 0, 0);
+    -webkit-transform: translate3d(0, 0, 0);
+    /* Optimize scroll performance */
+    overscroll-behavior-y: contain;
+    overscroll-behavior-x: contain;
+    /* Prevent scroll chaining for smoother experience */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    /* Optimize rendering */
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
   }
   
   /* GPU acceleration for better performance */
@@ -141,44 +160,72 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+  
+  /* Optimize all scrollable elements globally */
+  [style*="overflow"],
+  main,
+  section,
+  article {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 /* Sleek Black Theme Styles */
+/* Optimized glass effects - reduced blur for performance */
 .glass {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+  /* Performance optimization */
+  contain: layout style paint;
 }
 
 .glass-dark {
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(20px);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+  contain: layout style paint;
 }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(16px);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.4);
+  contain: layout style paint;
 }
 
 .black-bg {
   background: #000000;
 }
 
+/* Optimized floating animation - reduced motion for performance */
 .floating {
-  animation: floating 8s ease-in-out infinite;
+  animation: floating 12s ease-in-out infinite;
+  /* Use opacity animation instead of transform for better performance */
+  will-change: opacity;
+  contain: layout style paint;
 }
 
 @keyframes floating {
   0%, 100% { 
-    transform: translate3d(0, 0, 0); 
+    opacity: 0.6;
   }
   50% { 
-    transform: translate3d(0, -15px, 0); 
+    opacity: 1;
+  }
+}
+
+/* Reduced motion preference - disable animations for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .floating {
+    animation: none;
   }
 }
 
@@ -332,29 +379,30 @@
   color: #d1d5db;
 }
 
-/* Performance optimizations for smooth scrolling and animations */
-* {
+/* Performance optimizations - Minimal GPU layers */
+/* Only apply to actively animated elements */
+.animate-spin,
+.animate-scroll {
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
-  -webkit-perspective: 1000;
-  perspective: 1000;
+  contain: layout style paint;
 }
 
-/* Optimize scroll containers */
+/* Optimize scroll containers - Smooth scrolling */
 [data-radix-scroll-area-viewport],
 .overflow-auto,
 .overflow-y-auto,
 .overflow-x-auto {
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
-  will-change: scroll-position;
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
+  /* Smooth momentum scrolling */
+  overscroll-behavior: contain;
 }
 
-/* Optimize ScrollArea specifically */
-[data-radix-scroll-area-viewport] > div {
-  transform: translateZ(0);
+/* Optimize ScrollArea */
+[data-radix-scroll-area-viewport] {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Fix chat ScrollArea on mobile */
@@ -378,14 +426,10 @@
   transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Optimize animations and transitions */
+/* Smooth transitions */
 .transition-all,
-[class*="transition-"],
-button,
-a {
-  will-change: transform, opacity;
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
+[class*="transition-"] {
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Optimize hover effects */
@@ -396,33 +440,41 @@ a:hover,
   transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Smooth modal/dialog animations */
-[data-radix-dialog-overlay],
-[data-radix-dialog-content] {
-  will-change: transform, opacity;
-  backface-visibility: hidden;
-}
-
 /* Optimize chat scroll performance */
 .prose,
 .prose * {
   contain: layout style;
 }
 
-/* Optimize card animations */
-[class*="Card"],
-[class*="card"] {
-  transform: translateZ(0);
-  will-change: transform;
+/* Hide scrollbar but keep functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-/* Optimize badge and button transitions */
-[class*="Badge"],
-[class*="badge"],
-button {
-  contain: layout;
-  transform: translateZ(0);
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
 
 /* Mobile-specific utilities */
 @media (max-width: 640px) {
@@ -453,22 +505,9 @@ button {
 
   /* Improve rendering quality on mobile */
   svg,
-  [class*="lucide"],
-  button,
-  .glass-card,
-  .glow-subtle {
+  [class*="lucide"] {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-    will-change: transform;
-  }
-
-  /* Ensure SVG icons render smoothly and crisply */
-  svg,
-  [class*="lucide"] {
     shape-rendering: auto;
   }
 
@@ -488,93 +527,12 @@ button {
     inset-y: auto !important;
   }
 
-  /* Mobile button text and SVG quality improvements */
-  button,
-  [role="button"],
-  .button,
-  [class*="Button"] {
-    -webkit-font-smoothing: antialiased !important;
-    -moz-osx-font-smoothing: grayscale !important;
-    text-rendering: optimizeLegibility !important;
-    font-smooth: always !important;
-    -webkit-font-smoothing: subpixel-antialiased !important;
-  }
-
-  /* Ensure button text is crisp on mobile */
-  button *,
-  button span,
-  [role="button"] *,
-  [role="button"] span {
-    -webkit-font-smoothing: antialiased !important;
-    -moz-osx-font-smoothing: grayscale !important;
-    text-rendering: optimizeLegibility !important;
-    text-shadow: 0 0 0 transparent !important;
-  }
-
-  /* SVG quality improvements for mobile */
-  svg,
-  [class*="lucide"],
-  button svg,
-  [role="button"] svg {
-    shape-rendering: geometricPrecision !important;
-    text-rendering: optimizeLegibility !important;
-    -webkit-font-smoothing: antialiased !important;
-    -moz-osx-font-smoothing: grayscale !important;
-    image-rendering: -webkit-optimize-contrast !important;
-    transform: translateZ(0) !important;
-    -webkit-transform: translateZ(0) !important;
-    will-change: transform !important;
-    backface-visibility: hidden !important;
-    -webkit-backface-visibility: hidden !important;
-    filter: none !important;
-  }
-
-  /* Force high DPI rendering for buttons and SVGs */
-  button,
-  button svg,
-  [role="button"],
-  [role="button"] svg {
-    transform: translate3d(0, 0, 0) !important;
-    -webkit-transform: translate3d(0, 0, 0) !important;
-  }
-
-  /* Improve text clarity in badges and buttons */
-  .badge,
-  [class*="Badge"],
+  /* Mobile text quality */
   button,
   [role="button"] {
-    text-rendering: optimizeLegibility !important;
-    -webkit-font-smoothing: subpixel-antialiased !important;
-    font-smooth: always !important;
-  }
-
-  /* Landing page specific quality improvements */
-  .black-bg button,
-  .black-bg [role="button"],
-  .black-bg button svg,
-  .black-bg [role="button"] svg,
-  section button,
-  section [role="button"],
-  section button svg,
-  section [role="button"] svg {
-    -webkit-font-smoothing: antialiased !important;
-    -moz-osx-font-smoothing: grayscale !important;
-    text-rendering: optimizeLegibility !important;
-    shape-rendering: geometricPrecision !important;
-    transform: translate3d(0, 0, 0) !important;
-    -webkit-transform: translate3d(0, 0, 0) !important;
-    will-change: transform !important;
-  }
-
-  /* Ensure button text inside sections is crisp */
-  section button span,
-  section [role="button"] span,
-  .black-bg button span,
-  .black-bg [role="button"] span {
-    -webkit-font-smoothing: antialiased !important;
-    -moz-osx-font-smoothing: grayscale !important;
-    text-rendering: optimizeLegibility !important;
-    display: inline-block !important;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
   
   /* Mobile sidebar improvements */
