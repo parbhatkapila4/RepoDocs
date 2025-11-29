@@ -217,7 +217,7 @@ function DocsPage() {
       if (errorMessage.includes('UPGRADE_REQUIRED')) {
         setUpgradeRequired(true);
         toast.error('Upgrade required', {
-          description: 'Upgrade to Professional for unlimited projects.',
+          description: 'Upgrade to Professional for 10 projects or Enterprise for unlimited.',
         });
       } else {
         setError(errorMessage);
@@ -266,7 +266,7 @@ function DocsPage() {
       if (errorMessage.includes('UPGRADE_REQUIRED')) {
         setUpgradeRequired(true);
         toast.error('Upgrade required', {
-          description: 'Upgrade to Professional for unlimited projects.',
+          description: 'Upgrade to Professional for 10 projects or Enterprise for unlimited.',
         });
       } else {
         setError(errorMessage);
@@ -657,7 +657,7 @@ function DocsPage() {
                     Upgrade Required
                   </h3>
                   <p className="text-amber-300/80 text-sm mt-1">
-                    This project exceeds your starter plan limit. Upgrade to Professional for unlimited AI documentation.
+                    This project exceeds your starter plan limit. Upgrade to Professional for 10 projects or Enterprise for unlimited.
                   </p>
                 </div>
               </div>

@@ -117,7 +117,7 @@ export async function getCurrentUser() {
 // Plan limits constants
 const PLAN_LIMITS = {
   starter: { maxProjects: 3 },
-  professional: { maxProjects: Infinity },
+  professional: { maxProjects: 10 },
   enterprise: { maxProjects: Infinity },
 } as const;
 
@@ -234,7 +234,9 @@ export async function checkProjectLimit() {
     if (projectCount >= maxProjects) {
       return {
         canCreate: false,
-        reason: `You've reached the maximum of ${maxProjects} projects on the ${plan} plan. Please upgrade to Professional for unlimited projects.`,
+        reason: plan === 'starter' 
+          ? `You've reached the maximum of ${maxProjects} projects on the ${plan} plan. Please upgrade to Professional for 10 projects or Enterprise for unlimited.`
+          : `You've reached the maximum of ${maxProjects} projects on the ${plan} plan. Please upgrade to Enterprise for unlimited projects.`,
         currentCount: projectCount,
         maxProjects,
         plan,
@@ -299,7 +301,7 @@ async function isProjectWithinQuota(projectId: string, userId: string): Promise<
 
   return {
     allowed: false,
-    reason: `This project exceeds your starter plan limit of ${maxProjects} projects. Please upgrade to Professional to generate AI documentation for unlimited projects.`,
+    reason: `This project exceeds your starter plan limit of ${maxProjects} projects. Please upgrade to Professional for 10 projects or Enterprise for unlimited.`,
   };
 }
 

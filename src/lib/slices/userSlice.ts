@@ -19,7 +19,7 @@ export const PLAN_LIMITS = {
     name: 'Starter',
   },
   professional: {
-    maxProjects: Infinity,
+    maxProjects: 10,
     name: 'Professional',
   },
   enterprise: {

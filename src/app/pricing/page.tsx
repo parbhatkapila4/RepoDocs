@@ -13,12 +13,14 @@ const plans = [
     name: "Starter",
     price: "$0",
     period: "/month",
-    description: "Perfect for Small Teams",
+    description: "Perfect for trying out RepoDoc",
     features: [
-      "Access to basic tools",
+      "AI-powered README generation",
+      "AI-powered documentation generation",
+      "Chat with your codebase",
       "Up to 3 Projects",
-      "Standard Integration",
-      "Secure data usage"
+      "GitHub repository integration",
+      "Basic repository analytics"
     ],
     buttonText: "Start Free",
     buttonStyle: "default",
@@ -28,15 +30,15 @@ const plans = [
     name: "Professional",
     price: "$20",
     period: "/month",
-    description: "Perfect for Professionals",
+    description: "Perfect for professional developers and small teams",
     features: [
-      "Access to all the Tools and Features",
-      "Unlimited Projects",
-      "Team Collaboration Features",
-      "Integration with popular platforms",
-      "Analytics, Reporting or Customization",
-      "High Security Features",
-      "Priority Support"
+      "Everything in Starter",
+      "Up to 10 Projects",
+      "Advanced AI code understanding",
+      "Repository intelligence & insights",
+      "One-click PR & documentation sharing",
+      "Priority processing",
+      "Email support"
     ],
     buttonText: "Pay $20",
     buttonStyle: "primary",
@@ -47,13 +49,15 @@ const plans = [
     name: "Enterprise",
     price: "$49",
     period: "/month",
-    description: "Advanced tools and dedicated support for growing teams.",
+    description: "For teams and organizations with unlimited needs",
     features: [
-      "Access to all the Tools and Features",
+      "Everything in Professional",
       "Unlimited Projects",
-      "Advanced Security Features",
-      "Integration with popular platforms",
-      "SLA Guarantees"
+      "Advanced security & compliance",
+      "Team collaboration features",
+      "SLA guarantees & uptime",
+      "Priority support & onboarding",
+      "Custom integrations available"
     ],
     buttonText: "Pay $49",
     buttonStyle: "default",
@@ -200,10 +204,10 @@ export default function PricingPage() {
           transition={{ duration: 0.6 }}
         >
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-4 tracking-tight">
-            Pricing That Scales With You
+            Simple, Transparent Pricing
           </h1>
           <p className="text-xl text-white/60 font-medium">
-            Choose a Plan that Suits You
+            Choose the perfect plan to document and understand your codebase
           </p>
         </motion.div>
 

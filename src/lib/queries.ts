@@ -6,7 +6,7 @@ import { indexGithubRepository } from './github';
 // Plan limits constants
 const PLAN_LIMITS = {
   starter: { maxProjects: 3 },
-  professional: { maxProjects: Infinity },
+  professional: { maxProjects: 10 },
   enterprise: { maxProjects: Infinity },
 } as const;
 
@@ -111,7 +111,12 @@ export async function createProjectWithAuth(name: string, githubUrl: string, git
     });
 
     if (projectCount >= maxProjects) {
-      throw new Error(`PROJECT_LIMIT_REACHED: You've reached the maximum of ${maxProjects} projects on the ${plan} plan. Please upgrade to Professional for unlimited projects.`);
+      const upgradeMessage = plan === 'starter' 
+        ? 'Please upgrade to Professional for 10 projects or Enterprise for unlimited projects.'
+        : plan === 'professional'
+        ? 'Please upgrade to Enterprise for unlimited projects.'
+        : '';
+      throw new Error(`PROJECT_LIMIT_REACHED: You've reached the maximum of ${maxProjects} projects on the ${plan} plan. ${upgradeMessage}`);
     }
 
     const project = await prisma.project.create({

@@ -196,7 +196,7 @@ function CreatePage() {
         setProjectLimit(limitStatus);
         
         toast.error("Project limit reached", {
-          description: "Upgrade to Professional for unlimited projects.",
+          description: "Upgrade to Professional for 10 projects or Enterprise for unlimited.",
         });
       } else {
         toast.error("Failed to create project", {
@@ -272,7 +272,7 @@ function CreatePage() {
                   >
                     <Link href="/pricing">
                       <Crown className="h-3 w-3 mr-1" />
-                      Upgrade for unlimited
+                      Upgrade for more projects
                     </Link>
                   </Button>
                 )}
