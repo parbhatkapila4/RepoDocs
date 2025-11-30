@@ -1,23 +1,31 @@
 "use client";
 import React, { useState, useRef, useEffect } from 'react';
 import { useProjectsContext } from '@/context/ProjectsContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useUser } from '@/hooks/useUser';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Send, 
-  MessageSquare, 
-  Sparkles,
   Loader2,
   FileCode,
-  Plus
+  ChevronDown,
+  Lightbulb,
+  Code2,
+  Search,
+  Wand2,
+  Check,
+  Plus,
+  Github
 } from "lucide-react";
 import { toast } from "sonner";
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Message {
   id: string;
@@ -31,22 +39,42 @@ interface Message {
   timestamp: Date;
 }
 
+const models = [
+  { id: 'repodoc-v1', name: 'RepoDoc AI', description: 'Optimized for code analysis' },
+  { id: 'repodoc-fast', name: 'RepoDoc Fast', description: 'Quick responses' },
+];
+
+const actionButtons = [
+  { icon: Lightbulb, label: 'Explain Code', color: 'text-amber-400' },
+  { icon: Code2, label: 'Refactor', color: 'text-blue-400' },
+  { icon: Search, label: 'Deep Search', color: 'text-purple-400' },
+];
+
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good Morning';
+  if (hour < 17) return 'Good Afternoon';
+  return 'Good Evening';
+}
+
 export default function ChatPage() {
   const { projects, selectedProjectId } = useProjectsContext();
+  const { user } = useUser();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedModel, setSelectedModel] = useState(models[0]);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const currentProject = projects.find(p => p.id === selectedProjectId);
+  const userName = user?.firstName || user?.emailAddress?.split('@')[0] || 'Developer';
 
   // Auto-scroll to bottom when new messages arrive
   const prevMessagesLengthRef = useRef(messages.length);
   
   useEffect(() => {
-    // Only auto-scroll if a new message was actually added
     if (messages.length > prevMessagesLengthRef.current) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
@@ -57,6 +85,14 @@ export default function ChatPage() {
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto';
+      inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 120) + 'px';
+    }
+  }, [input]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,229 +170,311 @@ export default function ChatPage() {
     }
   };
 
-  const suggestedQuestions = [
-    "how does auth works in this project?",
-    "Explain the database schema",
-    "What API endpoints are available?",
-    "How is error handling implemented?",
-    "What's the folder structure?",
-  ];
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
+  };
+
+  const handleActionClick = (action: string) => {
+    const actionPrompts: Record<string, string> = {
+      'Explain Code': 'Explain how the main components work in this project',
+      'Refactor': 'Suggest refactoring improvements for the codebase',
+      'Deep Search': 'Search through the codebase for authentication patterns',
+    };
+    setInput(actionPrompts[action] || '');
+    inputRef.current?.focus();
+  };
 
   if (!currentProject) {
     return (
-      <div className="flex items-center justify-center min-h-screen p-4">
-        <Card className="w-full max-w-md mx-auto">
-          <CardHeader>
-            <CardTitle className="text-center">No Project Selected</CardTitle>
-            <CardDescription className="text-center">
-              Please select a project to start chatting with your codebase
-            </CardDescription>
-          </CardHeader>
-        </Card>
+      <div className="flex items-center justify-center min-h-screen bg-[#0a0a0f]">
+        <div className="text-center p-8 max-w-md">
+          <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+            <Wand2 className="w-10 h-10 text-white" />
+          </div>
+          <h2 className="text-2xl font-semibold text-white mb-3">No Project Selected</h2>
+          <p className="text-gray-400 leading-relaxed">
+            Please select a project from the sidebar to start chatting with your codebase
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-3rem)] sm:h-[calc(100vh-3rem)] lg:h-[calc(100vh-2rem)] p-2 sm:p-4 md:p-6 lg:p-6">
-      {/* Header */}
-      <div className="mb-2 sm:mb-2 lg:mb-3 flex-shrink-0">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 lg:gap-3 mb-1">
-          <div className="flex items-center gap-2 sm:gap-2.5 lg:gap-3">
-            <div className="p-1.5 sm:p-2 lg:p-2 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-500/30 flex-shrink-0">
-              <MessageSquare className="h-4 w-4 sm:h-4 sm:w-4 lg:h-5 lg:w-5 text-blue-400" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white">Chat with Codebase</h1>
-              <p className="text-gray-400 text-xs sm:text-xs lg:text-sm mt-0.5">
-                Ask questions about <span className="text-white font-medium">{currentProject.name}</span>
-              </p>
-            </div>
-          </div>
-          
-          {/* New Chat Button */}
-          {messages.length > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setMessages([]);
-                setInput('');
-                toast.success('Chat cleared! Start a new conversation.');
-              }}
-              className="border-gray-600 lg:border-gray-500 text-gray-300 hover:bg-gray-700 hover:text-white w-full sm:w-auto text-xs sm:text-xs lg:text-sm lg:px-3 lg:py-1.5"
-            >
-              <Plus className="h-3 w-3 sm:h-3.5 sm:w-3.5 lg:h-4 lg:w-4 mr-1.5 sm:mr-1.5" />
-              <span className="sm:inline">New Chat</span>
-            </Button>
-          )}
+    <div className="flex flex-col h-screen bg-[#0a0a0f] overflow-hidden">
+      {/* Header Bar */}
+      <div className="flex-shrink-0 pt-4 pb-2 px-4">
+        <div className="relative flex items-center justify-center">
+          {/* Model Selector - Center */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="outline" 
+                className="bg-white/5 border-white/10 hover:bg-white/10 text-white shadow-lg rounded-xl px-4 py-2 h-auto gap-2 backdrop-blur-sm"
+              >
+                <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                  <Wand2 className="w-3.5 h-3.5 text-white" />
+                </div>
+                <span className="font-medium">{selectedModel.name}</span>
+                <ChevronDown className="w-4 h-4 text-gray-400" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center" className="w-56 bg-[#16161d] border-white/10 shadow-2xl rounded-xl p-1">
+              {models.map((model) => (
+                <DropdownMenuItem
+                  key={model.id}
+                  onClick={() => setSelectedModel(model)}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer hover:bg-white/5 focus:bg-white/5"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                    <Wand2 className="w-4 h-4 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-white text-sm">{model.name}</p>
+                    <p className="text-xs text-gray-500">{model.description}</p>
+                  </div>
+                  {selectedModel.id === model.id && (
+                    <Check className="w-4 h-4 text-indigo-400 flex-shrink-0" />
+                  )}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* New Chat Button - Absolute Right Corner */}
+          <Button
+            variant="outline"
+            onClick={() => {
+              setMessages([]);
+              setInput('');
+              toast.success('Started a new chat!');
+            }}
+            className="absolute right-0 bg-white/5 border-white/10 hover:bg-white/10 text-white rounded-xl px-3 py-2 h-auto gap-1.5 backdrop-blur-sm"
+          >
+            <Plus className="w-4 h-4" />
+            <span className="text-sm font-medium">New</span>
+          </Button>
         </div>
       </div>
 
-      {/* Chat Container */}
-      <Card className="flex-1 flex flex-col overflow-hidden min-h-0">
-        <CardContent className="flex-1 flex flex-col p-0 overflow-hidden min-h-0">
-          {/* Messages */}
-          <ScrollArea className="flex-1 min-h-0" ref={scrollRef}>
-            <div className="p-2 sm:p-3 lg:p-4">
-            {messages.length === 0 && (
-              <div className="flex flex-col items-center justify-center min-h-[400px] sm:min-h-[500px] lg:min-h-[450px] text-center p-4 sm:p-8 lg:p-10 lg:pt-6">
-                <div className="p-3 sm:p-4 lg:p-6 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-500/30 mb-3 sm:mb-4 lg:mb-4">
-                  <Sparkles className="h-8 w-8 sm:h-12 sm:w-12 lg:h-14 lg:w-14 text-blue-400" />
-                </div>
-                <h3 className="text-lg sm:text-xl lg:text-3xl font-semibold text-white mb-2 lg:mb-2">
-                  Start a Conversation
-                </h3>
-                <p className="text-gray-400 mb-4 sm:mb-6 lg:mb-6 max-w-md lg:max-w-xl text-sm sm:text-base lg:text-lg px-2">
-                  Ask me anything about your codebase. I&apos;ll search through the code and provide detailed answers with references.
-                </p>
-                
-                {/* Suggested Questions */}
-                <div className="w-full max-w-2xl lg:max-w-4xl px-2 lg:px-4">
-                  <p className="text-xs sm:text-sm lg:text-base text-gray-500 mb-2 sm:mb-3 lg:mb-4">Try asking:</p>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-4">
-                    {suggestedQuestions.map((q, idx) => (
-                      <Button
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {messages.length === 0 ? (
+          /* Empty State - Welcome Screen */
+          <div className="flex-1 flex flex-col items-center justify-center px-4 pb-8">
+            {/* Decorative Gradient Blob */}
+            <div className="relative mb-6">
+              <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-blue-600 opacity-70 blur-xl animate-pulse" />
+              <div className="absolute inset-0 w-28 h-28 sm:w-36 sm:h-36 rounded-full bg-gradient-to-tr from-blue-500 via-indigo-600 to-purple-600 opacity-50 blur-2xl animate-pulse" style={{ animationDelay: '0.5s' }} />
+              <div className="absolute inset-3 sm:inset-5 w-22 h-22 sm:w-26 sm:h-26 rounded-full bg-gradient-to-br from-indigo-400 via-purple-500 to-blue-500 opacity-90 shadow-lg shadow-purple-500/30" />
+            </div>
+
+            {/* Greeting */}
+            <div className="text-center mb-10 sm:mb-12">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-2 tracking-tight">
+                {getGreeting()}, {userName}
+              </h1>
+              <p className="text-2xl sm:text-3xl lg:text-4xl font-semibold">
+                <span className="text-white">How Can I </span>
+                <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-blue-400 bg-clip-text text-transparent">
+                  Assist You Today?
+                </span>
+              </p>
+            </div>
+
+            {/* Input Area */}
+            <div className="w-full max-w-3xl mx-auto px-4">
+              <form onSubmit={handleSubmit} className="relative">
+                <div className="relative bg-white/5 backdrop-blur-xl rounded-2xl shadow-2xl shadow-black/20 border border-white/10 overflow-hidden">
+                  <div className="flex items-start p-3">
+                    <div className="flex-shrink-0 p-2.5 mt-0.5">
+                      <Github className="w-5 h-5 text-indigo-400" />
+                    </div>
+                    <textarea
+                      ref={inputRef}
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      placeholder="Initiate a query or send a command to the AI..."
+                      disabled={isLoading}
+                      rows={1}
+                      className="flex-1 bg-transparent border-none outline-none resize-none py-3 px-2 text-white placeholder:text-gray-500 text-base min-h-[52px] max-h-[140px]"
+                    />
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={isLoading || !input.trim()}
+                      className="flex-shrink-0 m-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl h-10 w-10 p-0 shadow-lg shadow-indigo-500/25"
+                    >
+                      {isLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Send className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-2 px-5 py-4 border-t border-white/5">
+                    {actionButtons.map((action, idx) => (
+                      <button
                         key={idx}
-                        variant="outline"
-                        className="text-left justify-start text-xs sm:text-sm lg:text-base text-gray-300 hover:text-white hover:bg-gray-800 h-auto py-2 sm:py-2.5 lg:py-4 px-3 sm:px-4 lg:px-5 border-gray-700 lg:border-gray-600"
-                        onClick={() => setInput(q)}
+                        type="button"
+                        onClick={() => handleActionClick(action.label)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors border border-white/5 hover:border-white/10"
                       >
-                        <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4 lg:h-5 lg:w-5 mr-1.5 sm:mr-2 lg:mr-3 flex-shrink-0" />
-                        <span className="break-words">{q}</span>
-                      </Button>
+                        <action.icon className={`w-4 h-4 ${action.color}`} />
+                        <span>{action.label}</span>
+                      </button>
                     ))}
                   </div>
                 </div>
-              </div>
-            )}
+              </form>
 
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`mb-3 sm:mb-4 lg:mb-4 ${
-                  message.role === 'user' ? 'text-right' : 'text-left'
-                }`}
-              >
-                <div
-                  className={`inline-block max-w-[90%] sm:max-w-[85%] lg:max-w-[80%] ${
-                    message.role === 'user'
-                      ? 'bg-blue-600 text-white rounded-2xl rounded-tr-sm p-2.5 sm:p-3 lg:p-3.5'
-                      : 'bg-gray-800 text-white rounded-2xl rounded-tl-sm p-2.5 sm:p-3 lg:p-3.5 max-h-[800px] overflow-y-auto'
-                  }`}
-                >
-                  <div className="prose prose-invert max-w-none prose-xs sm:prose-xs lg:prose-sm [&>*:last-child]:mb-0 [&_p]:text-xs sm:[&_p]:text-sm lg:[&_p]:text-sm [&_p]:leading-relaxed [&_pre]:text-xs sm:[&_pre]:text-xs lg:[&_pre]:text-sm [&_pre]:overflow-x-auto [&_pre]:py-2 [&_pre]:px-3 [&_code]:text-xs sm:[&_code]:text-xs lg:[&_code]:text-sm [&_ul]:text-xs sm:[&_ul]:text-sm lg:[&_ul]:text-sm [&_ol]:text-xs sm:[&_ol]:text-sm lg:[&_ol]:text-sm [&_li]:text-xs sm:[&_li]:text-sm lg:[&_li]:text-sm [&_h1]:text-sm sm:[&_h1]:text-base lg:[&_h1]:text-base [&_h2]:text-xs sm:[&_h2]:text-sm lg:[&_h2]:text-sm [&_h3]:text-xs sm:[&_h3]:text-xs lg:[&_h3]:text-sm">
-                    <ReactMarkdown
-                      components={{
-                        code({ inline, className, children, ...props }: { inline?: boolean; className?: string; children?: React.ReactNode }) {
-                          const match = /language-(\w+)/.exec(className || '');
-                          return !inline && match ? (
-                            <SyntaxHighlighter
-                              style={vscDarkPlus}
-                              language={match[1]}
-                              PreTag="div"
-                              customStyle={{
-                                fontSize: '0.7rem',
-                                padding: '0.6rem',
-                                margin: '0.4rem 0',
-                                lineHeight: '1.4',
-                              }}
-                              {...props}
-                            >
-                              {String(children).replace(/\n$/, '')}
-                            </SyntaxHighlighter>
-                          ) : (
-                            <code className={className} {...props}>
-                              {children}
-                            </code>
-                          );
-                        },
-                      }}
-                    >
-                      {message.content}
-                    </ReactMarkdown>
-                  </div>
-
-                  {/* Sources */}
-                  {message.sources && message.sources.length > 0 && (
-                    <div className="mt-2 sm:mt-3 lg:mt-3 pt-2 sm:pt-2 lg:pt-3 border-t border-gray-700 lg:border-gray-600">
-                      <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
-                        <FileCode className="h-3 w-3 sm:h-3.5 sm:w-3.5 lg:h-4 lg:w-4 text-gray-400 flex-shrink-0" />
-                        <span className="text-xs sm:text-xs lg:text-sm font-medium text-gray-400">
-                          Sources ({message.sources.length})
-                        </span>
-                      </div>
-                      <div className="space-y-1.5 sm:space-y-1.5 lg:space-y-2">
-                        {message.sources.map((source, idx) => (
-                          <div
-                            key={idx}
-                            className="text-xs sm:text-xs lg:text-sm bg-gray-900/50 rounded p-2 sm:p-2 lg:p-2.5 border border-gray-700 lg:border-gray-600"
-                          >
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0 mb-1">
-                              <code className="text-blue-400 break-all text-xs sm:text-xs lg:text-sm">{source.fileName}</code>
-                              <Badge variant="outline" className="text-xs sm:text-xs lg:text-xs w-fit sm:w-auto">
-                                {(source.similarity * 100).toFixed(0)}% match
-                              </Badge>
-                            </div>
-                            <p className="text-gray-400 line-clamp-2 text-xs sm:text-xs lg:text-sm leading-snug">{source.summary}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            {isLoading && (
-              <div className="mb-3 sm:mb-4 lg:mb-4 text-left">
-                <div className="inline-block max-w-[90%] sm:max-w-[85%] lg:max-w-[80%] bg-gray-800 text-white rounded-2xl rounded-tl-sm p-2.5 sm:p-3 lg:p-3.5">
-                  <div className="flex items-center gap-2 sm:gap-2.5 lg:gap-3">
-                    <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 lg:h-4 lg:w-4 animate-spin text-blue-400 flex-shrink-0" />
-                    <span className="text-xs sm:text-xs lg:text-sm">Searching codebase and generating response...</span>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            {/* Scroll anchor */}
-            <div ref={messagesEndRef} />
             </div>
-          </ScrollArea>
-
-          {/* Input */}
-          <div className="border-t border-gray-800 p-2 sm:p-3 lg:p-4 lg:px-6 flex-shrink-0">
-            <form onSubmit={handleSubmit} className="flex gap-1.5 sm:gap-2 lg:gap-3 lg:max-w-5xl lg:mx-auto">
-              <Input
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask a question about your codebase..."
-                disabled={isLoading}
-                className="flex-1 bg-gray-900 border-gray-700 lg:border-gray-600 text-white placeholder:text-gray-500 text-sm sm:text-sm lg:text-base h-9 sm:h-10 lg:h-12 lg:px-4"
-              />
-              <Button
-                type="submit"
-                disabled={isLoading || !input.trim()}
-                className="bg-blue-600 hover:bg-blue-700 h-9 sm:h-10 lg:h-12 w-9 sm:w-auto lg:w-auto px-2 sm:px-4 lg:px-6 flex-shrink-0 text-sm sm:text-sm lg:text-sm"
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 lg:h-4 lg:w-4 animate-spin" />
-                ) : (
-                  <>
-                    <Send className="h-4 w-4 lg:h-4 lg:w-4 sm:mr-0 lg:mr-2" />
-                    <span className="hidden sm:inline lg:inline">Send</span>
-                  </>
-                )}
-              </Button>
-            </form>
-            <p className="text-xs lg:text-xs text-gray-500 mt-1.5 sm:mt-1.5 lg:mt-2 px-0.5 lg:text-center lg:max-w-5xl lg:mx-auto">
-              💡 Tip: Ask specific questions about how features work, architecture, or code patterns
-            </p>
           </div>
-        </CardContent>
-      </Card>
+        ) : (
+          /* Chat Messages */
+          <div 
+            ref={scrollRef}
+            className="flex-1 overflow-y-auto min-h-0"
+            style={{ scrollBehavior: 'smooth' }}
+          >
+            <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-[85%] ${
+                      message.role === 'user'
+                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl rounded-tr-md px-4 py-3 shadow-lg shadow-indigo-500/20'
+                        : 'bg-white/5 backdrop-blur-sm text-white rounded-2xl rounded-tl-md px-4 py-3 shadow-lg shadow-black/20 border border-white/10'
+                    }`}
+                  >
+                    <div className="prose prose-sm prose-invert max-w-none [&>*:last-child]:mb-0">
+                      <ReactMarkdown
+                        components={{
+                          code({ inline, className, children, ...props }: { inline?: boolean; className?: string; children?: React.ReactNode }) {
+                            const match = /language-(\w+)/.exec(className || '');
+                            return !inline && match ? (
+                              <SyntaxHighlighter
+                                style={vscDarkPlus}
+                                language={match[1]}
+                                PreTag="div"
+                                customStyle={{
+                                  fontSize: '0.8rem',
+                                  padding: '0.75rem',
+                                  margin: '0.5rem 0',
+                                  borderRadius: '0.5rem',
+                                  border: '1px solid rgba(255,255,255,0.1)',
+                                  background: 'rgba(0,0,0,0.3)',
+                                }}
+                                {...props}
+                              >
+                                {String(children).replace(/\n$/, '')}
+                              </SyntaxHighlighter>
+                            ) : (
+                              <code className={`${className} bg-white/10 text-indigo-300 px-1.5 py-0.5 rounded text-sm`} {...props}>
+                                {children}
+                              </code>
+                            );
+                          },
+                        }}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
+                    </div>
+
+                    {/* Sources */}
+                    {message.sources && message.sources.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-white/10">
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <FileCode className="h-3.5 w-3.5 text-gray-400" />
+                          <span className="text-xs font-medium text-gray-400">
+                            Sources ({message.sources.length})
+                          </span>
+                        </div>
+                        <div className="space-y-1.5">
+                          {message.sources.map((source, idx) => (
+                            <div
+                              key={idx}
+                              className="text-xs bg-black/20 rounded-lg p-2 border border-white/5"
+                            >
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <code className="text-indigo-400 font-medium truncate">{source.fileName}</code>
+                                <span className="flex-shrink-0 text-xs text-gray-500 bg-white/5 px-1.5 py-0.5 rounded">
+                                  {(source.similarity * 100).toFixed(0)}%
+                                </span>
+                              </div>
+                              <p className="text-gray-500 line-clamp-2">{source.summary}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="max-w-[85%] bg-white/5 backdrop-blur-sm text-white rounded-2xl rounded-tl-md px-4 py-3 shadow-lg shadow-black/20 border border-white/10">
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-indigo-400" />
+                      <span className="text-sm text-gray-400">Analyzing codebase...</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Scroll anchor */}
+              <div ref={messagesEndRef} className="h-4" />
+            </div>
+          </div>
+        )}
+
+        {/* Input Area - When Messages Exist */}
+        {messages.length > 0 && (
+          <div className="flex-shrink-0 border-t border-white/5 bg-[#0a0a0f]/80 backdrop-blur-xl p-4">
+            <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
+              <div className="relative bg-white/5 backdrop-blur-xl rounded-xl shadow-2xl shadow-black/20 border border-white/10 overflow-hidden">
+                <div className="flex items-center p-2">
+                  <div className="flex-shrink-0 p-2">
+                    <Github className="w-5 h-5 text-indigo-400" />
+                  </div>
+                  <textarea
+                    ref={inputRef}
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Ask a follow-up question..."
+                    disabled={isLoading}
+                    rows={1}
+                    className="flex-1 bg-transparent border-none outline-none resize-none py-2 px-2 text-white placeholder:text-gray-500 text-sm min-h-[40px] max-h-[100px]"
+                  />
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={isLoading || !input.trim()}
+                    className="flex-shrink-0 m-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-lg h-8 w-8 p-0 shadow-lg shadow-indigo-500/25"
+                  >
+                    {isLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </form>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
-
