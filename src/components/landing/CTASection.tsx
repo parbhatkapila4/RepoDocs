@@ -1,17 +1,17 @@
 "use client"
 
 import React from 'react'
-import { ArrowRight } from "lucide-react"
 import { motion } from "motion/react"
-import { useUser } from '@/hooks/useUser'
-import { useRouter } from 'next/navigation'
+import { ArrowRight } from "lucide-react"
+import { useUser } from "@clerk/nextjs"
+import { useRouter } from "next/navigation"
 
-export default function FinalCTA() {
-  const { isAuthenticated } = useUser()
+export default function CTASection() {
+  const { isSignedIn } = useUser()
   const router = useRouter()
 
   return (
-    <section className="py-32 bg-[#0a0a0a] border-t border-[#1a1a1a]">
+    <section className="bg-[#0a0a0a] py-32 border-t border-[#1a1a1a]">
       <div className="max-w-6xl mx-auto px-6">
         <motion.div 
           className="text-center"
@@ -30,7 +30,7 @@ export default function FinalCTA() {
           </p>
 
           <button
-            onClick={() => router.push(isAuthenticated ? '/dashboard' : '/sign-up')}
+            onClick={() => router.push(isSignedIn ? '/dashboard' : '/sign-up')}
             className="group px-8 py-4 bg-white text-black font-medium rounded-lg inline-flex items-center gap-3 hover:bg-[#eee] transition-colors text-lg"
           >
             Get started free
@@ -41,3 +41,4 @@ export default function FinalCTA() {
     </section>
   )
 }
+

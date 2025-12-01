@@ -1,4 +1,5 @@
 "use client"
+
 import React, { useEffect, Suspense, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -9,7 +10,6 @@ import {
   Features,
   HowItWorks,
   Demo,
-  DashboardPreview,
   SocialProof,
   FinalCTA,
   Footer
@@ -38,13 +38,10 @@ function PaymentStatusHandler() {
       })
       
       // Force update the plan directly from the URL parameter
-      // This bypasses webhook delays and ensures the plan is set correctly
       const syncAndRedirect = async () => {
         try {
           console.log('🔄 Force syncing plan to:', plan)
           
-          // FORCE the plan from URL - don't rely on Stripe subscription detection
-          // This is more reliable because Stripe API can have delays
           const response = await fetch('/api/sync-plan', { 
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -73,7 +70,6 @@ function PaymentStatusHandler() {
           }, 500)
         } catch (error) {
           console.error('❌ Error syncing plan:', error)
-          // Still redirect even if sync fails
           router.push('/dashboard')
         }
       }
@@ -100,19 +96,12 @@ function PaymentStatusHandler() {
 
 function LandingPageContent() {
   return (
-    <div className="min-h-screen black-bg relative overflow-hidden">
-      {/* Subtle Background Elements - Optimized for performance */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/3 rounded-full blur-2xl"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-white/2 rounded-full blur-2xl"></div>
-      </div>
-      
+    <div className="min-h-screen bg-[#0a0a0a]">
       <Navigation />
       <Hero />
       <Features />
       <HowItWorks />
       <Demo />
-      <DashboardPreview />
       <SocialProof />
       <FinalCTA />
       <Footer />
@@ -122,7 +111,13 @@ function LandingPageContent() {
 
 export default function LandingPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="relative">
+          <div className="w-12 h-12 rounded-full border-2 border-white/10 border-t-white/80 animate-spin" />
+        </div>
+      </div>
+    }>
       <PaymentStatusHandler />
       <LandingPageContent />
     </Suspense>

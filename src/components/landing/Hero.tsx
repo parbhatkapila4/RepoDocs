@@ -1,169 +1,191 @@
 "use client"
-import React, { useState } from 'react'
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { ArrowDown, Zap, Play } from "lucide-react"
+import React, { useState, useEffect, useMemo } from 'react'
+import { ArrowRight, Play } from "lucide-react"
 import { motion } from "motion/react"
-import { Vortex } from "@/components/ui/vortex"
 import { useUser } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
 import { VideoModal } from "./VideoModal"
+
+// Terminal component with real feel
+const Terminal = () => {
+  const [lines, setLines] = useState<string[]>([])
+  const [currentLine, setCurrentLine] = useState(0)
+  
+  const terminalLines = useMemo(() => [
+    '$ repodoc init',
+    'Connecting to github.com/vercel/next.js...',
+    'Indexing 33,847 files...',
+    '████████████████████ 100%',
+    '',
+    '✓ Knowledge base ready',
+    '',
+    '$ repodoc ask "How does routing work?"',
+    '',
+    'The App Router in Next.js uses a file-system',
+    'based router built on React Server Components.',
+    '',
+    'See: app/page.tsx (L12-45)',
+    '     lib/router.ts (L89-124)',
+  ], [])
+
+  useEffect(() => {
+    if (currentLine < terminalLines.length) {
+      const timeout = setTimeout(() => {
+        setLines(prev => [...prev, terminalLines[currentLine]])
+        setCurrentLine(prev => prev + 1)
+      }, currentLine === 0 ? 500 : terminalLines[currentLine] === '' ? 200 : 
+         terminalLines[currentLine].includes('████') ? 800 : 100)
+      return () => clearTimeout(timeout)
+    } else {
+      // Reset after a pause
+      const timeout = setTimeout(() => {
+        setLines([])
+        setCurrentLine(0)
+      }, 4000)
+      return () => clearTimeout(timeout)
+    }
+  }, [currentLine, terminalLines])
+
+  return (
+    <div className="w-full max-w-2xl mx-auto">
+      <div className="bg-[#1a1a1a] rounded-lg overflow-hidden border border-[#333] shadow-2xl">
+        <div className="flex items-center gap-2 px-4 py-3 bg-[#252525] border-b border-[#333]">
+          <div className="w-3 h-3 rounded-full bg-[#ff5f57]" />
+          <div className="w-3 h-3 rounded-full bg-[#febc2e]" />
+          <div className="w-3 h-3 rounded-full bg-[#28c840]" />
+          <span className="ml-3 text-[#666] text-sm font-mono">terminal</span>
+        </div>
+        <div className="p-6 font-mono text-sm min-h-[320px]">
+          {lines.map((line, i) => (
+            <div 
+              key={i} 
+              className={`${
+                line.startsWith('$') ? 'text-[#50fa7b]' :
+                line.startsWith('✓') ? 'text-[#50fa7b]' :
+                line.includes('████') ? 'text-[#8be9fd]' :
+                line.startsWith('See:') ? 'text-[#bd93f9]' :
+                line.includes('L12') || line.includes('L89') ? 'text-[#bd93f9]' :
+                'text-[#f8f8f2]'
+              }`}
+            >
+              {line || '\u00A0'}
+            </div>
+          ))}
+          <span className="inline-block w-2 h-4 bg-[#f8f8f2] animate-pulse" />
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function Hero() {
   const { isSignedIn } = useUser()
   const router = useRouter()
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false)
 
-  const handleButtonClick = () => {
-    if (isSignedIn) {
-      router.push('/dashboard')
-    } else {
-      router.push('/sign-in')
-    }
-  }
-
   return (
-    <section className="pt-16 sm:pt-20 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-      <Vortex
-        backgroundColor="black"
-        className="flex items-center flex-col justify-center px-2 md:px-10 py-4 w-full h-full mb-32 sm:mb-52"
-      >
-        <div className="max-w-7xl mx-auto relative z-10">
-        <div className="text-center">
-          <Badge variant="secondary" className="mb-4 sm:mb-6 px-3 sm:px-4 py-2 text-xs sm:text-sm glass-card text-white/90 border-subtle">
-            <Zap className="w-3 h-3 sm:w-4 sm:h-4 mr-2 text-white/80" />
-            RAG-powered codebase intelligence in seconds
-          </Badge>
-          
-          <motion.h1 
-            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 sm:mb-6 leading-tight"
-            initial={{  opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 1.2, ease: "easeOut" }}
+    <section className="min-h-screen bg-[#0a0a0a] relative">
+      {/* Subtle grain texture */}
+      <div 
+        className="absolute inset-0 opacity-[0.03]"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+        }}
+      />
+      
+      {/* Single accent line */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-[#333] to-transparent" />
+      
+      <div className="max-w-6xl mx-auto px-6 pt-32 pb-20 relative">
+        {/* Small label */}
+        <motion.div 
+          className="mb-8"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+        >
+          <span className="text-[#666] text-sm font-mono tracking-wide">
+            RAG-POWERED CODE INTELLIGENCE
+          </span>
+        </motion.div>
+
+        {/* Main headline - Big, bold, simple */}
+        <motion.h1 
+          className="text-[clamp(3rem,8vw,7rem)] font-bold leading-[0.95] tracking-tight text-white mb-8 max-w-4xl"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+        >
+          Ask your codebase
+          <br />
+          <span className="text-[#666]">anything.</span>
+        </motion.h1>
+
+        {/* Subheadline - Concise */}
+        <motion.p 
+          className="text-xl text-[#888] max-w-xl mb-12 leading-relaxed"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          Connect a GitHub repo. Get instant answers with precise code references. 
+          No more digging through files.
+        </motion.p>
+
+        {/* CTAs - Clean and simple */}
+        <motion.div 
+          className="flex flex-wrap gap-4 mb-24"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+        >
+          <button
+            onClick={() => router.push(isSignedIn ? '/dashboard' : '/sign-up')}
+            className="group px-6 py-3 bg-white text-black font-medium rounded-lg flex items-center gap-2 hover:bg-[#eee] transition-colors"
           >
-            {["Turn", "your", "GitHub", "repos", "into", "queryable", "knowledge", "bases."].map((word, index) => (
-              <motion.span
-                key={index}
-                initial={{ 
-                  opacity: 0, 
-                  y: 10,
-                  filter: "blur(8px)",
-                  scale: 0.2
-                }}
-                animate={{ 
-                  opacity: 1, 
-                  y: 0,
-                  filter: "blur(0px)",
-                  scale: 1
-                }}
-                transition={{
-                  duration: 0.8,
-                  delay: index * 0.15,
-                  ease: [0.25, 0.46, 0.45, 0.94]
-                }}
-                className={word === "professional" || word === "documentation" ? "text-white/90 text-glow-subtle" : ""}
-              >
-                {word}{' '}
-              </motion.span>
-            ))}
-          </motion.h1>
+            Get started
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+          </button>
           
-          <p className="text-lg sm:text-xl text-white/60 mb-6 sm:mb-8 max-w-3xl mx-auto leading-relaxed">
-            {["Ask", "questions", "about", "your", "codebase.", "Get", "instant", "answers", "with", "code", "references", "and", "context."].map((word, index) => (
-              <motion.span
-                key={index}
-                initial={{ 
-                  opacity: 0, 
-                  y: 10,
-                  filter: "blur(8px)",
-                  scale: 0.2
-                }}
-                animate={{ 
-                  opacity: 1, 
-                  y: 0,
-                  filter: "blur(0px)",
-                  scale: 1
-                }}
-                transition={{
-                  duration: 0.8,
-                  delay: (index * 0.08),
-                  ease: [0.25, 0.46, 0.45, 0.94]
-                }}
-              >
-                {word}{' '}
-              </motion.span>
-            ))}
-          </p>
-          
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center mb-8 sm:mb-12">
-            <Button 
-              variant="outline" 
-              size="lg" 
-              className="h-10 sm:h-12 px-6 sm:px-8 text-base sm:text-lg border-subtle text-white/70 hover:text-white hover:bg-white/5 glass-card w-full sm:w-auto"
-              aria-label="Start your journey - sign in or go to dashboard"
-              onClick={handleButtonClick}
-            >
-              <ArrowDown className="w-4 h-4 sm:w-5 sm:h-5 mr-2 border-none" />
-              Start Your Journey
-            </Button>
-            
-            <Button 
-              variant="outline" 
-              size="lg" 
-              className="h-10 sm:h-12 px-6 sm:px-8 text-base sm:text-lg border-subtle text-white/70 hover:text-white hover:bg-white/5 glass-card w-full sm:w-auto"
-              onClick={() => {
-                console.log("Watch Demo button clicked, opening modal");
-                setIsVideoModalOpen(true);
-              }}
-            >
-              <Play className="w-4 h-4 sm:w-5 sm:h-5 mr-2 border-none" />
-              <span className="hidden sm:inline">Watch Demo</span>
-              <span className="sm:hidden">Demo</span>
-            </Button>
-          </div>
-          
-          {/* Hero Visual */}
-          <div className="relative max-w-5xl mx-auto">
-            <div className="glass-card rounded-2xl p-4 sm:p-6 md:p-8 shadow-2xl border-subtle floating">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 items-center">
-                <div className="space-y-4">
-                  <div className="glass-card rounded-lg p-4 border-subtle">
-                    <div className="flex items-center space-x-2 mb-3">
-                      <div className="w-3 h-3 bg-white/20 rounded-full"></div>
-                      <div className="w-3 h-3 bg-white/20 rounded-full"></div>
-                      <div className="w-3 h-3 bg-white/20 rounded-full"></div>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="h-4 bg-white/10 rounded w-3/4"></div>
-                      <div className="h-4 bg-white/10 rounded w-1/2"></div>
-                      <div className="h-4 bg-white/10 rounded w-2/3"></div>
-                    </div>
-                  </div>
-                  <div className="text-xs sm:text-sm text-white/50">
-                    <p>🤖 AI analyzing codebase...</p>
-                    <p>📊 Understanding architecture</p>
-                    <p>📝 Generating documentation</p>
-                  </div>
-                </div>
-                <div className="glass-card rounded-lg p-4 sm:p-6 border-subtle">
-                  <h3 className="font-semibold mb-3 text-white text-sm sm:text-base">AI-Generated Documentation</h3>
-                  <div className="space-y-2 text-xs sm:text-sm">
-                    <div className="h-2 sm:h-3 bg-white/10 rounded w-full"></div>
-                    <div className="h-2 sm:h-3 bg-white/10 rounded w-4/5"></div>
-                    <div className="h-2 sm:h-3 bg-white/10 rounded w-3/4"></div>
-                    <div className="h-2 sm:h-3 bg-white/10 rounded w-5/6"></div>
-                  </div>
-                  <div className="mt-3 sm:mt-4 p-2 sm:p-3 bg-white/5 rounded border-l-4 border-white/20">
-                    <div className="h-1.5 sm:h-2 bg-white/10 rounded w-full mb-1"></div>
-                    <div className="h-1.5 sm:h-2 bg-white/10 rounded w-3/4"></div>
-                  </div>
-                </div>
+          <button
+            onClick={() => setIsVideoModalOpen(true)}
+            className="px-6 py-3 text-[#888] font-medium rounded-lg flex items-center gap-2 hover:text-white transition-colors border border-[#333] hover:border-[#555]"
+          >
+            <Play className="w-4 h-4" />
+            Watch demo
+          </button>
+        </motion.div>
+
+        {/* Terminal demo */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.5 }}
+        >
+          <Terminal />
+        </motion.div>
+
+        {/* What makes this different */}
+        <motion.div 
+          className="mt-20 pt-12 border-t border-[#222]"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.8 }}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              { value: 'pgvector', label: 'Real vector search, not keyword matching' },
+              { value: 'Line-level', label: 'Answers cite exact file:line references' },
+              { value: 'Shareable', label: 'Generate public links to docs & READMEs' },
+            ].map((stat) => (
+              <div key={stat.label}>
+                <div className="text-xl font-bold text-white mb-1 font-mono">{stat.value}</div>
+                <div className="text-sm text-[#666]">{stat.label}</div>
               </div>
-            </div>
+            ))}
           </div>
-        </div>
+        </motion.div>
       </div>
-      </Vortex>
       
       <VideoModal
         videoSrc="https://lcbcrithcxdbqynfmtxk.supabase.co/storage/v1/object/public/Videos/Repo-Doc-1762580822637.mp4"
