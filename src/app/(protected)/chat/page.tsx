@@ -189,13 +189,13 @@ export default function ChatPage() {
 
   if (!currentProject) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#0a0a0f]">
-        <div className="text-center p-8 max-w-md">
-          <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
-            <Wand2 className="w-10 h-10 text-white" />
+      <div className="flex items-center justify-center min-h-screen bg-[#0a0a0f] px-4">
+        <div className="text-center p-6 sm:p-8 max-w-md">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 sm:mb-6 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+            <Wand2 className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
           </div>
-          <h2 className="text-2xl font-semibold text-white mb-3">No Project Selected</h2>
-          <p className="text-gray-400 leading-relaxed">
+          <h2 className="text-xl sm:text-2xl font-semibold text-white mb-2 sm:mb-3">No Project Selected</h2>
+          <p className="text-sm sm:text-base text-gray-400 leading-relaxed">
             Please select a project from the sidebar to start chatting with your codebase
           </p>
         </div>
@@ -206,23 +206,23 @@ export default function ChatPage() {
   return (
     <div className="flex flex-col h-screen bg-[#0a0a0f] overflow-hidden">
       {/* Header Bar */}
-      <div className="flex-shrink-0 pt-4 pb-2 px-4">
-        <div className="relative flex items-center justify-center">
-          {/* Model Selector - Center */}
+      <div className="flex-shrink-0 pt-3 sm:pt-4 pb-2 px-3 sm:px-4">
+        <div className="flex items-center justify-between sm:justify-center sm:relative gap-2">
+          {/* Model Selector - Center on desktop, left on mobile */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button 
                 variant="outline" 
-                className="bg-white/5 border-white/10 hover:bg-white/10 text-white shadow-lg rounded-xl px-4 py-2 h-auto gap-2 backdrop-blur-sm"
+                className="bg-white/5 border-white/10 hover:bg-white/10 text-white shadow-lg rounded-xl px-2.5 sm:px-4 py-2 h-auto gap-1.5 sm:gap-2 backdrop-blur-sm"
               >
-                <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                  <Wand2 className="w-3.5 h-3.5 text-white" />
+                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                  <Wand2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
                 </div>
-                <span className="font-medium">{selectedModel.name}</span>
-                <ChevronDown className="w-4 h-4 text-gray-400" />
+                <span className="font-medium text-sm sm:text-base">{selectedModel.name}</span>
+                <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="w-56 bg-[#16161d] border-white/10 shadow-2xl rounded-xl p-1">
+            <DropdownMenuContent align="start" className="w-56 bg-[#16161d] border-white/10 shadow-2xl rounded-xl p-1 sm:align-center">
               {models.map((model) => (
                 <DropdownMenuItem
                   key={model.id}
@@ -244,7 +244,7 @@ export default function ChatPage() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* New Chat Button - Absolute Right Corner */}
+          {/* New Chat Button - Right side */}
           <Button
             variant="outline"
             onClick={() => {
@@ -252,10 +252,10 @@ export default function ChatPage() {
               setInput('');
               toast.success('Started a new chat!');
             }}
-            className="absolute right-0 bg-white/5 border-white/10 hover:bg-white/10 text-white rounded-xl px-3 py-2 h-auto gap-1.5 backdrop-blur-sm"
+            className="sm:absolute sm:right-0 bg-white/5 border-white/10 hover:bg-white/10 text-white rounded-xl px-2.5 sm:px-3 py-2 h-auto gap-1 sm:gap-1.5 backdrop-blur-sm"
           >
             <Plus className="w-4 h-4" />
-            <span className="text-sm font-medium">New</span>
+            <span className="text-xs sm:text-sm font-medium">New</span>
           </Button>
         </div>
       </div>
@@ -264,20 +264,20 @@ export default function ChatPage() {
       <div className="flex-1 flex flex-col overflow-hidden">
         {messages.length === 0 ? (
           /* Empty State - Welcome Screen */
-          <div className="flex-1 flex flex-col items-center justify-center px-4 pb-8">
+          <div className="flex-1 flex flex-col items-center justify-center px-3 sm:px-4 pb-4 sm:pb-8">
             {/* Decorative Gradient Blob */}
-            <div className="relative mb-6">
-              <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-blue-600 opacity-70 blur-xl animate-pulse" />
-              <div className="absolute inset-0 w-28 h-28 sm:w-36 sm:h-36 rounded-full bg-gradient-to-tr from-blue-500 via-indigo-600 to-purple-600 opacity-50 blur-2xl animate-pulse" style={{ animationDelay: '0.5s' }} />
-              <div className="absolute inset-3 sm:inset-5 w-22 h-22 sm:w-26 sm:h-26 rounded-full bg-gradient-to-br from-indigo-400 via-purple-500 to-blue-500 opacity-90 shadow-lg shadow-purple-500/30" />
+            <div className="relative mb-4 sm:mb-6">
+              <div className="w-20 h-20 sm:w-28 md:w-36 sm:h-28 md:h-36 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-blue-600 opacity-70 blur-xl animate-pulse" />
+              <div className="absolute inset-0 w-20 h-20 sm:w-28 md:w-36 sm:h-28 md:h-36 rounded-full bg-gradient-to-tr from-blue-500 via-indigo-600 to-purple-600 opacity-50 blur-2xl animate-pulse" style={{ animationDelay: '0.5s' }} />
+              <div className="absolute inset-2 sm:inset-3 md:inset-5 rounded-full bg-gradient-to-br from-indigo-400 via-purple-500 to-blue-500 opacity-90 shadow-lg shadow-purple-500/30" />
             </div>
 
             {/* Greeting */}
-            <div className="text-center mb-10 sm:mb-12">
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-2 tracking-tight">
+            <div className="text-center mb-6 sm:mb-10 md:mb-12 px-2">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-1.5 sm:mb-2 tracking-tight">
                 {getGreeting()}, {userName}
               </h1>
-              <p className="text-2xl sm:text-3xl lg:text-4xl font-semibold">
+              <p className="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-semibold">
                 <span className="text-white">How Can I </span>
                 <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-blue-400 bg-clip-text text-transparent">
                   Assist You Today?
@@ -286,28 +286,28 @@ export default function ChatPage() {
             </div>
 
             {/* Input Area */}
-            <div className="w-full max-w-3xl mx-auto px-4">
+            <div className="w-full max-w-3xl mx-auto px-2 sm:px-4">
               <form onSubmit={handleSubmit} className="relative">
-                <div className="relative bg-white/5 backdrop-blur-xl rounded-2xl shadow-2xl shadow-black/20 border border-white/10 overflow-hidden">
-                  <div className="flex items-start p-3">
-                    <div className="flex-shrink-0 p-2.5 mt-0.5">
-                      <Github className="w-5 h-5 text-indigo-400" />
+                <div className="relative bg-white/5 backdrop-blur-xl rounded-xl sm:rounded-2xl shadow-2xl shadow-black/20 border border-white/10 overflow-hidden">
+                  <div className="flex items-start p-2 sm:p-3">
+                    <div className="flex-shrink-0 p-2 sm:p-2.5 mt-0.5">
+                      <Github className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400" />
                     </div>
                     <textarea
                       ref={inputRef}
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       onKeyDown={handleKeyDown}
-                      placeholder="Initiate a query or send a command to the AI..."
+                      placeholder="Ask about your codebase..."
                       disabled={isLoading}
                       rows={1}
-                      className="flex-1 bg-transparent border-none outline-none resize-none py-3 px-2 text-white placeholder:text-gray-500 text-base min-h-[52px] max-h-[140px]"
+                      className="flex-1 bg-transparent border-none outline-none resize-none py-2.5 sm:py-3 px-1 sm:px-2 text-white placeholder:text-gray-500 text-sm sm:text-base min-h-[44px] sm:min-h-[52px] max-h-[120px] sm:max-h-[140px]"
                     />
                     <Button
                       type="submit"
                       size="sm"
                       disabled={isLoading || !input.trim()}
-                      className="flex-shrink-0 m-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl h-10 w-10 p-0 shadow-lg shadow-indigo-500/25"
+                      className="flex-shrink-0 m-1.5 sm:m-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-lg sm:rounded-xl h-9 w-9 sm:h-10 sm:w-10 p-0 shadow-lg shadow-indigo-500/25"
                     >
                       {isLoading ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -318,15 +318,15 @@ export default function ChatPage() {
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex items-center gap-2 px-5 py-4 border-t border-white/5">
+                  <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-3 sm:py-4 border-t border-white/5 overflow-x-auto scrollbar-hide">
                     {actionButtons.map((action, idx) => (
                       <button
                         key={idx}
                         type="button"
                         onClick={() => handleActionClick(action.label)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors border border-white/5 hover:border-white/10"
+                        className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors border border-white/5 hover:border-white/10 whitespace-nowrap flex-shrink-0"
                       >
-                        <action.icon className={`w-4 h-4 ${action.color}`} />
+                        <action.icon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${action.color}`} />
                         <span>{action.label}</span>
                       </button>
                     ))}
@@ -343,20 +343,20 @@ export default function ChatPage() {
             className="flex-1 overflow-y-auto min-h-0"
             style={{ scrollBehavior: 'smooth' }}
           >
-            <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+            <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
               {messages.map((message) => (
                 <div
                   key={message.id}
                   className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[85%] ${
+                    className={`max-w-[92%] sm:max-w-[85%] ${
                       message.role === 'user'
-                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl rounded-tr-md px-4 py-3 shadow-lg shadow-indigo-500/20'
-                        : 'bg-white/5 backdrop-blur-sm text-white rounded-2xl rounded-tl-md px-4 py-3 shadow-lg shadow-black/20 border border-white/10'
+                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl rounded-tr-md px-3 sm:px-4 py-2.5 sm:py-3 shadow-lg shadow-indigo-500/20'
+                        : 'bg-white/5 backdrop-blur-sm text-white rounded-2xl rounded-tl-md px-3 sm:px-4 py-2.5 sm:py-3 shadow-lg shadow-black/20 border border-white/10'
                     }`}
                   >
-                    <div className="prose prose-sm prose-invert max-w-none [&>*:last-child]:mb-0">
+                    <div className="prose prose-sm prose-invert max-w-none [&>*:last-child]:mb-0 text-sm sm:text-base">
                       <ReactMarkdown
                         components={{
                           code({ inline, className, children, ...props }: { inline?: boolean; className?: string; children?: React.ReactNode }) {
@@ -367,19 +367,20 @@ export default function ChatPage() {
                                 language={match[1]}
                                 PreTag="div"
                                 customStyle={{
-                                  fontSize: '0.8rem',
-                                  padding: '0.75rem',
+                                  fontSize: '0.75rem',
+                                  padding: '0.5rem',
                                   margin: '0.5rem 0',
                                   borderRadius: '0.5rem',
                                   border: '1px solid rgba(255,255,255,0.1)',
                                   background: 'rgba(0,0,0,0.3)',
+                                  overflowX: 'auto',
                                 }}
                                 {...props}
                               >
                                 {String(children).replace(/\n$/, '')}
                               </SyntaxHighlighter>
                             ) : (
-                              <code className={`${className} bg-white/10 text-indigo-300 px-1.5 py-0.5 rounded text-sm`} {...props}>
+                              <code className={`${className} bg-white/10 text-indigo-300 px-1 sm:px-1.5 py-0.5 rounded text-xs sm:text-sm break-all`} {...props}>
                                 {children}
                               </code>
                             );
@@ -392,10 +393,10 @@ export default function ChatPage() {
 
                     {/* Sources */}
                     {message.sources && message.sources.length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-white/10">
+                      <div className="mt-2.5 sm:mt-3 pt-2.5 sm:pt-3 border-t border-white/10">
                         <div className="flex items-center gap-1.5 mb-2">
-                          <FileCode className="h-3.5 w-3.5 text-gray-400" />
-                          <span className="text-xs font-medium text-gray-400">
+                          <FileCode className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-gray-400" />
+                          <span className="text-[10px] sm:text-xs font-medium text-gray-400">
                             Sources ({message.sources.length})
                           </span>
                         </div>
@@ -403,11 +404,11 @@ export default function ChatPage() {
                           {message.sources.map((source, idx) => (
                             <div
                               key={idx}
-                              className="text-xs bg-black/20 rounded-lg p-2 border border-white/5"
+                              className="text-[10px] sm:text-xs bg-black/20 rounded-lg p-1.5 sm:p-2 border border-white/5"
                             >
                               <div className="flex items-center justify-between gap-2 mb-1">
-                                <code className="text-indigo-400 font-medium truncate">{source.fileName}</code>
-                                <span className="flex-shrink-0 text-xs text-gray-500 bg-white/5 px-1.5 py-0.5 rounded">
+                                <code className="text-indigo-400 font-medium truncate text-[10px] sm:text-xs">{source.fileName}</code>
+                                <span className="flex-shrink-0 text-[10px] sm:text-xs text-gray-500 bg-white/5 px-1 sm:px-1.5 py-0.5 rounded">
                                   {(source.similarity * 100).toFixed(0)}%
                                 </span>
                               </div>
@@ -423,10 +424,10 @@ export default function ChatPage() {
 
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="max-w-[85%] bg-white/5 backdrop-blur-sm text-white rounded-2xl rounded-tl-md px-4 py-3 shadow-lg shadow-black/20 border border-white/10">
+                  <div className="max-w-[92%] sm:max-w-[85%] bg-white/5 backdrop-blur-sm text-white rounded-2xl rounded-tl-md px-3 sm:px-4 py-2.5 sm:py-3 shadow-lg shadow-black/20 border border-white/10">
                     <div className="flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin text-indigo-400" />
-                      <span className="text-sm text-gray-400">Analyzing codebase...</span>
+                      <span className="text-xs sm:text-sm text-gray-400">Analyzing codebase...</span>
                     </div>
                   </div>
                 </div>
@@ -440,12 +441,12 @@ export default function ChatPage() {
 
         {/* Input Area - When Messages Exist */}
         {messages.length > 0 && (
-          <div className="flex-shrink-0 border-t border-white/5 bg-[#0a0a0f]/80 backdrop-blur-xl p-4">
+          <div className="flex-shrink-0 border-t border-white/5 bg-[#0a0a0f]/80 backdrop-blur-xl p-2.5 sm:p-4">
             <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
               <div className="relative bg-white/5 backdrop-blur-xl rounded-xl shadow-2xl shadow-black/20 border border-white/10 overflow-hidden">
-                <div className="flex items-center p-2">
-                  <div className="flex-shrink-0 p-2">
-                    <Github className="w-5 h-5 text-indigo-400" />
+                <div className="flex items-center p-1.5 sm:p-2">
+                  <div className="flex-shrink-0 p-1.5 sm:p-2">
+                    <Github className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400" />
                   </div>
                   <textarea
                     ref={inputRef}
@@ -455,7 +456,7 @@ export default function ChatPage() {
                     placeholder="Ask a follow-up question..."
                     disabled={isLoading}
                     rows={1}
-                    className="flex-1 bg-transparent border-none outline-none resize-none py-2 px-2 text-white placeholder:text-gray-500 text-sm min-h-[40px] max-h-[100px]"
+                    className="flex-1 bg-transparent border-none outline-none resize-none py-2 px-1 sm:px-2 text-white placeholder:text-gray-500 text-sm min-h-[36px] sm:min-h-[40px] max-h-[80px] sm:max-h-[100px]"
                   />
                   <Button
                     type="submit"

@@ -43,8 +43,7 @@ const plans = [
     ],
     buttonText: "Pay $20",
     buttonStyle: "primary",
-    highlighted: true,
-    badge: "Popular"
+    highlighted: true
   },
   {
     name: "Enterprise",
@@ -152,80 +151,6 @@ export default function PricingPage() {
           </Button>
         </motion.div>
 
-        {/* Coming Soon Banner */}
-        <motion.div
-          className="text-center mb-16 relative py-8"
-          initial={{ opacity: 0, scale: 0.8, y: -30 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-        >
-          <div className="inline-block relative px-8 py-4">
-            {/* Subtle background glow - optimized */}
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 rounded-full blur-2xl"></div>
-            
-            {/* Main text with gradient */}
-            <motion.h1
-              className="relative text-6xl sm:text-7xl lg:text-9xl font-black tracking-tighter mb-4 leading-none"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 1, delay: 0.3 }}
-            >
-              <motion.span
-                className="block bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent bg-[length:200%_auto] text-glow-subtle"
-                initial={{ opacity: 0, x: -50 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.8, delay: 0.4 }}
-              >
-                COMING
-              </motion.span>
-              <motion.span
-                className="block bg-gradient-to-r from-pink-400 via-purple-400 to-blue-400 bg-clip-text text-transparent bg-[length:200%_auto] text-glow-subtle"
-                initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.8, delay: 0.6 }}
-              >
-                SOON
-              </motion.span>
-            </motion.h1>
-            
-            {/* Decorative elements - static for performance */}
-            <motion.div
-              className="absolute -top-4 -left-4 w-4 h-4 bg-blue-400 rounded-full shadow-lg shadow-blue-400/50"
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ duration: 0.5, delay: 0.8 }}
-            ></motion.div>
-            <motion.div
-              className="absolute -top-2 -right-8 w-3 h-3 bg-purple-400 rounded-full shadow-lg shadow-purple-400/50"
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ duration: 0.5, delay: 1 }}
-            ></motion.div>
-            <motion.div
-              className="absolute -bottom-2 -left-8 w-3 h-3 bg-pink-400 rounded-full shadow-lg shadow-pink-400/50"
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ duration: 0.5, delay: 1.2 }}
-            ></motion.div>
-            <motion.div
-              className="absolute -bottom-4 -right-4 w-4 h-4 bg-purple-400 rounded-full shadow-lg shadow-purple-400/50"
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ duration: 0.5, delay: 1.4 }}
-            ></motion.div>
-          </div>
-          
-          {/* Subtitle */}
-          <motion.p
-            className="text-xl sm:text-2xl text-white/70 font-medium mt-8"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.9 }}
-          >
-            We're crafting something amazing for you
-          </motion.p>
-        </motion.div>
-
         {/* Header */}
         <motion.div 
           className="text-center mb-16"
@@ -261,12 +186,12 @@ export default function PricingPage() {
                 {/* Inner Price Card */}
                 <div className={`p-6 pb-8 rounded-2xl relative overflow-hidden min-h-[160px] ${
                   plan.highlighted 
-                    ? 'bg-gradient-to-br from-amber-400 via-orange-400/90 to-slate-500' 
-                    : 'bg-gradient-to-r from-gray-200 via-gray-100 to-white'
+                    ? 'bg-linear-to-br from-amber-400 via-orange-400/90 to-slate-500' 
+                    : 'bg-linear-to-r from-gray-200 via-gray-100 to-white'
                 }`}>
                   {/* Gradient Overlay for Pro Plan */}
                   {plan.highlighted && (
-                    <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 via-orange-300/10 to-slate-600/60"></div>
+                    <div className="absolute inset-0 bg-linear-to-br from-yellow-400/20 via-orange-300/10 to-slate-600/60"></div>
                   )}
                   
                   <div className="relative z-10 h-full">
@@ -295,15 +220,6 @@ export default function PricingPage() {
                         {plan.period}
                       </span>
                     </div>
-
-                    {/* Popular Badge for Pro Plan - positioned at bottom right */}
-                    {plan.badge && (
-                      <Badge 
-                        className="absolute bottom-4 right-4 bg-white text-gray-800 shadow-lg px-3 py-1 text-xs font-semibold rounded-full"
-                      >
-                        {plan.badge}
-                      </Badge>
-                    )}
                   </div>
                 </div>
 
@@ -316,7 +232,7 @@ export default function PricingPage() {
                   <ul className="space-y-4 mb-8">
                     {plan.features.map((feature, featureIndex) => (
                       <li key={featureIndex} className="flex items-start gap-3">
-                        <Check className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                        <Check className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
                         <span className="text-white/70 text-sm leading-relaxed">
                           {feature}
                         </span>
@@ -364,7 +280,7 @@ export default function PricingPage() {
           transition={{ duration: 0.6, delay: 0.6 }}
         >
           <p className="text-white/60 mb-4">
-            Need a custom plan? We've got you covered.
+            Need a custom plan? We&apos;ve got you covered.
           </p>
           <Button 
             variant="outline"
@@ -375,6 +291,152 @@ export default function PricingPage() {
               Contact Sales
             </Link>
           </Button>
+        </motion.div>
+
+        {/* Test Mode Disclaimer - Cyberpunk Terminal Style */}
+        <motion.div 
+          className="mt-24 mb-12 perspective-1000"
+          initial={{ opacity: 0, rotateX: -15 }}
+          animate={{ opacity: 1, rotateX: 0 }}
+          transition={{ duration: 1, delay: 0.8, ease: [0.23, 1, 0.32, 1] }}
+        >
+          <div className="relative max-w-3xl mx-auto">
+            {/* Floating particles */}
+            {[...Array(6)].map((_, i) => (
+              <motion.div
+                key={i}
+                className="absolute w-1 h-1 bg-cyan-400 rounded-full"
+                style={{
+                  left: `${15 + i * 15}%`,
+                  top: i % 2 === 0 ? '-10px' : 'auto',
+                  bottom: i % 2 !== 0 ? '-10px' : 'auto',
+                }}
+                animate={{
+                  y: i % 2 === 0 ? [0, -15, 0] : [0, 15, 0],
+                  opacity: [0.3, 1, 0.3],
+                  scale: [1, 1.5, 1],
+                }}
+                transition={{
+                  duration: 2 + i * 0.3,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: i * 0.2,
+                }}
+              />
+            ))}
+
+            {/* Main holographic card */}
+            <motion.div 
+              className="relative group"
+              whileHover={{ scale: 1.02, rotateY: 2 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              {/* Holographic shimmer effect */}
+              <div className="absolute inset-0 rounded-2xl bg-linear-to-r from-cyan-500/20 via-purple-500/20 to-pink-500/20 blur-xl opacity-60"></div>
+              
+              {/* Border frame with corner accents */}
+              <div className="relative rounded-2xl p-[2px] bg-linear-to-br from-cyan-400 via-purple-500 to-pink-500">
+                <div className="relative rounded-2xl bg-gray-950/95 backdrop-blur-xl overflow-hidden">
+                  
+                  {/* Scanning line effect */}
+                  <motion.div
+                    className="absolute inset-0 bg-linear-to-b from-cyan-400/10 via-cyan-400/5 to-transparent"
+                    style={{ height: '30%' }}
+                    animate={{ top: ['-30%', '130%'] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                  />
+                  
+                  {/* Grid pattern overlay */}
+                  <div className="absolute inset-0 opacity-10" style={{
+                    backgroundImage: 'linear-gradient(rgba(6, 182, 212, 0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(6, 182, 212, 0.3) 1px, transparent 1px)',
+                    backgroundSize: '20px 20px'
+                  }}></div>
+
+                  {/* Content container */}
+                  <div className="relative z-10 px-8 py-8">
+                    {/* Header with status */}
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-3">
+                        <div className="flex gap-1.5">
+                          <motion.div 
+                            className="w-3 h-3 rounded-full bg-red-500"
+                            animate={{ opacity: [1, 0.5, 1] }}
+                            transition={{ duration: 1.5, repeat: Infinity }}
+                          />
+                          <div className="w-3 h-3 rounded-full bg-yellow-500" />
+                          <div className="w-3 h-3 rounded-full bg-green-500" />
+                        </div>
+                        <span className="text-cyan-400/60 text-xs font-mono">system://payment-gateway</span>
+                      </div>
+                      <motion.div
+                        className="flex items-center gap-2 px-3 py-1 rounded-md bg-yellow-500/10 border border-yellow-500/30"
+                        animate={{ borderColor: ['rgba(234, 179, 8, 0.3)', 'rgba(234, 179, 8, 0.6)', 'rgba(234, 179, 8, 0.3)'] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      >
+                        <motion.div 
+                          className="w-2 h-2 rounded-full bg-yellow-400"
+                          animate={{ scale: [1, 1.3, 1] }}
+                          transition={{ duration: 1, repeat: Infinity }}
+                        />
+                        <span className="text-yellow-400 text-xs font-bold font-mono uppercase tracking-wider">Test Mode</span>
+                      </motion.div>
+                    </div>
+
+                    {/* Main message with typewriter cursor effect */}
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-3">
+                        <span className="text-cyan-400 font-mono text-sm">&gt;</span>
+                        <p className="text-white/90 text-base sm:text-lg font-medium">
+                          Due to Stripe unavailability, the current pricing models are under 
+                          <span className="mx-1.5 px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-mono text-sm">test mode</span>
+                        </p>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <span className="text-purple-400 font-mono text-sm">&gt;</span>
+                        <p className="text-white/60 text-sm sm:text-base flex items-center gap-1">
+                          Once everything is sorted, we&apos;ll move this to 
+                          <span className="mx-1.5 px-2 py-0.5 rounded bg-green-500/20 text-green-300 font-mono text-sm">live mode</span>
+                          <motion.span
+                            className="inline-block w-2 h-4 bg-cyan-400 ml-1"
+                            animate={{ opacity: [1, 0, 1] }}
+                            transition={{ duration: 0.8, repeat: Infinity }}
+                          />
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Bottom status bar */}
+                    <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <motion.div 
+                          className="h-1 w-20 rounded-full bg-linear-to-r from-cyan-500 to-purple-500"
+                          animate={{ opacity: [0.5, 1, 0.5] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                        />
+                        <span className="text-white/30 text-xs font-mono">stripe.connection.pending</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {[...Array(4)].map((_, i) => (
+                          <motion.div
+                            key={i}
+                            className="w-1.5 h-3 rounded-sm bg-cyan-400"
+                            animate={{ scaleY: [0.3, 1, 0.3] }}
+                            transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.15 }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Corner accents */}
+                  <div className="absolute top-2 left-2 w-4 h-4 border-l-2 border-t-2 border-cyan-400/50"></div>
+                  <div className="absolute top-2 right-2 w-4 h-4 border-r-2 border-t-2 border-cyan-400/50"></div>
+                  <div className="absolute bottom-2 left-2 w-4 h-4 border-l-2 border-b-2 border-purple-400/50"></div>
+                  <div className="absolute bottom-2 right-2 w-4 h-4 border-r-2 border-b-2 border-purple-400/50"></div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
         </motion.div>
       </div>
     </div>
