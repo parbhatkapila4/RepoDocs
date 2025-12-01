@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RepoDocs — Auto-generate README & Docs from any GitHub repo",
+  title: "RepoDocs-Auto-generate README & Docs from any GitHub repo",
   description: "Paste a GitHub URL and generate professional README, architecture diagrams, and shareable docs. Sign in with GitHub. Built with Next.js, Clerk, Prisma.",
   keywords: ["GitHub", "README", "documentation", "developer tools", "open source", "repo analysis"],
   authors: [{ name: "RepoDocs Team" }],
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
   },
   manifest: "/site.webmanifest",
   openGraph: {
-    title: "RepoDoc — Auto-generate README & Docs from any GitHub repo",
+    title: "RepoDocs-Auto-generate README & Docs from any GitHub repo",
     description: "Paste a GitHub URL and generate professional README, architecture diagrams, and shareable docs. Sign in with GitHub.",
     url: "https://repodoc.dev",
     siteName: "RepoDoc",
@@ -60,7 +60,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "RepoDocs — Auto-generate README & Docs from any GitHub repo",
+    title: "RepoDocs-Auto-generate README & Docs from any GitHub repo",
     description: "Paste a GitHub URL and generate professional README, architecture diagrams, and shareable docs.",
     images: ["/og-image.png"],
     creator: "@repodoc",

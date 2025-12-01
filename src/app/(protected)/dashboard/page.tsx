@@ -3,24 +3,7 @@ import React, { useEffect, useCallback, useState } from 'react';
 import { useProjectsContext } from '@/context/ProjectsContext';
 import { useRepository } from '@/hooks/useRepository';
 import { useUser } from '@/hooks/useUser';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { motion } from "motion/react";
 import { 
   Github, 
   Star, 
@@ -39,12 +22,25 @@ import {
   Terminal,
   Copy,
   Check,
-  Info,
   Sparkles,
   TrendingUp,
-  Zap
+  Zap,
+  RefreshCw,
+  X
 } from "lucide-react";
 import { toast } from "sonner";
+
+// Dracula-inspired terminal colors
+const terminalColors = {
+  green: '#50fa7b',
+  cyan: '#8be9fd',
+  purple: '#bd93f9',
+  pink: '#ff79c6',
+  yellow: '#f1fa8c',
+  orange: '#ffb86c',
+  red: '#ff5555',
+  white: '#f8f8f2',
+};
 
 function ReposPage() {
   const { projects, selectedProjectId } = useProjectsContext();
@@ -55,8 +51,9 @@ function ReposPage() {
     fetchRepository,
     refreshRepository 
   } = useRepository();
-  const { user, isLoading: userLoading } = useUser();
+  const { isLoading: userLoading } = useUser();
   const [copiedStep, setCopiedStep] = useState<number | null>(null);
+  const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
 
   const currentProject = projects.find(p => p.id === selectedProjectId);
 
@@ -105,7 +102,7 @@ function ReposPage() {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
-      month: 'long',
+      month: 'short',
       day: 'numeric'
     });
   };
@@ -131,7 +128,7 @@ function ReposPage() {
       'C++': '#00599c',
       'C#': '#239120',
       'Go': '#00add8',
-      'Rust': '#000000',
+      'Rust': '#dea584',
       'PHP': '#777bb4',
       'Ruby': '#cc342d',
       'Swift': '#fa7343',
@@ -139,722 +136,570 @@ function ReposPage() {
       'HTML': '#e34f26',
       'CSS': '#1572b6',
       'Vue': '#4fc08d',
-      'React': '#61dafb',
-      'Angular': '#dd0031',
-      'Svelte': '#ff3e00',
-      'Dart': '#0175c2',
-      'Scala': '#dc322f',
-      'Clojure': '#5881d8',
-      'Haskell': '#5d4f85',
-      'Elixir': '#4b275f',
-      'Erlang': '#a90533',
-      'Lua': '#000080',
-      'Perl': '#39457e',
-      'R': '#276dc3',
-      'MATLAB': '#e16737',
       'Shell': '#89e051',
-      'PowerShell': '#012456',
-      'Dockerfile': '#2496ed',
-      'YAML': '#cb171e',
-      'JSON': '#000000',
-      'Markdown': '#083fa1',
-      'TeX': '#3d6117',
-      'Assembly': '#6e4c13',
-      'C': '#a8b9cc',
-      'Objective-C': '#438eff',
-      'CoffeeScript': '#244776',
-      'F#': '#378bba',
-      'OCaml': '#3be133',
-      'Pascal': '#e3f171',
-      'Prolog': '#74283c',
-      'Tcl': '#e4cc98',
-      'Vim script': '#199f4b',
-      'Emacs Lisp': '#c065db',
-      'Common Lisp': '#3fb68b',
-      'Scheme': '#1e4a72',
-      'Smalltalk': '#596706',
-      'Ada': '#02f88c',
-      'Fortran': '#4d41b1',
-      'COBOL': '#ff6d01',
-      'Forth': '#341708',
-      'APL': '#5a8164',
-      'J': '#9e0202',
-      'K': '#28430a',
-      'Q': '#0040cd',
-      'Raku': '#0000fb',
-      'Nim': '#ffc200',
-      'Crystal': '#000100',
-      'Julia': '#9558b2',
-      'D': '#ba595e',
-      'Zig': '#f7a41d',
-      'V': '#4f87c4',
-      'Odin': '#60afff',
-      'Pony': '#e2a4ff',
-      'Red': '#f50000',
-      'Rebol': '#358a5b',
-      'Factor': '#636746',
-      'PostScript': '#da291c',
-      'Io': '#a9188d',
-      'Ioke': '#078193',
-      'Nu': '#c9df40',
-      'Opa': '#ce7c00',
-      'Oz': '#feb95c',
-      'Pike': '#005390',
-      'Racket': '#3c5caa',
-      'Self': '#0579aa',
-      'Squirrel': '#800000',
-      'Standard ML': '#dc566d',
-      'SuperCollider': '#46390b',
-      'SystemVerilog': '#dae1c2',
-      'Turing': '#cf142b',
-      'Unified Parallel C': '#4e3617',
-      'Uno': '#9933cc',
-      'UnrealScript': '#a54c4d',
-      'Vala': '#fbe5cd',
-      'Verilog': '#b2b7f8',
-      'VHDL': '#adb2cb',
-      'Visual Basic .NET': '#945db7',
-      'Volt': '#1f1f1f',
-      'WebAssembly': '#654ff0',
-      'wisp': '#7582d9',
-      'X10': '#4b6bef',
-      'xBase': '#403a40',
-      'XC': '#99da07',
-      'Xojo': '#81bd41',
-      'XPL0': '#000000',
-      'XProc': '#52b9e9',
-      'XQuery': '#5232e7',
-      'XSLT': '#eb8ceb',
-      'Xtend': '#24255d',
-      'Yacc': '#4b6c4b',
-      'YARA': '#220000',
-      'YASnippet': '#32ab90',
-      'ZAP': '#0d665e',
-      'Zephir': '#118f9e',
-      'ZIL': '#dc75e5',
-      'Zsh': '#89e051'
     };
     return colors[language] || '#6b7280';
   };
 
   if (userLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen p-4">
-        <Card className="w-full max-w-md mx-auto">
-          <CardHeader>
-            <CardTitle className="text-center">Loading...</CardTitle>
-            <CardDescription className="text-center">
-              Please wait while we load your information
-            </CardDescription>
-          </CardHeader>
-        </Card>
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-[#333] border-t-white rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-[#666] font-mono text-sm">Loading...</p>
+        </div>
       </div>
     );
   }
 
   if (!currentProject) {
     return (
-      <div className="flex items-center justify-center min-h-screen p-4">
-        <Card className="w-full max-w-md mx-auto">
-          <CardHeader>
-            <CardTitle className="text-center">No Project Selected</CardTitle>
-            <CardDescription className="text-center">
-              Please select a project to view repository information
-            </CardDescription>
-          </CardHeader>
-        </Card>
+      <div className="min-h-screen bg-[#0a0a0a] relative">
+        {/* Grain texture */}
+        <div 
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+          }}
+        />
+        
+        <div className="relative flex items-center justify-center min-h-screen p-6">
+          <motion.div 
+            className="text-center max-w-md"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="w-16 h-16 rounded-full bg-[#1a1a1a] border border-[#333] flex items-center justify-center mx-auto mb-6">
+              <Github className="w-8 h-8 text-[#666]" />
+            </div>
+            <h1 className="text-2xl font-bold text-white mb-3">No Project Selected</h1>
+            <p className="text-[#666] text-sm">
+              Please select a project from the sidebar to view repository information
+            </p>
+          </motion.div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full p-2 sm:p-4 md:p-6 space-y-2 sm:space-y-4 md:space-y-6 dashboard-mobile mobile-layout">
+    <div className="min-h-screen bg-[#0a0a0a] relative">
+      {/* Grain texture */}
+      <div 
+        className="absolute inset-0 opacity-[0.03] pointer-events-none"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+        }}
+      />
+
+      {/* Top accent line */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#333] to-transparent" />
+
+      <div className="relative max-w-6xl mx-auto px-6 py-12">
+        {/* Header */}
+        <motion.div 
+          className="mb-12"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex-1 min-w-0 text-center sm:text-left">
-          <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-white mobile-no-truncate">Repository Information</h1>
-          <p className="text-gray-400 mt-1 sm:mt-2 text-xs sm:text-sm md:text-base mobile-no-truncate">
-            Detailed information about {currentProject.name}
-          </p>
+            <div>
+              <span className="text-[#666] text-xs font-mono tracking-wide uppercase mb-2 block">
+                Repository Dashboard
+              </span>
+              <h1 className="text-3xl sm:text-4xl font-bold text-white">
+                {currentProject.name}
+              </h1>
         </div>
-        <Button 
-          variant="default"
+            <button
           onClick={handleRefresh} 
           disabled={loading}
-          className="w-full sm:w-auto text-xs sm:text-sm"
+              className="group px-4 py-2 bg-[#1a1a1a] text-white font-medium rounded-lg flex items-center gap-2 hover:bg-[#252525] transition-colors border border-[#333] hover:border-[#444] disabled:opacity-50"
         >
-          {loading ? "Loading..." : "Refresh"}
-        </Button>
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
+              {loading ? 'Loading...' : 'Refresh'}
+            </button>
       </div>
+        </motion.div>
 
+        {/* Error state */}
       {error && (
-        <Card className="border-red-500">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-red-400">
-              <AlertCircle className="h-5 w-5" />
-              <span>{error}</span>
+          <motion.div 
+            className="mb-8 p-4 bg-[#1a1a1a] border border-red-500/30 rounded-lg"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <div className="flex items-center gap-3 text-red-400">
+              <AlertCircle className="h-5 w-5 flex-shrink-0" />
+              <span className="text-sm">{error}</span>
             </div>
-          </CardContent>
-        </Card>
+          </motion.div>
       )}
 
+        {/* Loading skeleton */}
       {loading && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-6 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-4 w-full mb-2" />
-                <Skeleton className="h-4 w-2/3" />
-              </CardContent>
-            </Card>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="bg-[#1a1a1a] border border-[#333] rounded-lg p-6 animate-pulse">
+                <div className="h-4 bg-[#333] rounded w-1/2 mb-4" />
+                <div className="h-6 bg-[#333] rounded w-3/4" />
+              </div>
           ))}
         </div>
       )}
 
+        {/* Main content */}
       {repoInfo && !loading && (
-        <div className="space-y-4 sm:space-y-6">
-          {/* Repository Details Cards - Moved to Top */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            {/* Owner Info */}
-            <Card className="mobile-card">
-              <CardHeader className="mobile-card-content">
-                <CardTitle className="text-sm sm:text-base md:text-lg text-white">Owner</CardTitle>
-              </CardHeader>
-              <CardContent className="mobile-card-content">
-                <div className="flex items-center gap-2 sm:gap-3">
+          <div className="space-y-8">
+            {/* Stats row */}
+            <motion.div 
+              className="grid grid-cols-2 md:grid-cols-4 gap-4"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              {[
+                { icon: Star, value: repoInfo.stars.toLocaleString(), label: 'Stars', color: terminalColors.yellow },
+                { icon: GitFork, value: repoInfo.forks.toLocaleString(), label: 'Forks', color: terminalColors.cyan },
+                { icon: Eye, value: repoInfo.watchers.toLocaleString(), label: 'Watchers', color: terminalColors.green },
+                { icon: AlertCircle, value: repoInfo.openIssues.toLocaleString(), label: 'Issues', color: terminalColors.orange },
+              ].map((stat) => (
+                <div 
+                  key={stat.label} 
+                  className="bg-[#1a1a1a] border border-[#333] rounded-lg p-5 hover:border-[#444] transition-colors"
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <stat.icon className="w-5 h-5" style={{ color: stat.color }} />
+                    <span className="text-2xl font-bold text-white font-mono">{stat.value}</span>
+                  </div>
+                  <span className="text-[#666] text-sm">{stat.label}</span>
+                </div>
+              ))}
+            </motion.div>
+
+            {/* Main info card */}
+            <motion.div 
+              className="bg-[#1a1a1a] border border-[#333] rounded-lg overflow-hidden"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              {/* Header bar */}
+              <div className="flex items-center gap-2 px-4 py-3 bg-[#252525] border-b border-[#333]">
+                <div className="w-3 h-3 rounded-full bg-[#ff5f57]" />
+                <div className="w-3 h-3 rounded-full bg-[#febc2e]" />
+                <div className="w-3 h-3 rounded-full bg-[#28c840]" />
+                <span className="ml-3 text-[#666] text-sm font-mono">{repoInfo.fullName}</span>
+              </div>
+
+              <div className="p-6">
+                {/* Repo header */}
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-lg bg-[#252525] border border-[#333] flex items-center justify-center flex-shrink-0">
+                      <Github className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-white mb-1">{repoInfo.fullName}</h2>
+                      <p className="text-[#888] text-sm max-w-xl">
+                        {repoInfo.description || 'No description available'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {repoInfo.isPrivate ? (
+                      <span className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 border border-red-500/30 text-red-400 rounded-full text-xs font-medium">
+                        <Lock className="w-3 h-3" />
+                        Private
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/10 border border-green-500/30 text-green-400 rounded-full text-xs font-medium">
+                        <Globe className="w-3 h-3" />
+                        Public
+                      </span>
+                    )}
+                    {repoInfo.isArchived && (
+                      <span className="flex items-center gap-1.5 px-3 py-1.5 bg-[#333] text-[#888] rounded-full text-xs font-medium">
+                        <Archive className="w-3 h-3" />
+                        Archived
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Language & Topics */}
+                <div className="space-y-4 mb-6">
+                  {repoInfo.language && (
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="w-3 h-3 rounded-full" 
+                        style={{ backgroundColor: getLanguageColor(repoInfo.language) }}
+                      />
+                      <span className="text-white text-sm font-medium">{repoInfo.language}</span>
+                      {Object.keys(repoInfo.languages).length > 1 && (
+                        <span className="text-[#666] text-sm">
+                          + {Object.keys(repoInfo.languages).length - 1} more
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {repoInfo.topics.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {repoInfo.topics.map((topic) => (
+                        <span 
+                          key={topic} 
+                          className="px-2 py-1 bg-[#252525] text-[#8be9fd] rounded text-xs font-mono"
+                        >
+                          {topic}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="flex flex-wrap gap-3">
+                  <a
+                    href={repoInfo.htmlUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 bg-white text-black font-medium rounded-lg flex items-center gap-2 hover:bg-[#eee] transition-colors text-sm"
+                  >
+                    View on GitHub
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                  <button
+                    onClick={() => setIsCloneModalOpen(true)}
+                    className="px-4 py-2 text-[#888] font-medium rounded-lg flex items-center gap-2 hover:text-white transition-colors border border-[#333] hover:border-[#555] text-sm"
+                  >
+                    <Terminal className="w-4 h-4" />
+                    Clone
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Details grid */}
+            <motion.div 
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              {/* Owner */}
+              <div className="bg-[#1a1a1a] border border-[#333] rounded-lg p-5">
+                <span className="text-[#666] text-xs font-mono uppercase tracking-wide">Owner</span>
+                <div className="flex items-center gap-3 mt-3">
                   <img 
                     src={repoInfo.owner.avatarUrl} 
                     alt={repoInfo.owner.login}
-                    width={32}
-                    height={32}
-                    className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex-shrink-0"
+                    className="w-10 h-10 rounded-full border border-[#333]"
                   />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white font-medium text-xs sm:text-sm mobile-no-truncate">{repoInfo.owner.login}</p>
-                    <p className="text-gray-400 text-xs sm:text-sm capitalize mobile-no-truncate">{repoInfo.owner.type}</p>
+                  <div>
+                    <p className="text-white font-medium text-sm">{repoInfo.owner.login}</p>
+                    <p className="text-[#666] text-xs capitalize">{repoInfo.owner.type}</p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            {/* Repository Details */}
-            <Card className="mobile-card">
-              <CardHeader className="mobile-card-content">
-                <CardTitle className="text-sm sm:text-base md:text-lg text-white">Repository Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 sm:space-y-3 mobile-card-content">
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <Code className="h-3 w-3 sm:h-4 sm:w-4 text-blue-400 flex-shrink-0" />
-                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Size: {formatFileSize(repoInfo.size)}</span>
+              {/* Size */}
+              <div className="bg-[#1a1a1a] border border-[#333] rounded-lg p-5">
+                <span className="text-[#666] text-xs font-mono uppercase tracking-wide">Size</span>
+                <div className="mt-3">
+                  <p className="text-white font-bold text-xl font-mono">{formatFileSize(repoInfo.size)}</p>
+                  <p className="text-[#666] text-xs mt-1">Branch: {repoInfo.defaultBranch}</p>
                 </div>
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <GitFork className="h-3 w-3 sm:h-4 sm:w-4 text-blue-400 flex-shrink-0" />
-                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Default Branch: {repoInfo.defaultBranch}</span>
-                </div>
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-blue-400 flex-shrink-0" />
-                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Created: {formatDate(repoInfo.createdAt)}</span>
-                </div>
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-blue-400 flex-shrink-0" />
-                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Updated: {formatDate(repoInfo.updatedAt)}</span>
-                </div>
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-blue-400 flex-shrink-0" />
-                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Pushed: {formatDate(repoInfo.pushedAt)}</span>
-                </div>
-              </CardContent>
-            </Card>
+              </div>
 
+              {/* License */}
+              <div className="bg-[#1a1a1a] border border-[#333] rounded-lg p-5">
+                <span className="text-[#666] text-xs font-mono uppercase tracking-wide">License</span>
+                <div className="flex items-center gap-2 mt-3">
+                  <Shield className="w-5 h-5 text-[#bd93f9]" />
+                  <p className="text-white font-medium text-sm">
+                    {repoInfo.license?.name || 'No license'}
+                  </p>
+                </div>
+                </div>
+
+              {/* Updated */}
+              <div className="bg-[#1a1a1a] border border-[#333] rounded-lg p-5">
+                <span className="text-[#666] text-xs font-mono uppercase tracking-wide">Last Updated</span>
+                <div className="flex items-center gap-2 mt-3">
+                  <Calendar className="w-5 h-5 text-[#50fa7b]" />
+                  <p className="text-white font-medium text-sm">{formatDate(repoInfo.pushedAt)}</p>
+                </div>
+                </div>
+            </motion.div>
+
+            {/* Features & Highlights */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Features */}
-            <Card className="mobile-card">
-              <CardHeader className="mobile-card-content">
-                <CardTitle className="text-sm sm:text-base md:text-lg text-white">Features</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1 sm:space-y-2 mobile-card-content">
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <AlertCircle className={`h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 ${repoInfo.hasIssues ? 'text-green-400' : 'text-gray-400'}`} />
-                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Issues {repoInfo.hasIssues ? 'Enabled' : 'Disabled'}</span>
+              <motion.div 
+                className="bg-[#1a1a1a] border border-[#333] rounded-lg p-6"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+              >
+                <div className="flex items-center gap-2 mb-5">
+                  <Sparkles className="w-5 h-5 text-[#bd93f9]" />
+                  <h3 className="text-white font-semibold">Features</h3>
                 </div>
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <BookOpen className={`h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 ${repoInfo.hasWiki ? 'text-green-400' : 'text-gray-400'}`} />
-                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Wiki {repoInfo.hasWiki ? 'Enabled' : 'Disabled'}</span>
-                </div>
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <Download className={`h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 ${repoInfo.hasDownloads ? 'text-green-400' : 'text-gray-400'}`} />
-                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Downloads {repoInfo.hasDownloads ? 'Enabled' : 'Disabled'}</span>
-                </div>
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <Globe className={`h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 ${repoInfo.hasPages ? 'text-green-400' : 'text-gray-400'}`} />
-                  <span className="text-white text-xs sm:text-sm mobile-no-truncate">Pages {repoInfo.hasPages ? 'Enabled' : 'Disabled'}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* License */}
-            {repoInfo.license ? (
-              <Card className="mobile-card">
-                <CardHeader className="mobile-card-content">
-                  <CardTitle className="text-sm sm:text-base md:text-lg text-white">License</CardTitle>
-                </CardHeader>
-                <CardContent className="mobile-card-content">
-                  <div className="flex items-center gap-1 sm:gap-2">
-                    <Shield className="h-3 w-3 sm:h-4 sm:w-4 text-blue-400 flex-shrink-0" />
-                    <span className="text-white text-xs sm:text-sm mobile-no-truncate">{repoInfo.license.name}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card className="mobile-card">
-                <CardHeader className="mobile-card-content">
-                  <CardTitle className="text-sm sm:text-base md:text-lg text-white">License</CardTitle>
-                </CardHeader>
-                <CardContent className="mobile-card-content">
-                  <div className="flex items-center gap-1 sm:gap-2">
-                    <Shield className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400 flex-shrink-0" />
-                    <span className="text-gray-400 text-xs sm:text-sm mobile-no-truncate">No license specified</span>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-
-          {/* Main Content Area */}
-          <div className="grid grid-cols-1 gap-4 sm:gap-6">
-          {/* Main Repository Info */}
-          <Card className="mobile-card">
-            <CardHeader className="mobile-card-content">
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
-                <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
-                  <Github className="h-6 w-6 sm:h-8 sm:w-8 text-white flex-shrink-0 mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <CardTitle className="text-base sm:text-lg md:text-xl text-white mobile-no-truncate leading-tight">
-                      {repoInfo.fullName}
-                    </CardTitle>
-                    <CardDescription className="text-gray-400 text-xs sm:text-sm md:text-base mobile-no-truncate mt-1">
-                      {repoInfo.description || 'No description available'}
-                    </CardDescription>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  {repoInfo.isPrivate ? (
-                    <Badge variant="destructive" className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 border border-red-500/50 text-red-400 hover:bg-red-500/30 shadow-sm">
-                      <Lock className="h-3.5 w-3.5" />
-                      <span className="font-semibold text-xs sm:text-sm">{repoInfo.visibility}</span>
-                    </Badge>
-                  ) : (
-                    <Badge variant="secondary" className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/20 border border-green-500/50 text-green-400 hover:bg-green-500/30 shadow-sm">
-                      <Globe className="h-3.5 w-3.5" />
-                      <span className="font-semibold text-xs sm:text-sm">{repoInfo.visibility}</span>
-                    </Badge>
-                  )}
-                  {repoInfo.isArchived && <Archive className="h-4 w-4 text-gray-400" />}
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4 sm:space-y-5 mobile-card-content">
-              {/* Stats */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                <div className="flex items-center gap-2">
-                  <Star className="h-4 w-4 text-yellow-400 flex-shrink-0" />
-                  <span className="text-white text-sm sm:text-base font-medium">{repoInfo.stars.toLocaleString()}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <GitFork className="h-4 w-4 text-blue-400 flex-shrink-0" />
-                  <span className="text-white text-sm sm:text-base font-medium">{repoInfo.forks.toLocaleString()}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Eye className="h-4 w-4 text-green-400 flex-shrink-0" />
-                  <span className="text-white text-sm sm:text-base font-medium">{repoInfo.watchers.toLocaleString()}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0" />
-                  <span className="text-white text-sm sm:text-base font-medium">{repoInfo.openIssues.toLocaleString()}</span>
-                </div>
-              </div>
-
-              {/* Languages */}
-              {repoInfo.language && (
-                <div>
-                  <h4 className="text-white font-semibold mb-2 text-sm sm:text-base">Primary Language</h4>
-                  <div className="flex items-center gap-2">
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: 'Issues', enabled: repoInfo.hasIssues, icon: AlertCircle },
+                    { label: 'Wiki', enabled: repoInfo.hasWiki, icon: BookOpen },
+                    { label: 'Downloads', enabled: repoInfo.hasDownloads, icon: Download },
+                    { label: 'Pages', enabled: repoInfo.hasPages, icon: Globe },
+                  ].map((feature) => (
                     <div 
-                      className="w-3 h-3 rounded-full flex-shrink-0" 
-                      style={{ backgroundColor: getLanguageColor(repoInfo.language) }}
-                    />
-                    <span className="text-white text-sm sm:text-base">{repoInfo.language}</span>
-                  </div>
+                      key={feature.label}
+                      className={`flex items-center gap-2 p-3 rounded-lg ${
+                        feature.enabled 
+                          ? 'bg-green-500/10 border border-green-500/20' 
+                          : 'bg-[#252525] border border-[#333]'
+                      }`}
+                    >
+                      <feature.icon 
+                        className={`w-4 h-4 ${feature.enabled ? 'text-green-400' : 'text-[#666]'}`} 
+                      />
+                      <span className={`text-sm ${feature.enabled ? 'text-white' : 'text-[#666]'}`}>
+                        {feature.label}
+                      </span>
                 </div>
-              )}
+                  ))}
+                </div>
+              </motion.div>
 
-              {/* All Languages */}
-              {Object.keys(repoInfo.languages).length > 0 && (
-                <div>
-                  <h4 className="text-white font-semibold mb-2 text-sm sm:text-base">Languages</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {Object.entries(repoInfo.languages).map(([lang]) => (
-                      <Badge key={lang} variant="outline" className="text-white border-gray-600 text-xs sm:text-sm">
+              {/* Activity */}
+              <motion.div 
+                className="bg-[#1a1a1a] border border-[#333] rounded-lg p-6"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+              >
+                <div className="flex items-center gap-2 mb-5">
+                  <TrendingUp className="w-5 h-5 text-[#50fa7b]" />
+                  <h3 className="text-white font-semibold">Activity</h3>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[#888] text-sm">Created</span>
+                    <span className="text-white text-sm font-mono">{formatDate(repoInfo.createdAt)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[#888] text-sm">Last push</span>
+                    <span className="text-white text-sm font-mono">{formatDate(repoInfo.pushedAt)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[#888] text-sm">Updated</span>
+                    <span className="text-white text-sm font-mono">{formatDate(repoInfo.updatedAt)}</span>
+                  </div>
+                  <div className="pt-3 border-t border-[#333]">
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-[#f1fa8c]" />
+                      <span className="text-[#888] text-sm">
+                        {new Date(repoInfo.pushedAt) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+                          ? 'Actively maintained'
+                          : 'Last activity over 30 days ago'}
+                      </span>
+                </div>
+              </div>
+                </div>
+              </motion.div>
+                </div>
+
+            {/* Languages breakdown */}
+            {Object.keys(repoInfo.languages).length > 0 && (
+              <motion.div 
+                className="bg-[#1a1a1a] border border-[#333] rounded-lg p-6"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+              >
+                <div className="flex items-center gap-2 mb-5">
+                  <Code className="w-5 h-5 text-[#8be9fd]" />
+                  <h3 className="text-white font-semibold">Languages</h3>
+              </div>
+
+                {/* Language bar */}
+                <div className="h-2 rounded-full overflow-hidden flex mb-4">
+                  {Object.entries(repoInfo.languages).map(([lang, bytes]) => {
+                    const total = Object.values(repoInfo.languages).reduce((a, b) => a + b, 0);
+                    const percentage = (bytes / total) * 100;
+                    return (
+                      <div
+                        key={lang}
+                        className="h-full"
+                        style={{ 
+                          width: `${percentage}%`, 
+                          backgroundColor: getLanguageColor(lang),
+                          minWidth: percentage > 0 ? '2px' : '0'
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+
+                <div className="flex flex-wrap gap-4">
+                  {Object.entries(repoInfo.languages).map(([lang, bytes]) => {
+                    const total = Object.values(repoInfo.languages).reduce((a, b) => a + b, 0);
+                    const percentage = ((bytes / total) * 100).toFixed(1);
+                    return (
+                      <div key={lang} className="flex items-center gap-2">
                         <div 
-                          className="w-2 h-2 rounded-full mr-1.5 flex-shrink-0" 
+                          className="w-3 h-3 rounded-full" 
                           style={{ backgroundColor: getLanguageColor(lang) }}
                         />
-                        <span>{lang}</span>
-                      </Badge>
-                    ))}
+                        <span className="text-white text-sm">{lang}</span>
+                        <span className="text-[#666] text-xs font-mono">{percentage}%</span>
                   </div>
+                    );
+                  })}
                 </div>
-              )}
+              </motion.div>
+            )}
 
-              {/* Topics */}
-              {repoInfo.topics.length > 0 && (
-                <div>
-                  <h4 className="text-white font-semibold mb-2 text-sm sm:text-base">Topics</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {repoInfo.topics.map((topic) => (
-                      <Badge key={topic} variant="secondary" className="text-white bg-gray-700 text-xs sm:text-sm">
-                        <span>{topic}</span>
-                      </Badge>
-                    ))}
+            {/* Bottom stats */}
+            <motion.div 
+              className="pt-8 border-t border-[#222]"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.7 }}
+            >
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {[
+                  { 
+                    value: repoInfo.stars > 1000 ? `${(repoInfo.stars / 1000).toFixed(1)}k` : repoInfo.stars, 
+                    label: 'Community stars showing project popularity' 
+                  },
+                  { 
+                    value: Object.keys(repoInfo.languages).length, 
+                    label: 'Different languages used in this project' 
+                  },
+                  { 
+                    value: repoInfo.topics.length, 
+                    label: 'Topics tagged for discoverability' 
+                  },
+                ].map((stat) => (
+                  <div key={stat.label}>
+                    <div className="text-2xl font-bold text-white mb-1 font-mono">{stat.value}</div>
+                    <div className="text-sm text-[#666]">{stat.label}</div>
                   </div>
-                </div>
-              )}
-
-              {/* Links */}
-              <div className="flex flex-col sm:flex-row gap-1 sm:gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => window.open(repoInfo.htmlUrl, '_blank')}
-                  className="border-gray-600 text-white hover:bg-gray-700 w-full sm:w-auto text-xs sm:text-sm"
-                >
-                  <ExternalLink className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
-                  <span className="mobile-no-truncate">View on GitHub</span>
-                </Button>
-                
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="border-gray-600 text-white hover:bg-gray-700 w-full sm:w-auto text-xs sm:text-sm"
-                    >
-                      <Terminal className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
-                      <span className="mobile-no-truncate">How to Clone</span>
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-[95vw] sm:max-w-lg md:max-w-2xl lg:max-w-xl w-full p-4 sm:p-6 lg:p-5 max-h-[90vh] lg:max-h-[85vh] overflow-hidden flex flex-col">
-                    <DialogHeader className="pr-6 sm:pr-0 lg:pr-6">
-                      <DialogTitle className="text-lg sm:text-xl lg:text-lg font-bold text-white flex items-center gap-2">
-                        <Terminal className="h-4 w-4 sm:h-5 sm:w-5 lg:h-4 lg:w-4 text-blue-400" />
-                        How to Clone This Repository
-                      </DialogTitle>
-                      <DialogDescription className="text-sm sm:text-base lg:text-sm text-gray-400">
-                        Follow these steps to clone and set up the repository on your local machine
-                      </DialogDescription>
-                    </DialogHeader>
-                    
-                    <div className="space-y-3 sm:space-y-4 lg:space-y-3 mt-2 sm:mt-4 lg:mt-3 max-h-[60vh] sm:max-h-none lg:max-h-[65vh] overflow-y-auto pr-1 lg:pr-2">
-                      {/* Step 1 */}
-                      <div className="space-y-1.5 sm:space-y-2 lg:space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 lg:w-5 lg:h-5 rounded-full bg-blue-600 text-white text-xs sm:text-sm lg:text-xs font-bold flex-shrink-0">
-                            1
-                          </div>
-                          <h4 className="font-semibold text-white text-sm sm:text-base lg:text-sm">Open Terminal</h4>
-                        </div>
-                        <p className="text-xs sm:text-sm lg:text-xs text-gray-400 ml-6 sm:ml-8 lg:ml-7">
-                          Open your terminal or command prompt on your computer.
-                        </p>
-                      </div>
-
-                      {/* Step 2 */}
-                      <div className="space-y-1.5 sm:space-y-2 lg:space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 lg:w-5 lg:h-5 rounded-full bg-blue-600 text-white text-xs sm:text-sm lg:text-xs font-bold flex-shrink-0">
-                            2
-                          </div>
-                          <h4 className="font-semibold text-white text-sm sm:text-base lg:text-sm">Navigate to Your Directory</h4>
-                        </div>
-                        <p className="text-xs sm:text-sm lg:text-xs text-gray-400 ml-6 sm:ml-8 lg:ml-7 mb-1.5 sm:mb-2 lg:mb-1.5">
-                          Navigate to the folder where you want to clone the repository:
-                        </p>
-                        <div className="ml-6 sm:ml-8 lg:ml-7 relative">
-                          <div className="bg-gray-950 border border-gray-700 rounded-lg p-2 sm:p-3 lg:p-2 pr-10 sm:pr-12 lg:pr-10">
-                            <code className="text-xs sm:text-sm lg:text-xs text-green-400 break-all">cd /path/to/your/folder</code>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="absolute right-1.5 sm:right-2 lg:right-1.5 top-1.5 sm:top-2 lg:top-1.5 h-6 w-6 sm:h-7 sm:w-7 lg:h-6 lg:w-6 p-0"
-                            onClick={() => copyToClipboard('cd /path/to/your/folder', 2)}
-                          >
-                            {copiedStep === 2 ? (
-                              <Check className="h-3 w-3 sm:h-4 sm:w-4 lg:h-3 lg:w-3 text-green-400" />
-                            ) : (
-                              <Copy className="h-3 w-3 sm:h-4 sm:w-4 lg:h-3 lg:w-3 text-gray-400" />
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* Step 3 */}
-                      <div className="space-y-1.5 sm:space-y-2 lg:space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 lg:w-5 lg:h-5 rounded-full bg-blue-600 text-white text-xs sm:text-sm lg:text-xs font-bold flex-shrink-0">
-                            3
-                          </div>
-                          <h4 className="font-semibold text-white text-sm sm:text-base lg:text-sm">Clone the Repository</h4>
-                        </div>
-                        <p className="text-xs sm:text-sm lg:text-xs text-gray-400 ml-6 sm:ml-8 lg:ml-7 mb-1.5 sm:mb-2 lg:mb-1.5">
-                          Run the following command to clone the repository:
-                        </p>
-                        <div className="ml-6 sm:ml-8 lg:ml-7 relative">
-                          <div className="bg-gray-950 border border-gray-700 rounded-lg p-2 sm:p-3 lg:p-2 pr-10 sm:pr-12 lg:pr-10">
-                            <code className="text-xs sm:text-sm lg:text-xs text-green-400 break-all">
-                              git clone {repoInfo.cloneUrl}
-                            </code>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="absolute right-1.5 sm:right-2 lg:right-1.5 top-1.5 sm:top-2 lg:top-1.5 h-6 w-6 sm:h-7 sm:w-7 lg:h-6 lg:w-6 p-0"
-                            onClick={() => copyToClipboard(`git clone ${repoInfo.cloneUrl}`, 3)}
-                          >
-                            {copiedStep === 3 ? (
-                              <Check className="h-3 w-3 sm:h-4 sm:w-4 lg:h-3 lg:w-3 text-green-400" />
-                            ) : (
-                              <Copy className="h-3 w-3 sm:h-4 sm:w-4 lg:h-3 lg:w-3 text-gray-400" />
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* Step 4 */}
-                      <div className="space-y-1.5 sm:space-y-2 lg:space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 lg:w-5 lg:h-5 rounded-full bg-blue-600 text-white text-xs sm:text-sm lg:text-xs font-bold flex-shrink-0">
-                            4
-                          </div>
-                          <h4 className="font-semibold text-white text-sm sm:text-base lg:text-sm">Navigate into the Repository</h4>
-                        </div>
-                        <p className="text-xs sm:text-sm lg:text-xs text-gray-400 ml-6 sm:ml-8 lg:ml-7 mb-1.5 sm:mb-2 lg:mb-1.5">
-                          Move into the cloned repository directory:
-                        </p>
-                        <div className="ml-6 sm:ml-8 lg:ml-7 relative">
-                          <div className="bg-gray-950 border border-gray-700 rounded-lg p-2 sm:p-3 lg:p-2 pr-10 sm:pr-12 lg:pr-10">
-                            <code className="text-xs sm:text-sm lg:text-xs text-green-400 break-all">
-                              cd {repoInfo.name}
-                            </code>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="absolute right-1.5 sm:right-2 lg:right-1.5 top-1.5 sm:top-2 lg:top-1.5 h-6 w-6 sm:h-7 sm:w-7 lg:h-6 lg:w-6 p-0"
-                            onClick={() => copyToClipboard(`cd ${repoInfo.name}`, 4)}
-                          >
-                            {copiedStep === 4 ? (
-                              <Check className="h-3 w-3 sm:h-4 sm:w-4 lg:h-3 lg:w-3 text-green-400" />
-                            ) : (
-                              <Copy className="h-3 w-3 sm:h-4 sm:w-4 lg:h-3 lg:w-3 text-gray-400" />
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* Step 5 */}
-                      <div className="space-y-1.5 sm:space-y-2 lg:space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 lg:w-5 lg:h-5 rounded-full bg-blue-600 text-white text-xs sm:text-sm lg:text-xs font-bold flex-shrink-0">
-                            5
-                          </div>
-                          <h4 className="font-semibold text-white text-sm sm:text-base lg:text-sm">Start Working!</h4>
-                        </div>
-                        <p className="text-xs sm:text-sm lg:text-xs text-gray-400 ml-6 sm:ml-8 lg:ml-7">
-                          You&apos;re all set! You can now start working on the repository. Don&apos;t forget to install dependencies if needed.
-                        </p>
-                      </div>
-
-                      {/* Additional Info */}
-                      <div className="mt-6 lg:mt-4 p-4 lg:p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                        <div className="flex items-start gap-2">
-                          <AlertCircle className="h-5 w-5 lg:h-4 lg:w-4 text-blue-400 flex-shrink-0 mt-0.5" />
-                          <div className="space-y-1">
-                            <p className="text-sm lg:text-xs font-semibold text-blue-400">Note:</p>
-                            <p className="text-sm lg:text-xs text-gray-300">
-                              Make sure you have Git installed on your system. If not, download it from{' '}
-                              <a 
-                                href="https://git-scm.com" 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="text-blue-400 hover:text-blue-300 underline"
-                              >
-                                git-scm.com
-                              </a>
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                ))}
               </div>
-            </CardContent>
-          </Card>
+            </motion.div>
+                </div>
+              )}
+                      </div>
 
-          {/* About This Repository Section */}
-          <Card className="mobile-card">
-            <CardHeader className="mobile-card-content">
+      {/* Clone Modal */}
+      {isCloneModalOpen && repoInfo && (
+        <div 
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setIsCloneModalOpen(false)}
+        >
+          <motion.div 
+            className="bg-[#1a1a1a] border border-[#333] rounded-lg max-w-lg w-full max-h-[80vh] overflow-y-auto"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div className="flex items-center justify-between p-4 border-b border-[#333]">
               <div className="flex items-center gap-2">
-                <Info className="h-5 w-5 text-blue-400" />
-                <CardTitle className="text-sm sm:text-base md:text-lg text-white">About This Repository</CardTitle>
+                <Terminal className="w-5 h-5 text-[#50fa7b]" />
+                <h2 className="text-white font-semibold">Clone Repository</h2>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-4 mobile-card-content">
-              <div className="prose prose-invert max-w-none">
-                <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
-                  {repoInfo.description || `This is a ${repoInfo.language || 'software'} project`} 
-                  {repoInfo.language && ` built primarily with ${repoInfo.language}`}
-                  {repoInfo.topics.length > 0 && `, focusing on ${repoInfo.topics.slice(0, 3).join(', ')}`}.
-                  {repoInfo.stars > 100 && ` With ${repoInfo.stars.toLocaleString()} stars, this repository has gained significant community attention.`}
-                  {repoInfo.forks > 50 && ` It has been forked ${repoInfo.forks.toLocaleString()} times, indicating active development and collaboration.`}
+              <button 
+                onClick={() => setIsCloneModalOpen(false)}
+                className="text-[#666] hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+                  </div>
+
+            {/* Modal content */}
+            <div className="p-6 space-y-6">
+              {/* Step 1 */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-6 h-6 rounded-full bg-[#50fa7b] text-black text-xs font-bold flex items-center justify-center">1</div>
+                  <span className="text-white font-medium text-sm">Navigate to your folder</span>
+                </div>
+                <div className="relative">
+                  <div className="bg-[#0a0a0a] border border-[#333] rounded-lg p-3 pr-12 font-mono text-sm text-[#50fa7b]">
+                    cd /path/to/your/folder
+                  </div>
+                  <button
+                    onClick={() => copyToClipboard('cd /path/to/your/folder', 1)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 hover:bg-[#252525] rounded transition-colors"
+                  >
+                    {copiedStep === 1 ? (
+                      <Check className="w-4 h-4 text-[#50fa7b]" />
+                    ) : (
+                      <Copy className="w-4 h-4 text-[#666]" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Step 2 */}
+                    <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-6 h-6 rounded-full bg-[#50fa7b] text-black text-xs font-bold flex items-center justify-center">2</div>
+                  <span className="text-white font-medium text-sm">Clone the repository</span>
+                    </div>
+                <div className="relative">
+                  <div className="bg-[#0a0a0a] border border-[#333] rounded-lg p-3 pr-12 font-mono text-sm text-[#50fa7b] break-all">
+                    git clone {repoInfo.cloneUrl}
+                  </div>
+                  <button
+                    onClick={() => copyToClipboard(`git clone ${repoInfo.cloneUrl}`, 2)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 hover:bg-[#252525] rounded transition-colors"
+                  >
+                    {copiedStep === 2 ? (
+                      <Check className="w-4 h-4 text-[#50fa7b]" />
+                    ) : (
+                      <Copy className="w-4 h-4 text-[#666]" />
+                    )}
+                  </button>
+                    </div>
+                  </div>
+
+              {/* Step 3 */}
+                    <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-6 h-6 rounded-full bg-[#50fa7b] text-black text-xs font-bold flex items-center justify-center">3</div>
+                  <span className="text-white font-medium text-sm">Enter the directory</span>
+                    </div>
+                <div className="relative">
+                  <div className="bg-[#0a0a0a] border border-[#333] rounded-lg p-3 pr-12 font-mono text-sm text-[#50fa7b]">
+                    cd {repoInfo.name}
+                  </div>
+                  <button
+                    onClick={() => copyToClipboard(`cd ${repoInfo.name}`, 3)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 hover:bg-[#252525] rounded transition-colors"
+                  >
+                    {copiedStep === 3 ? (
+                      <Check className="w-4 h-4 text-[#50fa7b]" />
+                    ) : (
+                      <Copy className="w-4 h-4 text-[#666]" />
+                    )}
+                  </button>
+                  </div>
+              </div>
+
+              {/* Note */}
+              <div className="p-4 bg-[#252525] border border-[#333] rounded-lg">
+                <p className="text-[#888] text-sm">
+                  <span className="text-[#8be9fd] font-medium">Tip:</span> Make sure you have Git installed. 
+                  Download from <a href="https://git-scm.com" target="_blank" rel="noopener noreferrer" className="text-[#bd93f9] hover:underline">git-scm.com</a>
                 </p>
-                
-                {repoInfo.topics.length > 0 && (
-                  <div className="mt-4">
-                    <h4 className="text-white font-semibold mb-2 text-sm sm:text-base">Key Focus Areas</h4>
-                    <p className="text-gray-300 text-sm sm:text-base">
-                      This repository covers several important areas: <span className="text-blue-400 font-medium">{repoInfo.topics.join(', ')}</span>.
-                      {repoInfo.topics.includes('api') && ' It provides robust API functionality and integration capabilities.'}
-                      {repoInfo.topics.includes('documentation') && ' Comprehensive documentation is available to help developers get started quickly.'}
-                      {repoInfo.topics.includes('rest-api') && ' The REST API implementation follows industry best practices.'}
-                    </p>
-                  </div>
-                )}
-
-                {Object.keys(repoInfo.languages).length > 1 && (
-                  <div className="mt-4">
-                    <h4 className="text-white font-semibold mb-2 text-sm sm:text-base">Technology Stack</h4>
-                    <p className="text-gray-300 text-sm sm:text-base">
-                      Built with a diverse technology stack including {Object.keys(repoInfo.languages).slice(0, 5).join(', ')}
-                      {Object.keys(repoInfo.languages).length > 5 && ` and ${Object.keys(repoInfo.languages).length - 5} more`}, 
-                      demonstrating a modern and versatile approach to development.
-                    </p>
-                  </div>
-                )}
               </div>
-            </CardContent>
-          </Card>
-
-          {/* What Makes This Special */}
-          <Card className="mobile-card">
-            <CardHeader className="mobile-card-content">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-purple-400" />
-                <CardTitle className="text-sm sm:text-base md:text-lg text-white">What Makes This Special</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3 mobile-card-content">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {repoInfo.stars > 0 && (
-                  <div className="flex items-start gap-3 p-3 bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 rounded-lg">
-                    <Star className="h-5 w-5 text-yellow-400 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-white font-semibold text-sm sm:text-base">{repoInfo.stars.toLocaleString()} Stars</p>
-                      <p className="text-gray-400 text-xs sm:text-sm">
-                        {repoInfo.stars > 1000 ? 'Highly popular' : repoInfo.stars > 100 ? 'Well-received' : 'Growing'} repository with strong community support
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {repoInfo.forks > 0 && (
-                  <div className="flex items-start gap-3 p-3 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-lg">
-                    <GitFork className="h-5 w-5 text-blue-400 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-white font-semibold text-sm sm:text-base">{repoInfo.forks.toLocaleString()} Forks</p>
-                      <p className="text-gray-400 text-xs sm:text-sm">
-                        Active development with {repoInfo.forks > 50 ? 'extensive' : 'growing'} community contributions
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {repoInfo.watchers > 0 && (
-                  <div className="flex items-start gap-3 p-3 bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-lg">
-                    <Eye className="h-5 w-5 text-green-400 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-white font-semibold text-sm sm:text-base">{repoInfo.watchers.toLocaleString()} Watchers</p>
-                      <p className="text-gray-400 text-xs sm:text-sm">
-                        {repoInfo.watchers > 100 ? 'High' : 'Steady'} developer interest and engagement
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {repoInfo.openIssues > 0 && (
-                  <div className="flex items-start gap-3 p-3 bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-lg">
-                    <Zap className="h-5 w-5 text-purple-400 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-white font-semibold text-sm sm:text-base">{repoInfo.openIssues} Open Issues</p>
-                      <p className="text-gray-400 text-xs sm:text-sm">
-                        {repoInfo.openIssues < 10 ? 'Well-maintained' : 'Active'} project with ongoing development
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Additional Highlights */}
-              <div className="mt-4 pt-4 border-t border-gray-700">
-                <h4 className="text-white font-semibold mb-3 text-sm sm:text-base flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-blue-400" />
-                  Key Highlights
-                </h4>
-                <ul className="space-y-2">
-                  {repoInfo.hasIssues && (
-                    <li className="flex items-start gap-2 text-gray-300 text-sm sm:text-base">
-                      <Check className="h-4 w-4 text-green-400 flex-shrink-0 mt-0.5" />
-                      <span>Issue tracking enabled for community feedback and bug reports</span>
-                    </li>
-                  )}
-                  {repoInfo.hasWiki && (
-                    <li className="flex items-start gap-2 text-gray-300 text-sm sm:text-base">
-                      <Check className="h-4 w-4 text-green-400 flex-shrink-0 mt-0.5" />
-                      <span>Comprehensive wiki documentation available</span>
-                    </li>
-                  )}
-                  {repoInfo.hasPages && (
-                    <li className="flex items-start gap-2 text-gray-300 text-sm sm:text-base">
-                      <Check className="h-4 w-4 text-green-400 flex-shrink-0 mt-0.5" />
-                      <span>GitHub Pages enabled for project documentation</span>
-                    </li>
-                  )}
-                  {repoInfo.license && (
-                    <li className="flex items-start gap-2 text-gray-300 text-sm sm:text-base">
-                      <Check className="h-4 w-4 text-green-400 flex-shrink-0 mt-0.5" />
-                      <span>Open source license: {repoInfo.license.name}</span>
-                    </li>
-                  )}
-                  {repoInfo.language && (
-                    <li className="flex items-start gap-2 text-gray-300 text-sm sm:text-base">
-                      <Check className="h-4 w-4 text-green-400 flex-shrink-0 mt-0.5" />
-                      <span>Primary language: {repoInfo.language} - modern and maintainable</span>
-                    </li>
-                  )}
-                  {new Date(repoInfo.pushedAt) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) && (
-                    <li className="flex items-start gap-2 text-gray-300 text-sm sm:text-base">
-                      <Check className="h-4 w-4 text-green-400 flex-shrink-0 mt-0.5" />
-                      <span>Recently updated - actively maintained project</span>
-                    </li>
-                  )}
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
           </div>
+          </motion.div>
         </div>
       )}
     </div>
