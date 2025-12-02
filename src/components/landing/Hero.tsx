@@ -140,7 +140,7 @@ export default function Hero() {
           transition={{ duration: 0.6, delay: 0.3 }}
         >
           <button
-            onClick={() => router.push(isSignedIn ? '/dashboard' : '/sign-up')}
+            onClick={() => router.push(isSignedIn ? '/create' : '/sign-up')}
             className="group px-6 py-3 bg-white text-black font-medium rounded-lg flex items-center gap-2 hover:bg-[#eee] transition-colors"
           >
             Get started
@@ -188,7 +188,7 @@ export default function Hero() {
       </div>
       
       <VideoModal
-        videoSrc="https://lcbcrithcxdbqynfmtxk.supabase.co/storage/v1/object/public/Videos/Repo-Doc-1762580822637.mp4"
+        videoSrc="/Repodoc-demo.mp4"
         isOpen={isVideoModalOpen}
         onClose={() => setIsVideoModalOpen(false)}
       />

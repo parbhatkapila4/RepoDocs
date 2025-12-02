@@ -218,10 +218,10 @@ We recognize security researchers who responsibly disclose vulnerabilities:
 
 ## Contact
 
-Security Team: security@repodoc.dev
+Developer: parbhat@parbhat.dev
 PGP Key: [Available on request]
 
 ---
 
-Last updated: 2024-01-01
+Last updated: 2025-11-11
 

@@ -30,7 +30,7 @@ export default function CTASection() {
           </p>
 
           <button
-            onClick={() => router.push(isSignedIn ? '/dashboard' : '/sign-up')}
+            onClick={() => router.push(isSignedIn ? '/create' : '/sign-up')}
             className="group px-8 py-4 bg-white text-black font-medium rounded-lg inline-flex items-center gap-3 hover:bg-[#eee] transition-colors text-lg"
           >
             Get started free

@@ -15,7 +15,7 @@ import {
   SheetContent,
   SheetTitle,
 } from "@/components/ui/sheet"
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname, useSearchParams, useRouter } from 'next/navigation'
 import { getCurrentUser } from '@/lib/actions'
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -29,6 +29,7 @@ export default function Navigation() {
   const { signOut } = useClerk()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const router = useRouter()
   
   // Check if we just completed a payment
   const paymentStatus = searchParams.get('payment')
@@ -242,14 +243,12 @@ export default function Navigation() {
                   Sign In
                 </Link>
                 <Button
-                  asChild
                   size="sm"
                   className="h-9 px-4 bg-white text-black hover:bg-white/90 rounded-lg font-medium"
+                  onClick={() => router.push('/sign-up')}
                 >
-                  <Link href="/sign-up">
-                    Get Started
-                    <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
-                  </Link>
+                  Get Started
+                  <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
                 </Button>
               </div>
             )}

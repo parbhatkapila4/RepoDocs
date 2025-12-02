@@ -28,7 +28,7 @@ export default function SocialProof() {
             viewport={{ once: true }}
           >
             <a 
-              href="https://github.com/Pranav-Patel-123/Repodoc"
+              href="https://github.com/parbhatkapila4/RepoDocs"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-5 py-3 bg-[#1a1a1a] border border-[#333] rounded-lg text-white hover:border-[#555] transition-colors"

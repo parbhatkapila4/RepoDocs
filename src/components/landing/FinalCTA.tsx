@@ -30,7 +30,7 @@ export default function FinalCTA() {
           </p>
 
           <button
-            onClick={() => router.push(isAuthenticated ? '/dashboard' : '/sign-up')}
+            onClick={() => router.push(isAuthenticated ? '/create' : '/sign-up')}
             className="group px-8 py-4 bg-white text-black font-medium rounded-lg inline-flex items-center gap-3 hover:bg-[#eee] transition-colors text-lg"
           >
             Get started free

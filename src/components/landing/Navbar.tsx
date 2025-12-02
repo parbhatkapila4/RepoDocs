@@ -4,10 +4,12 @@ import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useUser } from "@clerk/nextjs"
+import { useRouter } from 'next/navigation'
 import { Menu, X, ArrowRight } from 'lucide-react'
 
 export default function Navbar() {
   const { isSignedIn } = useUser()
+  const router = useRouter()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
 
@@ -54,13 +56,13 @@ export default function Navbar() {
           {/* CTA */}
           <div className="hidden md:flex items-center gap-4">
             {isSignedIn ? (
-              <Link 
-                href="/dashboard"
+              <button 
+                onClick={() => router.push('/create')}
                 className="px-4 py-2 bg-white text-black text-sm font-medium rounded-md hover:bg-[#eee] transition-colors flex items-center gap-1.5"
               >
-                Dashboard
+                Get started
                 <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+              </button>
             ) : (
               <>
                 <Link 
@@ -69,13 +71,13 @@ export default function Navbar() {
                 >
                   Sign in
                 </Link>
-                <Link 
-                  href="/sign-up"
+                <button 
+                  onClick={() => router.push('/sign-up')}
                   className="px-4 py-2 bg-white text-black text-sm font-medium rounded-md hover:bg-[#eee] transition-colors flex items-center gap-1.5"
                 >
                   Get started
                   <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
+                </button>
               </>
             )}
           </div>
@@ -105,21 +107,25 @@ export default function Navbar() {
               ))}
               <div className="pt-4 border-t border-[#1a1a1a]">
                 {isSignedIn ? (
-                  <Link 
-                    href="/dashboard"
-                    className="block px-4 py-2 bg-white text-black text-center font-medium rounded-md"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    Dashboard
-                  </Link>
-                ) : (
-                  <Link 
-                    href="/sign-up"
-                    className="block px-4 py-2 bg-white text-black text-center font-medium rounded-md"
-                    onClick={() => setIsMenuOpen(false)}
+                  <button 
+                    onClick={() => {
+                      setIsMenuOpen(false)
+                      router.push('/create')
+                    }}
+                    className="block w-full px-4 py-2 bg-white text-black text-center font-medium rounded-md"
                   >
                     Get started
-                  </Link>
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => {
+                      setIsMenuOpen(false)
+                      router.push('/sign-up')
+                    }}
+                    className="block w-full px-4 py-2 bg-white text-black text-center font-medium rounded-md"
+                  >
+                    Get started
+                  </button>
                 )}
               </div>
             </div>

@@ -323,9 +323,7 @@ Update API.md if you:
 ## Questions?
 
 Feel free to ask questions:
-- 💬 Discord: [Join our community](https://discord.gg/repodoc)
-- 📧 Email: contributors@repodoc.dev
-- 🐛 Issues: [GitHub Issues](https://github.com/yourusername/repodoc/issues)
+- 📧 Email: parbhat@parbhat.dev
 
 ## Recognition
 

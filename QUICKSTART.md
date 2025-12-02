@@ -172,9 +172,7 @@ npm run clean               # Clean build artifacts
 
 ## 💬 Need Help?
 
-- 🐛 [Report Issues](https://github.com/yourusername/repodoc/issues)
-- 💬 [Join Discord](https://discord.gg/repodoc)
-- 📧 [Email Support](mailto:support@repodoc.dev)
+- 📧 [Email Support](mailto:parbhat@parbhat.dev)
 
 ---
 

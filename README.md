@@ -337,13 +337,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 ---
 
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🙏 Acknowledgments
+## 📝 Acknowledgments
 
 - [Next.js](https://nextjs.org/) - The React Framework
 - [Vercel](https://vercel.com/) - Hosting Platform
@@ -356,16 +350,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- 📧 Email: support@repodoc.dev
-- 💬 Discord: [Join our community](https://discord.gg/repodoc)
-- 🐛 Issues: [GitHub Issues](https://github.com/yourusername/repodoc/issues)
-- 📖 Docs: [Documentation](https://docs.repodoc.dev)
+- 📧 Email: parbhat@parbhat.dev
 
 ---
 
 <div align="center">
 
-**Made with ❤️ by [Your Name](https://github.com/yourusername)**
+**Made by [Parbhat Kapila](https://github.com/parbhatkapila4)**
 
 [⬆ Back to Top](#-repodoc---ai-powered-code-documentation--chat-platform)
 

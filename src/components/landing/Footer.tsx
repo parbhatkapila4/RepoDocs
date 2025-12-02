@@ -21,7 +21,7 @@ export default function Footer() {
             </p>
             <div className="flex gap-4">
               <a 
-                href="https://github.com" 
+                href="https://github.com/parbhatkapila4" 
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-[#666] hover:text-white transition-colors"
@@ -29,7 +29,7 @@ export default function Footer() {
                 <Github className="w-5 h-5" />
               </a>
               <a 
-                href="https://twitter.com" 
+                href="https://x.com/Parbhat03" 
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-[#666] hover:text-white transition-colors"
@@ -56,7 +56,7 @@ export default function Footer() {
           <div>
             <h4 className="text-white font-medium mb-4">Company</h4>
             <ul className="space-y-3">
-              {['About', 'Contact', 'Privacy', 'Terms'].map((item) => (
+              {['About', 'Contact', 'Privacy'].map((item) => (
                 <li key={item}>
                   <Link href={`/${item.toLowerCase()}`} className="text-[#666] hover:text-white transition-colors text-sm">
                     {item}
@@ -72,9 +72,9 @@ export default function Footer() {
           <p className="text-[#555] text-sm">
             © 2025 RepoDoc. All rights reserved.
           </p>
-          <p className="text-[#555] text-sm">
-            Built by developers, for developers.
-          </p>
+          <Link href="/terms" className="text-[#555] hover:text-white transition-colors text-sm">
+            Terms & Conditions
+          </Link>
         </div>
       </div>
     </footer>
