@@ -765,9 +765,9 @@ function DocsPage() {
                               </ol>
                             ),
                             li: ({ children }) => (
-                              <li className="flex items-start gap-1 sm:gap-2 mobile-no-truncate">
-                                <span className="text-white/40 mt-1 sm:mt-2 flex-shrink-0">•</span>
-                                <span className="mobile-no-truncate">{children}</span>
+                              <li className="flex items-baseline gap-1 sm:gap-2 mobile-no-truncate">
+                                <span className="text-white/40 flex-shrink-0 leading-relaxed">•</span>
+                                <span className="mobile-no-truncate leading-relaxed">{children}</span>
                               </li>
                             ),
                             code: ({ children }) => (

@@ -87,11 +87,18 @@ export async function getGenerateEmbeddings(summary: string, useCache: boolean =
 }
 
 export async function generateReadmeFromCodebase(projectName: string, sourceCodeSummaries: string[], repoInfo: Partial<GitHubRepoInfo> | null) {
-    console.log("Generating README for project:", projectName)
+    console.log("Generating elite README for project:", projectName)
     try {
         const codebaseContext = sourceCodeSummaries.join('\n\n')
         
-        const prompt = `You are an expert technical writer and software engineer. Generate a comprehensive, professional README.md file for the project "${projectName}".
+        const prompt = `You are an elite $500K/year Staff+ full-stack engineer who has built and shipped production-grade AI systems, SaaS products, and developer tools at startup speed. You write READMEs the way senior founders, investors, and top engineers expect — precise, structured, and narrative-driven.
+
+You are inside Cursor with FULL access to this repository.
+
+Your mission:
+Generate a **README.md** that positions this repo as a serious, production-ready, valuable engineering asset — not a toy project.
+It must instantly communicate clarity, purpose, architecture, and adoption ease.
+Avoid fluff, buzzwords, or filler text. Everything must demonstrate competence, intentionality, and confidence.
 
 PROJECT INFORMATION:
 - Project Name: ${projectName}
@@ -104,30 +111,178 @@ PROJECT INFORMATION:
 CODEBASE ANALYSIS:
 ${codebaseContext}
 
-INSTRUCTIONS:
-1. Create a comprehensive README.md that includes:
-   - Project title and description
-   - Features and capabilities
-   - Installation instructions
-   - Usage examples
-   - Project structure overview
-   - Contributing guidelines
-   - License information
-   - Contact/support information
+---
 
-2. Base the content on the actual codebase analysis provided above
-3. Make it professional, clear, and helpful for developers
-4. Use ONLY standard markdown formatting - NO HTML tags
-5. Use proper markdown syntax for badges: [![Alt Text](URL)](Link)
-6. Use proper markdown for images: ![Alt Text](URL)
-7. Use proper markdown for links: [Text](URL)
-8. Ensure all sections are well-structured with proper markdown formatting
-9. If the project appears to be a web application, include deployment instructions
-10. If it's a library/package, include API documentation examples
+# ✅ README STRUCTURE AND RULES
 
-IMPORTANT: Generate ONLY markdown content. Do not include any HTML tags like <div>, <p>, <br>, etc. Use pure markdown syntax only.
+## 1. 🧠 Overview
+A 2–3 sentence founder-level summary explaining what the project *is*, what problem it solves, and who it's for.
+Tone: visionary but grounded.
 
-Generate a complete, production-ready README.md file:`
+Example:
+> "This repository implements a modular AI inference system designed for real-world SaaS integrations. It combines OpenAI APIs, LangChain orchestration, and scalable Express services to deliver low-latency intelligent responses."
+
+---
+
+## 2. 🚀 Key Features
+Bullet points summarizing the system's *capabilities and advantages*, not just features.
+
+Example:
+- Plug-and-play AI orchestration layer for any SaaS
+- Modular, testable, and Dockerized backend
+- Supports multi-provider AI integration (OpenAI, Claude, Gemini)
+- Built with scalable architecture for 10K+ concurrent users
+- Production-ready CI/CD setup with automatic linting and build pipelines
+
+---
+
+## 3. 🧩 System Architecture
+Explain the repo's structure and reasoning behind it.
+
+Include a **Mermaid diagram** showing the overall flow:
+\`\`\`mermaid
+graph TD
+    A[User Request] --> B[API Gateway]
+    B --> C[AI Engine / Model Layer]
+    C --> D[Database / Vector Store]
+    B --> E[Frontend UI]
+\`\`\`
+
+Then explain why it's designed that way:
+"The backend isolates AI orchestration logic from transport and storage, allowing independent scaling of each layer."
+
+---
+
+## 4. ⚙️ Tech Stack
+List technologies by layer and add why each was chosen.
+
+| Layer | Technology | Purpose / Reason |
+|-------|------------|------------------|
+| Frontend | Next.js | Server-rendered UI for SEO and speed |
+| Backend | Node.js (Express) | Lightweight, fast, modular |
+| AI / ML | OpenAI API, LangChain | Prompt management and embeddings |
+| Database | MongoDB | Flexible schema for dynamic AI outputs |
+| Infra | Docker, Vercel | Easy deployment and scalability |
+
+---
+
+## 5. 🧱 Project Structure
+Auto-generate a concise structure based on actual codebase:
+\`\`\`
+/src
+  /api         → All REST endpoints
+  /ai          → AI orchestration logic
+  /components  → UI components
+  /db          → Database models and utils
+  /utils       → Shared helpers
+\`\`\`
+Each folder should have a short 1-line explanation.
+
+---
+
+## 6. 🧩 Setup & Installation
+Provide clean, professional setup instructions.
+\`\`\`bash
+# Clone the repository
+git clone ${repoInfo?.cloneUrl || 'https://github.com/user/repo.git'}
+
+# Install dependencies
+npm install
+
+# Set environment variables
+cp .env.example .env
+
+# Run the app
+npm run dev
+\`\`\`
+
+Include short notes for environment variables detected in the codebase.
+
+---
+
+## 7. 💡 Usage Examples
+Show real-world usage, not "hello world."
+\`\`\`bash
+curl -X POST https://api.example.com/generate \\
+  -H "Content-Type: application/json" \\
+  -d '{"prompt":"Summarize this document"}'
+\`\`\`
+
+Example Output:
+\`\`\`json
+{ "summary": "This document explains..." }
+\`\`\`
+
+"You can integrate this endpoint into any product or internal tool to auto-summarize content in real time."
+
+---
+
+## 8. 🧠 Design Philosophy
+Add a short section that proves you think like a systems engineer.
+
+"This codebase follows clean modular principles — separating orchestration, inference, and persistence layers. Every design choice favors scalability, testability, and real-world deployment simplicity."
+
+This section differentiates senior developers from juniors.
+
+---
+
+## 9. 📈 Scalability & Extensibility
+Use bullet points:
+- Modular structure supports multi-model expansion.
+- Stateless API layer allows horizontal scaling.
+- Can integrate additional providers or databases with minimal refactor.
+- Easily containerized for microservice deployment.
+
+---
+
+## 10. 🔐 Security & Reliability
+Summarize security and quality measures:
+- API keys loaded via env vars only.
+- Rate-limiting middleware prevents abuse.
+- Request sanitization before AI calls.
+- Graceful error handling and retries.
+
+---
+
+## 11. 🧰 Developer Experience
+Explain tools that make it easy for contributors:
+- ESLint + Prettier configured for consistent code.
+- Husky pre-commit hooks for quality control.
+- Example .env provided for quick setup.
+- CI pipeline auto-runs tests on PR.
+
+---
+
+## 12. 🧾 License
+Detect and summarize license (e.g., MIT, Apache 2.0, proprietary).
+
+---
+
+## 13. 💬 Author & Attribution
+Add clear credit and credibility:
+- Author: [Detect from repo or use placeholder]
+- Website: [If available]
+- Building scalable AI products with modern full-stack and MLOps tooling.
+
+---
+
+## 14. ⚡ TL;DR Summary
+End with a single paragraph written for an investor or founder:
+
+"This project is a foundation for real-world AI product development — modular, clean, and production-ready. It demonstrates strong architecture, practical scalability, and craftsmanship expected from top-tier engineers."
+
+---
+
+🧭 GLOBAL RULES:
+- Every section must read like it was written by a $500K+ engineer.
+- Be concise, confident, and intentional — zero fluff.
+- Explain "why" behind choices.
+- Use markdown syntax properly for readability.
+- Make the repo look ready for adoption or investment, not experimentation.
+- Use ONLY standard markdown formatting - NO HTML tags.
+- Base ALL content on the actual codebase analysis provided above.
+
+Generate the complete, elite-level README.md now:`
 
         const readmeContent = await openrouterSingleMessage(prompt, "google/gemini-2.5-flash")
         return readmeContent
@@ -135,12 +290,35 @@ Generate a complete, production-ready README.md file:`
         console.error("Error generating README:", error)
         return `# ${projectName}
 
-A ${repoInfo?.language || 'software'} project.
+## 🧠 Overview
+${repoInfo?.description || 'A production-ready software project built with modern engineering practices.'}
 
-## Description
-${repoInfo?.description || 'This project provides useful functionality for developers.'}
+## 🚀 Key Features
+- Built with ${repoInfo?.language || 'modern technologies'}
+- Production-ready architecture
+- Scalable and maintainable codebase
 
-## Installation
+## 🧩 System Architecture
+\`\`\`mermaid
+graph TD
+    A[Client] --> B[Application]
+    B --> C[Business Logic]
+    C --> D[Database]
+\`\`\`
+
+## ⚙️ Tech Stack
+| Layer | Technology | Purpose |
+|-------|------------|---------|
+| Primary | ${repoInfo?.language || 'N/A'} | Core application logic |
+
+## 🧱 Project Structure
+\`\`\`
+/src          → Source code
+/tests        → Test files
+/docs         → Documentation
+\`\`\`
+
+## 🧩 Setup & Installation
 \`\`\`bash
 # Clone the repository
 git clone ${repoInfo?.cloneUrl || 'https://github.com/user/repo.git'}
@@ -148,19 +326,16 @@ cd ${projectName}
 
 # Install dependencies
 npm install
+
+# Run the application
+npm run dev
 \`\`\`
 
-## Usage
-\`\`\`bash
-# Start the application
-npm start
-\`\`\`
-
-## Contributing
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
+## 🧾 License
 This project is licensed under the MIT License.
+
+## ⚡ TL;DR
+${projectName} is a well-architected ${repoInfo?.language || 'software'} project ready for production use and further development.
 `
     }
 }

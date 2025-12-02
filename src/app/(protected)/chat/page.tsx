@@ -41,7 +41,6 @@ interface Message {
 
 const models = [
   { id: 'repodoc-v1', name: 'RepoDoc AI', description: 'Optimized for code analysis' },
-  { id: 'repodoc-fast', name: 'RepoDoc Fast', description: 'Quick responses' },
 ];
 
 const actionButtons = [
@@ -265,11 +264,64 @@ export default function ChatPage() {
         {messages.length === 0 ? (
           /* Empty State - Welcome Screen */
           <div className="flex-1 flex flex-col items-center justify-center px-3 sm:px-4 pb-4 sm:pb-8">
-            {/* Decorative Gradient Blob */}
-            <div className="relative mb-4 sm:mb-6">
-              <div className="w-20 h-20 sm:w-28 md:w-36 sm:h-28 md:h-36 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-blue-600 opacity-70 blur-xl animate-pulse" />
-              <div className="absolute inset-0 w-20 h-20 sm:w-28 md:w-36 sm:h-28 md:h-36 rounded-full bg-gradient-to-tr from-blue-500 via-indigo-600 to-purple-600 opacity-50 blur-2xl animate-pulse" style={{ animationDelay: '0.5s' }} />
-              <div className="absolute inset-2 sm:inset-3 md:inset-5 rounded-full bg-gradient-to-br from-indigo-400 via-purple-500 to-blue-500 opacity-90 shadow-lg shadow-purple-500/30" />
+            {/* Stunning AI Brain Visualization */}
+            <div className="relative mb-6 sm:mb-8 w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48">
+              {/* Outer rotating ring */}
+              <div className="absolute inset-0 rounded-full border-2 border-purple-500/30 animate-[spin_8s_linear_infinite]">
+                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-purple-400 shadow-lg shadow-purple-400/50" />
+                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-blue-400 shadow-lg shadow-blue-400/50" />
+              </div>
+              
+              {/* Second rotating ring (opposite direction) */}
+              <div className="absolute inset-3 sm:inset-4 rounded-full border border-indigo-500/40 animate-[spin_6s_linear_infinite_reverse]">
+                <div className="absolute top-1/2 -right-1 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-indigo-400 shadow-lg shadow-indigo-400/50" />
+                <div className="absolute top-1/2 -left-1 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-lg shadow-cyan-400/50" />
+              </div>
+              
+              {/* Third rotating ring */}
+              <div className="absolute inset-6 sm:inset-8 rounded-full border border-blue-500/30 animate-[spin_4s_linear_infinite]">
+                <div className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-blue-300" />
+              </div>
+              
+              {/* Glowing background layers */}
+              <div className="absolute inset-4 sm:inset-6 rounded-full bg-gradient-to-br from-purple-600/20 via-indigo-600/20 to-blue-600/20 blur-xl animate-pulse" />
+              <div className="absolute inset-6 sm:inset-8 rounded-full bg-gradient-to-tr from-blue-500/30 via-purple-500/30 to-pink-500/30 blur-lg animate-pulse" style={{ animationDelay: '0.5s' }} />
+              
+              {/* Central AI Core */}
+              <div className="absolute inset-8 sm:inset-10 md:inset-12 rounded-full bg-gradient-to-br from-indigo-500 via-purple-600 to-blue-600 shadow-2xl shadow-purple-500/50 flex items-center justify-center overflow-hidden">
+                {/* Inner glow effect */}
+                <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/10 to-white/20 rounded-full" />
+                
+                {/* Animated particles inside */}
+                <div className="absolute w-full h-full">
+                  <div className="absolute top-1/4 left-1/4 w-1 h-1 rounded-full bg-white/60 animate-ping" style={{ animationDuration: '2s' }} />
+                  <div className="absolute top-1/3 right-1/3 w-0.5 h-0.5 rounded-full bg-white/40 animate-ping" style={{ animationDuration: '2.5s', animationDelay: '0.5s' }} />
+                  <div className="absolute bottom-1/3 left-1/3 w-0.5 h-0.5 rounded-full bg-white/50 animate-ping" style={{ animationDuration: '3s', animationDelay: '1s' }} />
+                </div>
+                
+                {/* Robot Icon */}
+                <svg className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white relative z-10 drop-shadow-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  {/* Robot head */}
+                  <rect x="5" y="7" width="14" height="12" rx="2" strokeLinecap="round" strokeLinejoin="round" />
+                  {/* Antenna */}
+                  <line x1="12" y1="7" x2="12" y2="4" strokeLinecap="round" />
+                  <circle cx="12" cy="3" r="1" fill="currentColor" />
+                  {/* Eyes */}
+                  <circle cx="9" cy="12" r="1.5" fill="currentColor" />
+                  <circle cx="15" cy="12" r="1.5" fill="currentColor" />
+                  {/* Mouth */}
+                  <path d="M9 16h6" strokeLinecap="round" />
+                  {/* Ears */}
+                  <rect x="2" y="10" width="3" height="4" rx="1" strokeLinecap="round" strokeLinejoin="round" />
+                  <rect x="19" y="10" width="3" height="4" rx="1" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              
+              {/* Floating particles around */}
+              <div className="absolute -top-2 left-1/4 w-1.5 h-1.5 rounded-full bg-purple-400/60 animate-bounce" style={{ animationDuration: '3s' }} />
+              <div className="absolute -bottom-2 right-1/4 w-1 h-1 rounded-full bg-blue-400/60 animate-bounce" style={{ animationDuration: '2.5s', animationDelay: '0.5s' }} />
+              <div className="absolute top-1/4 -right-2 w-1.5 h-1.5 rounded-full bg-indigo-400/60 animate-bounce" style={{ animationDuration: '2s', animationDelay: '1s' }} />
+              <div className="absolute bottom-1/4 -left-2 w-1 h-1 rounded-full bg-cyan-400/60 animate-bounce" style={{ animationDuration: '3.5s', animationDelay: '0.3s' }} />
             </div>
 
             {/* Greeting */}

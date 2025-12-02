@@ -116,9 +116,9 @@ export default async function PublicReadmePage({ params }: PublicReadmePageProps
                               </ul>
                             ),
                             li: ({ children }) => (
-                              <li className="flex items-start gap-2">
-                                <span className="text-white/40 mt-2">•</span>
-                                <span>{children}</span>
+                              <li className="flex items-baseline gap-2">
+                                <span className="text-white/40 leading-relaxed">•</span>
+                                <span className="leading-relaxed">{children}</span>
                               </li>
                             ),
                             code: ({ children }) => (
