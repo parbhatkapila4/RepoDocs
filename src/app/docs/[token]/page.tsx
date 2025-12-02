@@ -149,9 +149,13 @@ export default async function PublicDocsPage({ params }: PublicDocsPageProps) {
                             </code>
                           ),
                           pre: ({ children }) => (
-                            <pre className="bg-gray-900/50 border border-white/10 rounded-lg p-4 overflow-x-auto mb-4">
-                              {children}
-                            </pre>
+                            <div className="relative mb-4">
+                              <div className="overflow-x-auto max-w-full scrollbar-thin">
+                                <pre className="bg-gray-900/50 border border-white/10 rounded-lg p-4 text-sm whitespace-pre min-w-max">
+                                  {children}
+                                </pre>
+                              </div>
+                            </div>
                           ),
                           img: ({ src, alt, ...props }) => (
                             <img 

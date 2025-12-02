@@ -123,10 +123,11 @@ function ReposPage() {
     const colors: Record<string, string> = {
       'JavaScript': '#f7df1e',
       'TypeScript': '#3178c6',
-      'Python': '#3776ab',
+      'Python': '#14b8a6',
       'Java': '#ed8b00',
-      'C++': '#00599c',
+      'C++': '#f472b6',
       'C#': '#239120',
+      'C': '#a855f7',
       'Go': '#00add8',
       'Rust': '#dea584',
       'PHP': '#777bb4',
@@ -134,9 +135,15 @@ function ReposPage() {
       'Swift': '#fa7343',
       'Kotlin': '#7f52ff',
       'HTML': '#e34f26',
-      'CSS': '#1572b6',
+      'CSS': '#a78bfa',
+      'SCSS': '#c6538c',
       'Vue': '#4fc08d',
       'Shell': '#89e051',
+      'PLpgSQL': '#336791',
+      'Dockerfile': '#0db7ed',
+      'Makefile': '#427819',
+      'MDX': '#fcb32c',
+      'Prisma': '#2d3748',
     };
     return colors[language] || '#6b7280';
   };

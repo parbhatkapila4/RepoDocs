@@ -776,9 +776,13 @@ function DocsPage() {
                               </code>
                             ),
                             pre: ({ children }) => (
-                              <pre className="bg-gray-900/50 text-white/90 border border-white/10 rounded-lg p-2 sm:p-3 md:p-4 overflow-x-auto mb-2 sm:mb-3 md:mb-4 text-xs sm:text-sm mobile-no-truncate">
-                                {children}
-                              </pre>
+                              <div className="relative mb-2 sm:mb-3 md:mb-4">
+                                <div className="overflow-x-auto max-w-full scrollbar-thin">
+                                  <pre className="bg-gray-900/50 text-white/90 border border-white/10 rounded-lg p-2 sm:p-3 md:p-4 text-xs sm:text-sm whitespace-pre min-w-max">
+                                    {children}
+                                  </pre>
+                                </div>
+                              </div>
                             ),
                             img: ({ src, alt, ...props }) => (
                               <img 
