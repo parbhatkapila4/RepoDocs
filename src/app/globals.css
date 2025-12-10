@@ -1,8 +1,7 @@
-@import "tailwindcss";
-@import "tw-animate-css";
-
 /* Premium Typography - Distinctive font choices */
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+@import "tw-animate-css";
 
 /* README Badge Styling */
 .prose img[src*="shields.io"] {

@@ -40,7 +40,8 @@ import {
   X,
   Crown,
   Zap,
-  RefreshCw
+  RefreshCw,
+  BarChart3
 } from "lucide-react"
 import { RepoDocLogo } from "@/components/ui/repodoc-logo"
 import { useUser } from "@/hooks/useUser"
@@ -76,6 +77,11 @@ const navigationItems: NavigationItem[] = [
     title: "Generate Readme",
     url: "/readme",
     icon: Brain,
+  },
+  {
+    title: "Analytics",
+    url: "/analytics",
+    icon: BarChart3,
   },
   {
     title: "Create",
