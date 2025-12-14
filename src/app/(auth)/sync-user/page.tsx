@@ -1,20 +1,19 @@
-import { auth, clerkClient } from '@clerk/nextjs/server'
-import { notFound, redirect } from 'next/navigation'
-import prisma from '@/lib/prisma'
-import React from 'react'
+import { auth, clerkClient } from "@clerk/nextjs/server";
+import { notFound, redirect } from "next/navigation";
+import prisma from "@/lib/prisma";
 
 async function page() {
-  const { userId } = await auth()
+  const { userId } = await auth();
   if (!userId) {
-    return redirect('/')
+    return redirect("/");
   }
 
-  const client = await clerkClient()
+  const client = await clerkClient();
 
-  const user = await client.users.getUser(userId)
+  const user = await client.users.getUser(userId);
 
-  if(!user.emailAddresses[0]?.emailAddress) {
-    return notFound()
+  if (!user.emailAddresses[0]?.emailAddress) {
+    return notFound();
   }
 
   await prisma.user.upsert({
@@ -33,9 +32,9 @@ async function page() {
       firstName: user.firstName,
       lastName: user.lastName,
     },
-  })
+  });
 
-  return redirect('/dashboard')
+  return redirect("/dashboard");
 }
 
-export default page
+export default page;

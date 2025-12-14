@@ -1,99 +1,110 @@
-import { Document } from "@langchain/core/documents"
-import { openrouterSingleMessage } from "@/lib/openrouter"
+import { Document } from "@langchain/core/documents";
+import { openrouterSingleMessage } from "@/lib/openrouter";
 import { GoogleGenAI } from "@google/genai";
 import type { GitHubRepoInfo } from "@/lib/github";
 
-// Support both GEMINI_API_KEY and GOOGLE_GENAI_API_KEY for backwards compatibility
-const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENAI_API_KEY;
+const geminiApiKey =
+  process.env.GEMINI_API_KEY || process.env.GOOGLE_GENAI_API_KEY;
 
 if (!geminiApiKey) {
-    throw new Error('Missing GEMINI_API_KEY or GOOGLE_GENAI_API_KEY environment variable');
+  throw new Error(
+    "Missing GEMINI_API_KEY or GOOGLE_GENAI_API_KEY environment variable"
+  );
 }
 
-const genAi = new GoogleGenAI({ apiKey: geminiApiKey })
-
+const genAi = new GoogleGenAI({ apiKey: geminiApiKey });
 
 export async function getSummariseCode(doc: Document) {
-    console.log("Summarising code for ", doc.metadata.source)
-    try {
-        const code = doc.pageContent.slice(0, 10000)
+  try {
+    const code = doc.pageContent.slice(0, 10000);
 
-        const prompt = `You are an intelligent senior software engineer who specializes in onboarding junior software engineers onto projects.
+    const prompt = `You are an intelligent senior software engineer who specializes in onboarding junior software engineers onto projects.
 You are onboarding a junior software engineer and explaining to them the purpose of the ${doc.metadata.source} file.
 Here is the code: 
 ---
 ${code}
 ---
-Give a summary no more than 100 words of the code above.`
+Give a summary no more than 100 words of the code above.`;
 
-        return openrouterSingleMessage(prompt)
-    } catch (error) {
-        console.error("Error summarising code for ", doc.metadata.source, error)
-        return ""
-    }
+    return openrouterSingleMessage(prompt);
+  } catch (error) {
+    console.error("Error summarising code for ", doc.metadata.source, error);
+    return "";
+  }
 }
 
-export async function getGenerateEmbeddings(summary: string, useCache: boolean = true) {
-    console.log("Generating embeddings")
-    
-    // Check cache first
+export async function getGenerateEmbeddings(
+  summary: string,
+  useCache: boolean = true
+) {
+  if (useCache) {
+    try {
+      const { cache } = await import("./cache");
+      const cached = await cache.getCachedEmbedding(summary);
+      if (cached) {
+        return cached;
+      }
+    } catch {}
+  }
+
+  if (!geminiApiKey) {
+    throw new Error(
+      "GEMINI_API_KEY or GOOGLE_GENAI_API_KEY is not set in environment variables"
+    );
+  }
+
+  try {
+    const response = await genAi.models.embedContent({
+      model: "gemini-embedding-001",
+      contents: summary as string,
+      config: {
+        outputDimensionality: 768,
+      },
+    });
+
+    if (!response?.embeddings) {
+      throw new Error("No embeddings returned from API");
+    }
+
+    const embeddingValues = response?.embeddings[0]?.values;
+
+    if (!embeddingValues || embeddingValues.length === 0) {
+      throw new Error("Invalid embedding values");
+    }
+
     if (useCache) {
-        try {
-            const { cache } = await import('./cache');
-            const cached = await cache.getCachedEmbedding(summary);
-            if (cached) {
-                console.log("Using cached embedding");
-                return cached;
-            }
-        } catch {
-            console.log("Cache miss, generating new embedding");
-        }
+      try {
+        const { cache } = await import("./cache");
+        await cache.cacheEmbedding(summary, embeddingValues);
+      } catch (cacheError) {}
     }
-    
-    try {
-        const response = await genAi.models.embedContent({
-            model: 'gemini-embedding-001',
-            contents: summary as string,
-            config: {
-                outputDimensionality: 768,
-            },
-        });
-        
-        if (!response?.embeddings) {
-            throw new Error("No embeddings returned from API");
-        }
-        
-        const embeddingValues = response?.embeddings[0]?.values;
-        
-        if (!embeddingValues || embeddingValues.length === 0) {
-            throw new Error("Invalid embedding values");
-        }
 
-        // Cache the result
-        if (useCache) {
-            try {
-                const { cache } = await import('./cache');
-                await cache.cacheEmbedding(summary, embeddingValues);
-            } catch (cacheError) {
-                console.log("Failed to cache embedding:", cacheError);
-            }
-        }
-
-        return embeddingValues;
-    } catch (error) {
-        console.error("Error generating embeddings:", error)
-        throw new Error(`Failed to generate embeddings: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
+    return embeddingValues;
+  } catch (error) {
+    console.error("Error generating embeddings:", {
+      error: error instanceof Error ? error.message : "Unknown error",
+      hasApiKey: !!geminiApiKey,
+      summaryLength: summary?.length || 0,
+      errorDetails: error,
+    });
+    throw new Error(
+      `Failed to generate embeddings: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
+  }
 }
 
-export async function generateReadmeFromCodebase(projectName: string, sourceCodeSummaries: string[], repoInfo: Partial<GitHubRepoInfo> | null) {
-    console.log("Generating elite README for project:", projectName)
-    try {
-        const codebaseContext = sourceCodeSummaries.join('\n\n')
-        
-        const prompt = `You are an elite $500K/year Staff+ full-stack engineer who has built and shipped production-grade AI systems, SaaS products, and developer tools at startup speed. You write READMEs the way senior founders, investors, and top engineers expect — precise, structured, and narrative-driven.
+export async function generateReadmeFromCodebase(
+  projectName: string,
+  sourceCodeSummaries: string[],
+  repoInfo: Partial<GitHubRepoInfo> | null
+) {
+  try {
+    const codebaseContext = sourceCodeSummaries.join("\n\n");
+    const hasCodebaseAnalysis = sourceCodeSummaries.length > 0;
 
-You are inside Cursor with FULL access to this repository.
+    const prompt = `You are an elite $500K/year Staff+ full-stack engineer who has built and shipped production-grade AI systems, SaaS products, and developer tools at startup speed. You write READMEs the way senior founders, investors, and top engineers expect — precise, structured, and narrative-driven.
+
+${hasCodebaseAnalysis ? "You are inside Cursor with FULL access to this repository." : "You are generating a README based on repository metadata. The codebase is currently being indexed, so detailed code analysis is not yet available."}
 
 Your mission:
 Generate a **README.md** that positions this repo as a serious, production-ready, valuable engineering asset — not a toy project.
@@ -102,14 +113,19 @@ Avoid fluff, buzzwords, or filler text. Everything must demonstrate competence, 
 
 PROJECT INFORMATION:
 - Project Name: ${projectName}
-- Repository URL: ${repoInfo?.htmlUrl || 'N/A'}
-- Primary Language: ${repoInfo?.language || 'N/A'}
-- Description: ${repoInfo?.description || 'N/A'}
+- Repository URL: ${repoInfo?.htmlUrl || "N/A"}
+- Primary Language: ${repoInfo?.language || "N/A"}
+- Description: ${repoInfo?.description || "N/A"}
 - Stars: ${repoInfo?.stars || 0}
 - Forks: ${repoInfo?.forks || 0}
 
-CODEBASE ANALYSIS:
-${codebaseContext}
+${
+  hasCodebaseAnalysis
+    ? `CODEBASE ANALYSIS:
+${codebaseContext}`
+    : `⚠️ IMPORTANT NOTE FOR USER:
+This is a DEMO/PREVIEW README generated from repository metadata only. The codebase indexing is currently in progress and typically takes 5-15 minutes to complete (depending on repository size). Once indexing is complete, please regenerate the README to get comprehensive, codebase-aware documentation with full technical analysis. This preview gives you a quick overview, but the full README will be much more detailed and accurate.`
+}
 
 ---
 
@@ -184,7 +200,7 @@ Each folder should have a short 1-line explanation.
 Provide clean, professional setup instructions.
 \`\`\`bash
 # Clone the repository
-git clone ${repoInfo?.cloneUrl || 'https://github.com/user/repo.git'}
+git clone ${repoInfo?.cloneUrl || "https://github.com/user/repo.git"}
 
 # Install dependencies
 npm install
@@ -282,19 +298,22 @@ End with a single paragraph written for an investor or founder:
 - Use ONLY standard markdown formatting - NO HTML tags.
 - Base ALL content on the actual codebase analysis provided above.
 
-Generate the complete, elite-level README.md now:`
+Generate the complete, elite-level README.md now:`;
 
-        const readmeContent = await openrouterSingleMessage(prompt, "google/gemini-2.5-flash")
-        return readmeContent
-    } catch (error) {
-        console.error("Error generating README:", error)
-        return `# ${projectName}
+    const readmeContent = await openrouterSingleMessage(
+      prompt,
+      "google/gemini-2.5-flash"
+    );
+    return readmeContent;
+  } catch (error) {
+    console.error("Error generating README:", error);
+    return `# ${projectName}
 
 ## 🧠 Overview
-${repoInfo?.description || 'A production-ready software project built with modern engineering practices.'}
+${repoInfo?.description || "A production-ready software project built with modern engineering practices."}
 
 ## 🚀 Key Features
-- Built with ${repoInfo?.language || 'modern technologies'}
+- Built with ${repoInfo?.language || "modern technologies"}
 - Production-ready architecture
 - Scalable and maintainable codebase
 
@@ -309,7 +328,7 @@ graph TD
 ## ⚙️ Tech Stack
 | Layer | Technology | Purpose |
 |-------|------------|---------|
-| Primary | ${repoInfo?.language || 'N/A'} | Core application logic |
+| Primary | ${repoInfo?.language || "N/A"} | Core application logic |
 
 ## 🧱 Project Structure
 \`\`\`
@@ -321,7 +340,7 @@ graph TD
 ## 🧩 Setup & Installation
 \`\`\`bash
 # Clone the repository
-git clone ${repoInfo?.cloneUrl || 'https://github.com/user/repo.git'}
+git clone ${repoInfo?.cloneUrl || "https://github.com/user/repo.git"}
 cd ${projectName}
 
 # Install dependencies
@@ -335,15 +354,18 @@ npm run dev
 This project is licensed under the MIT License.
 
 ## ⚡ TL;DR
-${projectName} is a well-architected ${repoInfo?.language || 'software'} project ready for production use and further development.
-`
-    }
+${projectName} is a well-architected ${repoInfo?.language || "software"} project ready for production use and further development.
+`;
+  }
 }
 
-export async function modifyReadmeWithQuery(currentReadme: string, userQuery: string, projectName: string) {
-    console.log("Modifying README with user query:", userQuery)
-    try {
-        const prompt = `You are an expert technical writer and software engineer. You need to modify an existing README.md file based on a user's specific request.
+export async function modifyReadmeWithQuery(
+  currentReadme: string,
+  userQuery: string,
+  projectName: string
+) {
+  try {
+    const prompt = `You are an expert technical writer and software engineer. You need to modify an existing README.md file based on a user's specific request.
 
 PROJECT: ${projectName}
 
@@ -373,56 +395,75 @@ IMPORTANT:
 - Use pure markdown syntax only
 - Make sure the output is a complete, valid README.md file
 
-Generate the modified README.md content:`
+Generate the modified README.md content:`;
 
-        const modifiedReadme = await openrouterSingleMessage(prompt, "google/gemini-2.5-flash")
-        return modifiedReadme
-    } catch (error) {
-        console.error("Error modifying README:", error)
-        throw new Error("Failed to modify README with AI")
-    }
+    const modifiedReadme = await openrouterSingleMessage(
+      prompt,
+      "google/gemini-2.5-flash"
+    );
+    return modifiedReadme;
+  } catch (error) {
+    console.error("Error modifying README:", error);
+    throw new Error("Failed to modify README with AI");
+  }
 }
 
-export async function generateDocsFromCodebase(projectName: string, sourceCodeSummaries: string[], repoInfo: Partial<GitHubRepoInfo> | null) {
-    console.log("Generating comprehensive Founder Edition docs for project:", projectName)
-    try {
-        // Limit context size to prevent prompt from being too long (keep last 100 summaries or ~200k chars)
-        const maxContextLength = 200000; // ~200k characters
-        let codebaseContext = sourceCodeSummaries.join('\n\n')
-        
-        // If context is too long, truncate intelligently (keep most recent summaries)
-        if (codebaseContext.length > maxContextLength) {
-            console.log(`Codebase context too long (${codebaseContext.length} chars), truncating to ${maxContextLength} chars`)
-            // Keep the most recent summaries (they're usually more relevant)
-            const summariesToKeep = Math.max(50, Math.floor(sourceCodeSummaries.length * 0.7))
-            const recentSummaries = sourceCodeSummaries.slice(-summariesToKeep)
-            codebaseContext = recentSummaries.join('\n\n')
-            
-            // If still too long, truncate the string itself
-            if (codebaseContext.length > maxContextLength) {
-                codebaseContext = codebaseContext.substring(0, maxContextLength) + '\n\n[... codebase context truncated for length ...]'
-            }
-        }
-        
-        const prompt = `You are an expert Staff-level AI/full-stack engineer who also thinks like a startup founder and CTO. You have FULL access to the current repository: code files, architecture, configs, and metadata.
+export async function generateDocsFromCodebase(
+  projectName: string,
+  sourceCodeSummaries: string[],
+  repoInfo: Partial<GitHubRepoInfo> | null
+) {
+  try {
+    
+    const maxContextLength = 200000; 
+    let codebaseContext = sourceCodeSummaries.join("\n\n");
+
+    
+    const hasCodebaseAnalysis = codebaseContext.length > 0;
+
+    if (codebaseContext.length > maxContextLength) {
+      const summariesToKeep = Math.max(
+        50,
+        Math.floor(sourceCodeSummaries.length * 0.7)
+      );
+      const recentSummaries = sourceCodeSummaries.slice(-summariesToKeep);
+      codebaseContext = recentSummaries.join("\n\n");
+
+      if (codebaseContext.length > maxContextLength) {
+        codebaseContext =
+          codebaseContext.substring(0, maxContextLength) +
+          "\n\n[... codebase context truncated for length ...]";
+      }
+    }
+
+    const prompt = `You are an expert Staff-level AI/full-stack engineer who also thinks like a startup founder and CTO. ${hasCodebaseAnalysis ? "You have FULL access to the current repository: code files, architecture, configs, and metadata." : "You are generating documentation based on repository metadata. The codebase is currently being indexed, so detailed code analysis is not yet available."}
 
 Your mission: Generate ONE comprehensive technical document that explains this repo clearly enough that:
 - A non-technical founder instantly understands what this project does and why it matters.
 - A senior engineer immediately understands the architecture, strengths, and extension points.
 - Both can see the business value and scalability of this system without reading a single line of code.
 
-DO NOT summarize file by file. DO NOT rewrite the README. Your job is to infer PRODUCT, ARCHITECTURE, BUSINESS VALUE, and EXTENSIBILITY from the codebase.
+${hasCodebaseAnalysis ? "DO NOT summarize file by file. DO NOT rewrite the README. Your job is to infer PRODUCT, ARCHITECTURE, BUSINESS VALUE, and EXTENSIBILITY from the codebase." : "Since detailed codebase analysis is not yet available, focus on what can be inferred from the repository metadata, description, and general project information. Create a professional technical document that sets expectations and provides structure for when full codebase analysis becomes available."}
 
 PROJECT INFORMATION:
 - Project Name: ${projectName}
-- Repository URL: ${repoInfo?.htmlUrl || 'N/A'}
-- Primary Language: ${repoInfo?.language || 'N/A'}
-- Description: ${repoInfo?.description || 'N/A'}
+- Repository URL: ${repoInfo?.htmlUrl || "N/A"}
+- Primary Language: ${repoInfo?.language || "N/A"}
+- Description: ${repoInfo?.description || "N/A"}
 - Stars: ${repoInfo?.stars || 0}
 - Forks: ${repoInfo?.forks || 0}
 
-DETAILED CODEBASE ANALYSIS:
-${codebaseContext}
+${
+  hasCodebaseAnalysis
+    ? `DETAILED CODEBASE ANALYSIS:
+${codebaseContext}`
+    : `⚠️ IMPORTANT NOTE FOR USER:
+Indexing is in progress! We're currently indexing your codebase, which typically takes 5-15 minutes to complete (depending on repository size).
+
+This is a DEMO/PREVIEW documentation generated from repository metadata only. We're giving you this demo docs so you can see a preview while indexing completes. Once indexing is ready, please try again (regenerate the documentation) to get comprehensive, codebase-aware documentation with full technical analysis. 
+
+Thank you for your patience!`
+}
 
 ---
 
@@ -592,47 +633,49 @@ A crisp, 3–5 sentence summary written for a non-technical founder:
 - Use tables for structured comparisons
 - Make it production-ready and professional
 
-Generate the complete 16-section Founder Edition Technical Documentation.`
+Generate the complete 16-section Founder Edition Technical Documentation.`;
 
-        // Use higher max_tokens for comprehensive documentation (32000 tokens = ~24000 words)
-        let docsContent = await openrouterSingleMessage(prompt, "google/gemini-2.5-flash", 32000)
-        
-        // Enhanced truncation detection - check for various incomplete patterns
-        const trimmedContent = docsContent?.trim() || ''
-        const endsWithIncompleteTable = trimmedContent.endsWith('|') || 
-                                       trimmedContent.endsWith('||') ||
-                                       trimmedContent.endsWith('| |') ||
-                                       /^\|.*\|$/.test(trimmedContent.split('\n').pop() || '') || // Last line is table header
-                                       /^-+$/.test(trimmedContent.split('\n').pop() || ''); // Last line is dashes (table separator)
-        
-        const endsWithIncompleteSection = trimmedContent.endsWith('##') ||
-                                          trimmedContent.endsWith('###') ||
-                                          trimmedContent.endsWith('####') ||
-                                          trimmedContent.endsWith('...') ||
-                                          trimmedContent.endsWith('---');
-        
-        // Check for missing key sections in the 16-section Founder Edition format
-        const missingKeySections = !trimmedContent.includes('## 16.') && 
-                                   !trimmedContent.includes('TL;DR') && 
-                                   !trimmedContent.includes('Founder Summary') &&
-                                   trimmedContent.length > 5000;
-        
-        const sectionCount = trimmedContent.split('##').length - 1; // Count major sections
-        const hasInsufficientSections = sectionCount < 12 && trimmedContent.length > 3000; // Expect at least 12 of 16 sections
-        
-        const isTruncated = !docsContent || 
-                           docsContent.length < 2000 ||
-                           endsWithIncompleteTable ||
-                           endsWithIncompleteSection ||
-                           missingKeySections ||
-                           hasInsufficientSections;
-        
-        // If truncated, retry with explicit instruction to complete
-        if (isTruncated && docsContent && docsContent.length > 500) {
-            console.warn("First attempt may be incomplete, retrying with completion instruction...")
-            console.log(`Truncation indicators: endsWithTable=${endsWithIncompleteTable}, endsWithSection=${endsWithIncompleteSection}, missingSections=${missingKeySections}, insufficientSections=${hasInsufficientSections}`)
-            
-            const retryPrompt = `${prompt}
+    let docsContent = await openrouterSingleMessage(
+      prompt,
+      "google/gemini-2.5-flash",
+      32000
+    );
+
+    const trimmedContent = docsContent?.trim() || "";
+    const endsWithIncompleteTable =
+      trimmedContent.endsWith("|") ||
+      trimmedContent.endsWith("||") ||
+      trimmedContent.endsWith("| |") ||
+      /^\|.*\|$/.test(trimmedContent.split("\n").pop() || "") ||
+      /^-+$/.test(trimmedContent.split("\n").pop() || "");
+
+    const endsWithIncompleteSection =
+      trimmedContent.endsWith("##") ||
+      trimmedContent.endsWith("###") ||
+      trimmedContent.endsWith("####") ||
+      trimmedContent.endsWith("...") ||
+      trimmedContent.endsWith("---");
+
+    const missingKeySections =
+      !trimmedContent.includes("## 16.") &&
+      !trimmedContent.includes("TL;DR") &&
+      !trimmedContent.includes("Founder Summary") &&
+      trimmedContent.length > 5000;
+
+    const sectionCount = trimmedContent.split("##").length - 1;
+    const hasInsufficientSections =
+      sectionCount < 12 && trimmedContent.length > 3000;
+
+    const isTruncated =
+      !docsContent ||
+      docsContent.length < 2000 ||
+      endsWithIncompleteTable ||
+      endsWithIncompleteSection ||
+      missingKeySections ||
+      hasInsufficientSections;
+
+    if (isTruncated && docsContent && docsContent.length > 500) {
+      const retryPrompt = `${prompt}
 
 CRITICAL: The previous response was INCOMPLETE and ended abruptly. You MUST generate the COMPLETE documentation including:
 - ALL 16 sections (1. Product Understanding through 16. TL;DR – Founder Summary)
@@ -641,67 +684,73 @@ CRITICAL: The previous response was INCOMPLETE and ended abruptly. You MUST gene
 - Proper closing for all tables, code blocks, and sections
 - Complete all sentences and paragraphs - do not leave tables, sections, or content incomplete
 
-Do NOT truncate the response. Generate the FULL, COMPLETE 16-section Founder Edition documentation from start to finish with proper endings.`
-            
-            try {
-                const retryContent = await openrouterSingleMessage(retryPrompt, "google/gemini-2.5-flash", 32000)
-                
-                // Enhanced validation for retry content
-                const retryTrimmed = retryContent?.trim() || ''
-                const retryEndsWithTable = retryTrimmed.endsWith('|') || retryTrimmed.endsWith('||') || /^\|.*\|$/.test(retryTrimmed.split('\n').pop() || '')
-                const retryEndsWithSection = retryTrimmed.endsWith('##') || retryTrimmed.endsWith('###')
-                const retryIsComplete = !retryEndsWithTable && !retryEndsWithSection && retryContent.length > docsContent.length
-                
-                // Use retry content if it's more complete
-                if (retryContent && retryIsComplete && retryContent.split('##').length >= docsContent.split('##').length) {
-                    console.log("Retry successful - using complete documentation")
-                    docsContent = retryContent
-                } else if (retryContent && retryContent.length > docsContent.length * 1.2) {
-                    // If retry is significantly longer, use it even if it has minor issues
-                    console.log("Retry is significantly longer, using it despite minor issues")
-                    docsContent = retryContent
-                } else {
-                    console.warn("Retry did not improve completeness, using original response")
-                }
-            } catch (retryError) {
-                console.error("Retry failed, using original response:", retryError)
-                // Continue with original content
-            }
+Do NOT truncate the response. Generate the FULL, COMPLETE 16-section Founder Edition documentation from start to finish with proper endings.`;
+
+      try {
+        const retryContent = await openrouterSingleMessage(
+          retryPrompt,
+          "google/gemini-2.5-flash",
+          32000
+        );
+
+        const retryTrimmed = retryContent?.trim() || "";
+        const retryEndsWithTable =
+          retryTrimmed.endsWith("|") ||
+          retryTrimmed.endsWith("||") ||
+          /^\|.*\|$/.test(retryTrimmed.split("\n").pop() || "");
+        const retryEndsWithSection =
+          retryTrimmed.endsWith("##") || retryTrimmed.endsWith("###");
+        const retryIsComplete =
+          !retryEndsWithTable &&
+          !retryEndsWithSection &&
+          retryContent.length > docsContent.length;
+
+        if (
+          retryContent &&
+          retryIsComplete &&
+          retryContent.split("##").length >= docsContent.split("##").length
+        ) {
+          docsContent = retryContent;
+        } else if (
+          retryContent &&
+          retryContent.length > docsContent.length * 1.2
+        ) {
+          docsContent = retryContent;
         }
-        
-        // Final validation - check if still incomplete after retry
-        const finalTrimmed = docsContent?.trim() || ''
-        const stillIncomplete = finalTrimmed.endsWith('|') || 
-                               finalTrimmed.endsWith('||') ||
-                               finalTrimmed.endsWith('##') ||
-                               finalTrimmed.endsWith('---') ||
-                               /^\|.*\|$/.test(finalTrimmed.split('\n').pop() || '');
-        
-        if (stillIncomplete && docsContent.length > 5000) {
-            console.warn("Documentation still appears incomplete after retry, but proceeding with available content")
-        }
-        
-        if (!docsContent || docsContent.length < 1000) {
-            throw new Error("Generated documentation is too short or empty. Please try regenerating.")
-        }
-        
-        return docsContent
-    } catch (error) {
-        console.error("Error generating docs:", error)
-        
-        // Try a simpler, faster generation as fallback
-        try {
-            console.log("Attempting fallback docs generation...")
-            const fallbackPrompt = `Generate Founder Edition technical documentation for "${projectName}".
+      } catch (retryError) {
+        console.error("Retry failed, using original response:", retryError);
+      }
+    }
+
+    const finalTrimmed = docsContent?.trim() || "";
+    const stillIncomplete =
+      finalTrimmed.endsWith("|") ||
+      finalTrimmed.endsWith("||") ||
+      finalTrimmed.endsWith("##") ||
+      finalTrimmed.endsWith("---") ||
+      /^\|.*\|$/.test(finalTrimmed.split("\n").pop() || "");
+
+    if (!docsContent || docsContent.length < 1000) {
+      throw new Error(
+        "Generated documentation is too short or empty. Please try regenerating."
+      );
+    }
+
+    return docsContent;
+  } catch (error) {
+    console.error("Error generating docs:", error);
+
+    try {
+      const fallbackPrompt = `Generate Founder Edition technical documentation for "${projectName}".
 
 PROJECT INFO:
 - Name: ${projectName}
-- Repository: ${repoInfo?.htmlUrl || 'N/A'}
-- Language: ${repoInfo?.language || 'N/A'}
-- Description: ${repoInfo?.description || 'N/A'}
+- Repository: ${repoInfo?.htmlUrl || "N/A"}
+- Language: ${repoInfo?.language || "N/A"}
+- Description: ${repoInfo?.description || "N/A"}
 
 CODEBASE SUMMARY:
-${sourceCodeSummaries.slice(0, 5).join('\n\n')}
+${sourceCodeSummaries.slice(0, 5).join("\n\n")}
 
 Create documentation with these sections:
 1. 📘 Product Understanding - What it does, who it serves
@@ -721,18 +770,21 @@ Create documentation with these sections:
 15. 🧾 License & Deployment Details
 16. ⚡ TL;DR – Founder Summary
 
-Use markdown format with clear sections, tables, and Mermaid diagrams.`
+Use markdown format with clear sections, tables, and Mermaid diagrams.`;
 
-            const fallbackDocs = await openrouterSingleMessage(fallbackPrompt, "google/gemini-2.5-flash-lite")
-            return fallbackDocs
-        } catch (fallbackError) {
-            console.error("Fallback docs generation also failed:", fallbackError)
-        }
-        
-        return `# 📘 ${projectName}: ${repoInfo?.description || 'Software Project'} - Comprehensive Technical Documentation
+      const fallbackDocs = await openrouterSingleMessage(
+        fallbackPrompt,
+        "google/gemini-2.5-flash-lite"
+      );
+      return fallbackDocs;
+    } catch (fallbackError) {
+      console.error("Fallback docs generation also failed:", fallbackError);
+    }
+
+    return `# 📘 ${projectName}: ${repoInfo?.description || "Software Project"} - Comprehensive Technical Documentation
 
 ![Project](https://img.shields.io/badge/🏷️_${encodeURIComponent(projectName)}-blue)
-![Language](https://img.shields.io/badge/${encodeURIComponent(repoInfo?.language || 'Code')}-3178c6)
+![Language](https://img.shields.io/badge/${encodeURIComponent(repoInfo?.language || "Code")}-3178c6)
 ![Stars](https://img.shields.io/badge/STARS-${repoInfo?.stars || 0}-yellow)
 ![Forks](https://img.shields.io/badge/FORKS-${repoInfo?.forks || 0}-gray)
 
@@ -740,13 +792,13 @@ Use markdown format with clear sections, tables, and Mermaid diagrams.`
 
 ## 1. 📘 Product Understanding
 
-${projectName} is a ${repoInfo?.language || 'software'} project that ${repoInfo?.description || 'provides useful functionality for developers'}. It serves developers and teams looking for a modern, well-architected solution.
+${projectName} is a ${repoInfo?.language || "software"} project that ${repoInfo?.description || "provides useful functionality for developers"}. It serves developers and teams looking for a modern, well-architected solution.
 
 ## 2. 🧩 Core Value Proposition
 
 | Module / Area | Business Function | Technical Highlight |
 |---------------|-------------------|---------------------|
-| Core Application | Main product functionality | Built with ${repoInfo?.language || 'modern technologies'} |
+| Core Application | Main product functionality | Built with ${repoInfo?.language || "modern technologies"} |
 | API Layer | Enables integrations | RESTful endpoints |
 | Database | Data persistence | PostgreSQL with Prisma ORM |
 
@@ -782,7 +834,7 @@ sequenceDiagram
 
 ## 6. 🧠 Technical Edge
 
-- Modern ${repoInfo?.language || 'technology'} stack
+- Modern ${repoInfo?.language || "technology"} stack
 - Type-safe codebase
 - Scalable architecture
 - Production-ready configuration
@@ -818,7 +870,7 @@ sequenceDiagram
 
 \`\`\`bash
 # Clone and setup
-git clone ${repoInfo?.cloneUrl || 'https://github.com/user/repo.git'}
+git clone ${repoInfo?.cloneUrl || "https://github.com/user/repo.git"}
 cd ${projectName}
 npm install
 npm run dev
@@ -855,15 +907,18 @@ This codebase demonstrates solid engineering practices with a modern tech stack.
 
 ## 16. ⚡ TL;DR – Founder Summary
 
-${projectName} is a well-structured ${repoInfo?.language || 'software'} project ready for development and iteration. It provides a solid foundation for building products with modern tooling. The codebase is maintainable and can be extended for various use cases.
-`
-    }
+${projectName} is a well-structured ${repoInfo?.language || "software"} project ready for development and iteration. It provides a solid foundation for building products with modern tooling. The codebase is maintainable and can be extended for various use cases.
+`;
+  }
 }
 
-export async function modifyDocsWithQuery(currentDocs: string, userQuery: string, projectName: string) {
-    console.log("Modifying docs with user query:", userQuery)
-    try {
-        const prompt = `You are an expert technical writer and software engineer. You need to modify existing technical documentation based on a user's specific request.
+export async function modifyDocsWithQuery(
+  currentDocs: string,
+  userQuery: string,
+  projectName: string
+) {
+  try {
+    const prompt = `You are an expert technical writer and software engineer. You need to modify existing technical documentation based on a user's specific request.
 
 PROJECT: ${projectName}
 
@@ -895,12 +950,15 @@ IMPORTANT:
 - Make sure the output is a complete, valid technical documentation file
 - Preserve all technical details and accuracy
 
-Generate the modified technical documentation content:`
+Generate the modified technical documentation content:`;
 
-        const modifiedDocs = await openrouterSingleMessage(prompt, "google/gemini-2.5-flash")
-        return modifiedDocs
-    } catch (error) {
-        console.error("Error modifying docs:", error)
-        throw new Error("Failed to modify docs with AI")
-    }
+    const modifiedDocs = await openrouterSingleMessage(
+      prompt,
+      "google/gemini-2.5-flash"
+    );
+    return modifiedDocs;
+  } catch (error) {
+    console.error("Error modifying docs:", error);
+    throw new Error("Failed to modify docs with AI");
+  }
 }

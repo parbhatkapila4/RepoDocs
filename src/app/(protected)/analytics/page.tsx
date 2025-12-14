@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import { motion } from 'motion/react';
+import { useEffect, useState } from "react";
+import { motion } from "motion/react";
 import {
   Users,
   FolderOpen,
@@ -19,7 +19,7 @@ import {
   Globe,
   ArrowUpRight,
   ArrowDownRight,
-} from 'lucide-react';
+} from "lucide-react";
 import {
   LineChart,
   Line,
@@ -34,7 +34,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-} from 'recharts';
+} from "recharts";
 
 interface AnalyticsData {
   overview: {
@@ -90,7 +90,15 @@ interface AnalyticsData {
   };
 }
 
-const COLORS = ['#50fa7b', '#8be9fd', '#bd93f9', '#ff79c6', '#f1fa8c', '#ffb86c', '#ff5555'];
+const COLORS = [
+  "#50fa7b",
+  "#8be9fd",
+  "#bd93f9",
+  "#ff79c6",
+  "#f1fa8c",
+  "#ffb86c",
+  "#ff5555",
+];
 
 export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsData | null>(null);
@@ -102,7 +110,7 @@ export default function AnalyticsPage() {
     fetchAnalytics();
     const interval = setInterval(() => {
       fetchAnalytics();
-    }, 30000); // Refresh every 30 seconds
+    }, 30000);
 
     return () => clearInterval(interval);
   }, []);
@@ -110,17 +118,17 @@ export default function AnalyticsPage() {
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/analytics');
+      const response = await fetch("/api/analytics");
       if (!response.ok) {
-        throw new Error('Failed to fetch analytics');
+        throw new Error("Failed to fetch analytics");
       }
       const analyticsData = await response.json();
       setData(analyticsData);
       setLastUpdated(new Date());
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load analytics');
-      console.error('Error fetching analytics:', err);
+      setError(err instanceof Error ? err.message : "Failed to load analytics");
+      console.error("Error fetching analytics:", err);
     } finally {
       setLoading(false);
     }
@@ -133,9 +141,9 @@ export default function AnalyticsPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
+    return new Date(dateString).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
     });
   };
 
@@ -157,7 +165,9 @@ export default function AnalyticsPage() {
           <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center mx-auto mb-4">
             <Activity className="w-8 h-8 text-red-400" />
           </div>
-          <h2 className="text-xl font-bold text-white mb-2">Error Loading Analytics</h2>
+          <h2 className="text-xl font-bold text-white mb-2">
+            Error Loading Analytics
+          </h2>
           <p className="text-[#666] text-sm mb-4">{error}</p>
           <button
             onClick={fetchAnalytics}
@@ -174,7 +184,6 @@ export default function AnalyticsPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] relative">
-      {/* Grain texture */}
       <div
         className="absolute inset-0 opacity-[0.12] pointer-events-none z-0"
         style={{
@@ -183,7 +192,6 @@ export default function AnalyticsPage() {
       />
 
       <div className="relative z-10 max-w-7xl mx-auto px-6 py-12">
-        {/* Header */}
         <motion.div
           className="mb-12"
           initial={{ opacity: 0, y: -10 }}
@@ -206,56 +214,57 @@ export default function AnalyticsPage() {
               disabled={loading}
               className="px-4 py-2 bg-[#1a1a1a] text-white font-medium rounded-lg flex items-center gap-2 hover:bg-[#252525] transition-colors border border-[#333] hover:border-[#444] disabled:opacity-50"
             >
-              <Activity className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              <Activity
+                className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+              />
               Refresh
             </button>
           </div>
         </motion.div>
 
-        {/* Overview Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
           {[
             {
               icon: Users,
-              label: 'Total Users',
+              label: "Total Users",
               value: data.overview.totalUsers,
               change: `+${data.recentActivity.last30Days.newUsers} this month`,
-              color: '#50fa7b',
+              color: "#50fa7b",
             },
             {
               icon: FolderOpen,
-              label: 'Total Projects',
+              label: "Total Projects",
               value: data.overview.totalProjects,
               change: `+${data.recentActivity.last30Days.newProjects} this month`,
-              color: '#8be9fd',
+              color: "#8be9fd",
             },
             {
               icon: FileCode,
-              label: 'Files Indexed',
+              label: "Files Indexed",
               value: data.overview.totalEmbeddings,
               change: `${data.codeMetrics.avgFilesPerProject.toFixed(0)} avg per project`,
-              color: '#bd93f9',
+              color: "#bd93f9",
             },
             {
               icon: MessageSquare,
-              label: 'Questions Asked',
+              label: "Questions Asked",
               value: data.overview.totalQuestions,
               change: `+${data.recentActivity.last30Days.newQuestions} this month`,
-              color: '#ff79c6',
+              color: "#ff79c6",
             },
             {
               icon: Share2,
-              label: 'Active Shares',
+              label: "Active Shares",
               value: data.overview.totalActiveShares,
-              change: 'Public documentation links',
-              color: '#f1fa8c',
+              change: "Public documentation links",
+              color: "#f1fa8c",
             },
             {
               icon: Zap,
-              label: 'Active Users',
+              label: "Active Users",
               value: data.overview.activeUsers,
               change: `${((data.overview.activeUsers / data.overview.totalUsers) * 100).toFixed(0)}% of total`,
-              color: '#ffb86c',
+              color: "#ffb86c",
             },
           ].map((stat, index) => (
             <motion.div
@@ -267,7 +276,10 @@ export default function AnalyticsPage() {
             >
               <div className="flex items-center justify-between mb-4">
                 <div className="w-12 h-12 rounded-lg bg-[#252525] border border-[#333] flex items-center justify-center">
-                  <stat.icon className="w-6 h-6" style={{ color: stat.color }} />
+                  <stat.icon
+                    className="w-6 h-6"
+                    style={{ color: stat.color }}
+                  />
                 </div>
                 <ArrowUpRight className="w-4 h-4 text-[#666]" />
               </div>
@@ -285,9 +297,7 @@ export default function AnalyticsPage() {
           ))}
         </div>
 
-        {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Daily Activity Chart */}
           <motion.div
             className="bg-[#1a1a1a] border border-[#333] rounded-lg p-6"
             initial={{ opacity: 0, y: 20 }}
@@ -296,7 +306,9 @@ export default function AnalyticsPage() {
           >
             <div className="flex items-center gap-2 mb-6">
               <BarChart3 className="w-5 h-5 text-[#8be9fd]" />
-              <h3 className="text-white font-semibold">Daily Activity (Last 30 Days)</h3>
+              <h3 className="text-white font-semibold">
+                Daily Activity (Last 30 Days)
+              </h3>
             </div>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={data.recentActivity.dailyActivity}>
@@ -304,31 +316,37 @@ export default function AnalyticsPage() {
                 <XAxis
                   dataKey="date"
                   stroke="#666"
-                  tick={{ fill: '#666', fontSize: 12 }}
+                  tick={{ fill: "#666", fontSize: 12 }}
                   tickFormatter={(value) => formatDate(value)}
                 />
-                <YAxis stroke="#666" tick={{ fill: '#666', fontSize: 12 }} />
+                <YAxis stroke="#666" tick={{ fill: "#666", fontSize: 12 }} />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: '#1a1a1a',
-                    border: '1px solid #444',
-                    borderRadius: '8px',
-                    color: '#fff',
+                    backgroundColor: "#1a1a1a",
+                    border: "1px solid #444",
+                    borderRadius: "8px",
+                    color: "#fff",
                   }}
-                  labelStyle={{ color: '#fff', fontWeight: 'bold' }}
-                  itemStyle={{ color: '#fff' }}
+                  labelStyle={{ color: "#fff", fontWeight: "bold" }}
+                  itemStyle={{ color: "#fff" }}
                 />
-                <Legend 
-                  wrapperStyle={{ color: '#fff' }}
-                  iconType="square"
+                <Legend wrapperStyle={{ color: "#fff" }} iconType="square" />
+                <Bar
+                  dataKey="projects"
+                  fill="#8be9fd"
+                  name="Projects"
+                  radius={[4, 4, 0, 0]}
                 />
-                <Bar dataKey="projects" fill="#8be9fd" name="Projects" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="questions" fill="#bd93f9" name="Questions" radius={[4, 4, 0, 0]} />
+                <Bar
+                  dataKey="questions"
+                  fill="#bd93f9"
+                  name="Questions"
+                  radius={[4, 4, 0, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>
           </motion.div>
 
-          {/* User Plan Distribution */}
           <motion.div
             className="bg-[#1a1a1a] border border-[#333] rounded-lg p-6"
             initial={{ opacity: 0, y: 20 }}
@@ -337,7 +355,9 @@ export default function AnalyticsPage() {
           >
             <div className="flex items-center gap-2 mb-6">
               <PieChart className="w-5 h-5 text-[#bd93f9]" />
-              <h3 className="text-white font-semibold">User Plan Distribution</h3>
+              <h3 className="text-white font-semibold">
+                User Plan Distribution
+              </h3>
             </div>
             <ResponsiveContainer width="100%" height={300}>
               <RechartsPieChart>
@@ -352,24 +372,30 @@ export default function AnalyticsPage() {
                   dataKey="count"
                 >
                   {data.userMetrics.usersByPlan.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
                   ))}
                 </Pie>
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: '#1a1a1a',
-                    border: '1px solid #444',
-                    borderRadius: '8px',
-                    color: '#fff',
+                    backgroundColor: "#1a1a1a",
+                    border: "1px solid #444",
+                    borderRadius: "8px",
+                    color: "#fff",
                   }}
-                  labelStyle={{ color: '#fff', fontWeight: 'bold' }}
-                  itemStyle={{ color: '#fff' }}
+                  labelStyle={{ color: "#fff", fontWeight: "bold" }}
+                  itemStyle={{ color: "#fff" }}
                 />
               </RechartsPieChart>
             </ResponsiveContainer>
             <div className="mt-4 space-y-2">
               {data.userMetrics.usersByPlan.map((plan, index) => (
-                <div key={plan.plan} className="flex items-center justify-between text-sm">
+                <div
+                  key={plan.plan}
+                  className="flex items-center justify-between text-sm"
+                >
                   <div className="flex items-center gap-2">
                     <div
                       className="w-3 h-3 rounded-full"
@@ -377,16 +403,16 @@ export default function AnalyticsPage() {
                     />
                     <span className="text-white capitalize">{plan.plan}</span>
                   </div>
-                  <span className="text-[#666] font-mono">{plan.count} users</span>
+                  <span className="text-[#666] font-mono">
+                    {plan.count} users
+                  </span>
                 </div>
               ))}
             </div>
           </motion.div>
         </div>
 
-        {/* Language Distribution & Top Projects */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Language Distribution */}
           <motion.div
             className="bg-[#1a1a1a] border border-[#333] rounded-lg p-6"
             initial={{ opacity: 0, y: 20 }}
@@ -395,50 +421,55 @@ export default function AnalyticsPage() {
           >
             <div className="flex items-center gap-2 mb-6">
               <Code className="w-5 h-5 text-[#50fa7b]" />
-              <h3 className="text-white font-semibold">Language Distribution</h3>
+              <h3 className="text-white font-semibold">
+                Language Distribution
+              </h3>
             </div>
             <div className="space-y-3 mb-6">
-              {data.codeMetrics.languageDistribution.slice(0, 8).map((lang, index) => {
-                const total = data.codeMetrics.languageDistribution.reduce(
-                  (sum, l) => sum + l.count,
-                  0
-                );
-                const percentage = (lang.count / total) * 100;
-                return (
-                  <div key={lang.language}>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-white text-sm">{lang.language}</span>
-                      <span className="text-[#666] text-xs font-mono">
-                        {lang.count} files ({percentage.toFixed(1)}%)
-                      </span>
+              {data.codeMetrics.languageDistribution
+                .slice(0, 8)
+                .map((lang, index) => {
+                  const total = data.codeMetrics.languageDistribution.reduce(
+                    (sum, l) => sum + l.count,
+                    0
+                  );
+                  const percentage = (lang.count / total) * 100;
+                  return (
+                    <div key={lang.language}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-white text-sm">
+                          {lang.language}
+                        </span>
+                        <span className="text-[#666] text-xs font-mono">
+                          {lang.count} files ({percentage.toFixed(1)}%)
+                        </span>
+                      </div>
+                      <div className="h-2 bg-[#252525] rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${percentage}%`,
+                            backgroundColor: COLORS[index % COLORS.length],
+                          }}
+                        />
+                      </div>
                     </div>
-                    <div className="h-2 bg-[#252525] rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: `${percentage}%`,
-                          backgroundColor: COLORS[index % COLORS.length],
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
-            
-            {/* Additional Language Insights */}
+
             {(() => {
               const total = data.codeMetrics.languageDistribution.reduce(
                 (sum, l) => sum + l.count,
                 0
               );
-              const totalLanguages = data.codeMetrics.languageDistribution.length;
+              const totalLanguages =
+                data.codeMetrics.languageDistribution.length;
               const topLanguage = data.codeMetrics.languageDistribution[0];
-              const topLanguagePercentage = topLanguage 
-                ? (topLanguage.count / total) * 100 
+              const topLanguagePercentage = topLanguage
+                ? (topLanguage.count / total) * 100
                 : 0;
-              
-              // Calculate languages needed for 80% coverage
+
               let cumulativePercentage = 0;
               let languagesFor80Percent = 0;
               for (const lang of data.codeMetrics.languageDistribution) {
@@ -446,23 +477,25 @@ export default function AnalyticsPage() {
                 languagesFor80Percent++;
                 if (cumulativePercentage >= 80) break;
               }
-              
-              // Calculate average files per language
-              const avgFilesPerLanguage = totalLanguages > 0 
-                ? (total / totalLanguages).toFixed(0) 
-                : 0;
-              
+
+              const avgFilesPerLanguage =
+                totalLanguages > 0 ? (total / totalLanguages).toFixed(0) : 0;
+
               return (
                 <div className="pt-4 border-t border-[#333] space-y-3">
                   <div className="grid grid-cols-2 gap-3">
                     <div className="p-3 bg-[#252525] rounded-lg border border-[#333]">
-                      <p className="text-[#888] text-xs mb-1">Total Languages</p>
-                      <p className="text-lg font-bold text-white font-mono">{totalLanguages}</p>
+                      <p className="text-[#888] text-xs mb-1">
+                        Total Languages
+                      </p>
+                      <p className="text-lg font-bold text-white font-mono">
+                        {totalLanguages}
+                      </p>
                     </div>
                     <div className="p-3 bg-[#252525] rounded-lg border border-[#333]">
                       <p className="text-[#888] text-xs mb-1">Top Language</p>
                       <p className="text-lg font-bold text-white font-mono">
-                        {topLanguage ? topLanguage.language : 'N/A'}
+                        {topLanguage ? topLanguage.language : "N/A"}
                       </p>
                       {topLanguage && (
                         <p className="text-[#666] text-xs mt-0.5">
@@ -471,13 +504,15 @@ export default function AnalyticsPage() {
                       )}
                     </div>
                   </div>
-                  
+
                   <div className="p-3 bg-[#252525] rounded-lg border border-[#333]">
-                    <p className="text-[#888] text-xs mb-2">Codebase Diversity</p>
+                    <p className="text-[#888] text-xs mb-2">
+                      Codebase Diversity
+                    </p>
                     <div className="flex items-center gap-2">
                       <div className="flex-1 h-2 bg-[#1a1a1a] rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-gradient-to-r from-[#50fa7b] to-[#8be9fd] rounded-full"
+                          className="h-full bg-linear-to-r from-[#50fa7b] to-[#8be9fd] rounded-full"
                           style={{
                             width: `${Math.min((languagesFor80Percent / totalLanguages) * 100, 100)}%`,
                           }}
@@ -488,18 +523,26 @@ export default function AnalyticsPage() {
                       </span>
                     </div>
                     <p className="text-[#666] text-xs mt-1.5">
-                      {languagesFor80Percent} language{languagesFor80Percent !== 1 ? 's' : ''} cover 80% of files
+                      {languagesFor80Percent} language
+                      {languagesFor80Percent !== 1 ? "s" : ""} cover 80% of
+                      files
                     </p>
                   </div>
-                  
+
                   <div className="flex items-center justify-between p-3 bg-[#252525] rounded-lg border border-[#333]">
                     <div>
-                      <p className="text-[#888] text-xs mb-0.5">Avg Files per Language</p>
-                      <p className="text-white text-sm font-mono">{avgFilesPerLanguage} files</p>
+                      <p className="text-[#888] text-xs mb-0.5">
+                        Avg Files per Language
+                      </p>
+                      <p className="text-white text-sm font-mono">
+                        {avgFilesPerLanguage} files
+                      </p>
                     </div>
                     <div className="text-right">
                       <p className="text-[#888] text-xs mb-0.5">Total Files</p>
-                      <p className="text-white text-sm font-mono">{total.toLocaleString()}</p>
+                      <p className="text-white text-sm font-mono">
+                        {total.toLocaleString()}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -507,7 +550,6 @@ export default function AnalyticsPage() {
             })()}
           </motion.div>
 
-          {/* Top Projects */}
           <motion.div
             className="bg-[#1a1a1a] border border-[#333] rounded-lg p-6"
             initial={{ opacity: 0, y: 20 }}
@@ -516,34 +558,43 @@ export default function AnalyticsPage() {
           >
             <div className="flex items-center gap-2 mb-6">
               <Database className="w-5 h-5 text-[#ff79c6]" />
-              <h3 className="text-white font-semibold">Most Indexed Projects</h3>
+              <h3 className="text-white font-semibold">
+                Most Indexed Projects
+              </h3>
             </div>
             <div className="space-y-3">
-              {data.projectMetrics.topProjects.slice(0, 8).map((project, index) => (
-                <div
-                  key={project.id}
-                  className="flex items-center justify-between p-3 bg-[#252525] rounded-lg border border-[#333] hover:border-[#444] transition-colors"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-medium truncate">{project.name}</p>
-                    <p className="text-[#666] text-xs truncate">{project.repoUrl}</p>
-                  </div>
-                  <div className="flex items-center gap-3 ml-4">
-                    <div className="text-right">
-                      <p className="text-white text-sm font-mono">{project.fileCount}</p>
-                      <p className="text-[#666] text-xs">files</p>
+              {data.projectMetrics.topProjects
+                .slice(0, 8)
+                .map((project, index) => (
+                  <div
+                    key={project.id}
+                    className="flex items-center justify-between p-3 bg-[#252525] rounded-lg border border-[#333] hover:border-[#444] transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-sm font-medium truncate">
+                        {project.name}
+                      </p>
+                      <p className="text-[#666] text-xs truncate">
+                        {project.repoUrl}
+                      </p>
                     </div>
-                    <div className="w-8 h-8 rounded-full bg-[#333] flex items-center justify-center text-[#666] text-xs font-bold">
-                      {index + 1}
+                    <div className="flex items-center gap-3 ml-4">
+                      <div className="text-right">
+                        <p className="text-white text-sm font-mono">
+                          {project.fileCount}
+                        </p>
+                        <p className="text-[#666] text-xs">files</p>
+                      </div>
+                      <div className="w-8 h-8 rounded-full bg-[#333] flex items-center justify-center text-[#666] text-xs font-bold">
+                        {index + 1}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
             </div>
           </motion.div>
         </div>
 
-        {/* Engagement Metrics */}
         <motion.div
           className="bg-[#1a1a1a] border border-[#333] rounded-lg p-6"
           initial={{ opacity: 0, y: 20 }}
@@ -556,33 +607,51 @@ export default function AnalyticsPage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="p-4 bg-[#252525] rounded-lg border border-[#444]">
-              <p className="text-[#888] text-xs mb-2 font-medium">Avg Questions per Project</p>
+              <p className="text-[#888] text-xs mb-2 font-medium">
+                Avg Questions per Project
+              </p>
               <p className="text-2xl font-bold text-white font-mono">
                 {data.engagementMetrics.avgQuestionsPerProject.toFixed(1)}
               </p>
             </div>
             <div className="p-4 bg-[#252525] rounded-lg border border-[#444]">
-              <p className="text-[#888] text-xs mb-2 font-medium">Avg Projects per User</p>
+              <p className="text-[#888] text-xs mb-2 font-medium">
+                Avg Projects per User
+              </p>
               <p className="text-2xl font-bold text-white font-mono">
                 {data.userMetrics.avgProjectsPerUser.toFixed(1)}
               </p>
             </div>
             <div className="p-4 bg-[#252525] rounded-lg border border-[#444]">
-              <p className="text-[#888] text-xs mb-2 font-medium">Projects with README</p>
+              <p className="text-[#888] text-xs mb-2 font-medium">
+                Projects with README
+              </p>
               <p className="text-2xl font-bold text-white font-mono">
                 {data.projectMetrics.projectsWithReadme}
               </p>
               <p className="text-[#888] text-xs mt-1">
-                {((data.projectMetrics.projectsWithReadme / data.overview.totalProjects) * 100).toFixed(0)}% of total
+                {(
+                  (data.projectMetrics.projectsWithReadme /
+                    data.overview.totalProjects) *
+                  100
+                ).toFixed(0)}
+                % of total
               </p>
             </div>
             <div className="p-4 bg-[#252525] rounded-lg border border-[#444]">
-              <p className="text-[#888] text-xs mb-2 font-medium">Projects with Docs</p>
+              <p className="text-[#888] text-xs mb-2 font-medium">
+                Projects with Docs
+              </p>
               <p className="text-2xl font-bold text-white font-mono">
                 {data.projectMetrics.projectsWithDocs}
               </p>
               <p className="text-[#888] text-xs mt-1">
-                {((data.projectMetrics.projectsWithDocs / data.overview.totalProjects) * 100).toFixed(0)}% of total
+                {(
+                  (data.projectMetrics.projectsWithDocs /
+                    data.overview.totalProjects) *
+                  100
+                ).toFixed(0)}
+                % of total
               </p>
             </div>
           </div>
@@ -591,4 +660,3 @@ export default function AnalyticsPage() {
     </div>
   );
 }
-

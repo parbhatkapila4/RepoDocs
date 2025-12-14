@@ -1,5 +1,5 @@
 "use client";
-import React, { useRef, useEffect, useState, useCallback } from "react";
+import  { useRef, useEffect, useState, useCallback } from "react";
 import { X, Play } from "lucide-react";
 
 interface VideoModalProps {
@@ -12,13 +12,7 @@ export function VideoModal({ videoSrc, isOpen, onClose }: VideoModalProps) {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Debug logging
-  useEffect(() => {
-    console.log("VideoModal - isOpen:", isOpen, "videoSrc:", videoSrc);
-  }, [isOpen, videoSrc]);
-
   const closeVideoModal = useCallback(() => {
-    console.log("Closing video modal");
     onClose();
     setIsVideoLoaded(false);
     if (videoRef.current) {
@@ -28,7 +22,6 @@ export function VideoModal({ videoSrc, isOpen, onClose }: VideoModalProps) {
   }, [onClose]);
 
   const handlePlayClick = () => {
-    console.log("Play button clicked");
     if (videoRef.current) {
       videoRef.current.play().catch((error) => {
         console.error("Error playing video:", error);
@@ -38,16 +31,12 @@ export function VideoModal({ videoSrc, isOpen, onClose }: VideoModalProps) {
 
   useEffect(() => {
     if (isOpen) {
-      console.log("Modal opened, loading video from:", videoSrc);
       setIsVideoLoaded(false);
       
-      // Small delay to ensure modal is rendered
+      
       const timer = setTimeout(() => {
         if (videoRef.current) {
-          console.log("Loading video element");
           videoRef.current.load();
-        } else {
-          console.error("Video ref is null");
         }
       }, 100);
       
@@ -61,12 +50,12 @@ export function VideoModal({ videoSrc, isOpen, onClose }: VideoModalProps) {
     }
   }, [isOpen, videoSrc]);
 
-  // Prevent body scroll when modal is open and handle ESC key
+  
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
       
-      // Handle ESC key press
+      
       const handleEsc = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
           closeVideoModal();
@@ -89,7 +78,7 @@ export function VideoModal({ videoSrc, isOpen, onClose }: VideoModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-sm" onClick={closeVideoModal}>
+    <div className="fixed inset-0 z-9999 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-sm" onClick={closeVideoModal}>
       <div
         className="relative flex w-full max-w-4xl items-center justify-center bg-black/95 rounded-2xl overflow-hidden border border-white/20 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
@@ -125,19 +114,15 @@ export function VideoModal({ videoSrc, isOpen, onClose }: VideoModalProps) {
             playsInline
             className="mx-auto w-full h-auto max-h-[80vh] rounded-2xl bg-black"
             onLoadedData={() => {
-              console.log("Video loaded data");
               setIsVideoLoaded(true);
             }}
             onCanPlay={() => {
-              console.log("Video can play");
               setIsVideoLoaded(true);
             }}
             onCanPlayThrough={() => {
-              console.log("Video can play through");
               setIsVideoLoaded(true);
             }}
             onPlay={() => {
-              console.log("Video playing");
               setIsVideoLoaded(true);
             }}
             onEnded={closeVideoModal}
@@ -155,11 +140,10 @@ export function VideoModal({ videoSrc, isOpen, onClose }: VideoModalProps) {
               setIsVideoLoaded(true);
             }}
             onLoadStart={() => {
-              console.log("Video loading started from:", videoSrc);
               setIsVideoLoaded(false);
             }}
             onLoadedMetadata={() => {
-              console.log("Video metadata loaded, duration:", videoRef.current?.duration);
+              
             }}
           >
             <source src={videoSrc} type="video/mp4" />

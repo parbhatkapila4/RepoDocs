@@ -1,20 +1,16 @@
-"use client"
+"use client";
 
-import React from 'react'
-import { 
+import React from "react";
+import {
   SidebarProvider,
   SidebarInset,
-  SidebarTrigger
-} from "@/components/ui/sidebar"
-import AppSidebar from "@/components/AppSidebar"
-import UserProvider from "@/components/UserProvider"
-import { ProjectsProvider } from "@/context/ProjectsContext"
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+import AppSidebar from "@/components/AppSidebar";
+import UserProvider from "@/components/UserProvider";
+import { ProjectsProvider } from "@/context/ProjectsContext";
 
-export default function Layout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <UserProvider>
       <ProjectsProvider>
@@ -31,5 +27,5 @@ export default function Layout({
         </SidebarProvider>
       </ProjectsProvider>
     </UserProvider>
-  )
+  );
 }

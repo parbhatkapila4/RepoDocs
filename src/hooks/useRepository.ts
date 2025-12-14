@@ -36,7 +36,6 @@ export const useRepository = () => {
         return null;
       }
     } catch (err) {
-      console.error('Error fetching repository:', err);
       dispatch(setError('Error fetching repository information'));
       return null;
     } finally {

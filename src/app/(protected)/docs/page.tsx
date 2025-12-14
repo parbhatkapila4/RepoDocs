@@ -1,24 +1,41 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useProjectsContext } from '@/context/ProjectsContext';
-import { useRepository } from '@/hooks/useRepository';
-import { useUser } from '@/hooks/useUser';
-import { getProjectDocs, regenerateProjectDocs, modifyDocsWithQna, getDocsQnaHistory, createDocsShare, revokeDocsShare, getDocsShare, deleteDocsQnaRecord, deleteAllDocsQnaHistory } from '@/lib/actions';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
-import { 
-  BookOpen, 
-  RefreshCw, 
-  Calendar, 
-  Clock, 
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useProjectsContext } from "@/context/ProjectsContext";
+import { useRepository } from "@/hooks/useRepository";
+import { useUser } from "@/hooks/useUser";
+import {
+  getProjectDocs,
+  regenerateProjectDocs,
+  modifyDocsWithQna,
+  getDocsQnaHistory,
+  createDocsShare,
+  revokeDocsShare,
+  getDocsShare,
+  deleteDocsQnaRecord,
+  deleteAllDocsQnaHistory,
+  checkEmbeddingsStatus,
+} from "@/lib/actions";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import {
+  BookOpen,
+  RefreshCw,
+  Calendar,
+  Clock,
   AlertCircle,
   CheckCircle,
   Loader2,
@@ -47,21 +64,33 @@ import {
   Trash2,
   MoreVertical,
   Crown,
-  Lock
-} from 'lucide-react';
-import NextLink from 'next/link';
-import { 
-  Sheet, 
-  SheetContent, 
-  SheetHeader, 
-  SheetTitle, 
-  SheetDescription 
-} from '@/components/ui/sheet';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { toast } from 'sonner';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+  Lock,
+} from "lucide-react";
+import NextLink from "next/link";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface DocsData {
   id: string;
@@ -94,10 +123,7 @@ interface DocsWithQna extends DocsData {
 
 function DocsPage() {
   const { selectedProjectId, projects } = useProjectsContext();
-  const { 
-    currentRepository: repoInfo, 
-    fetchRepository 
-  } = useRepository();
+  const { currentRepository: repoInfo, fetchRepository } = useRepository();
   const { user } = useUser();
   const [docsData, setDocsData] = useState<DocsData | null>(null);
   const [metadata, setMetadata] = useState<DocsMetadata | null>(null);
@@ -106,9 +132,9 @@ function DocsPage() {
   const [error, setError] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
   const [qnaHistory, setQnaHistory] = useState<QnaRecord[]>([]);
-  const [qnaQuestion, setQnaQuestion] = useState('');
+  const [qnaQuestion, setQnaQuestion] = useState("");
   const [isProcessingQna, setIsProcessingQna] = useState(false);
-  const [activeTab, setActiveTab] = useState('preview');
+  const [activeTab, setActiveTab] = useState("preview");
   const qnaInputRef = useRef<HTMLTextAreaElement>(null);
   const [shareToken, setShareToken] = useState<string | null>(null);
   const [isCreatingShare, setIsCreatingShare] = useState(false);
@@ -121,110 +147,157 @@ function DocsPage() {
   const [qnaToDelete, setQnaToDelete] = useState<string | null>(null);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
   const [upgradeRequired, setUpgradeRequired] = useState(false);
+  const [hasShownIndexingCompleteToast, setHasShownIndexingCompleteToast] =
+    useState(false);
+  const [hasEmbeddings, setHasEmbeddings] = useState<boolean | null>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const projectsRef = useRef(projects);
 
-  const selectedProject = projects.find(p => p.id === selectedProjectId);
+  useEffect(() => {
+    projectsRef.current = projects;
+  }, [projects]);
 
-  const parseDocsMetadata = useCallback((content: string): DocsMetadata => {
-    const lines = content.split('\n');
-    let title = 'Technical Documentation';
-    let description = '';
+  const selectedProject = projects.find((p) => p.id === selectedProjectId);
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      
-      if (line.startsWith('# ')) {
-        title = line.substring(2);
-      } else if (line.startsWith('## ') && line.toLowerCase().includes('overview')) {
-        if (i + 1 < lines.length) {
-          description = lines[i + 1].trim();
+  const parseDocsMetadata = useCallback(
+    (content: string, repositoryInfo?: typeof repoInfo): DocsMetadata => {
+      const lines = content.split("\n");
+      let title = "Technical Documentation";
+      let description = "";
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+
+        if (line.startsWith("# ")) {
+          title = line.substring(2);
+        } else if (
+          line.startsWith("## ") &&
+          line.toLowerCase().includes("overview")
+        ) {
+          if (i + 1 < lines.length) {
+            description = lines[i + 1].trim();
+          }
         }
       }
-    }
 
-    // Use actual repository info from GitHub API instead of parsing from content
-    const stars = repoInfo?.stars || repoInfo?.stargazersCount || 0;
-    const forks = repoInfo?.forks || repoInfo?.forksCount || 0;
-    const language = repoInfo?.language || 'Unknown';
-    const license = repoInfo?.license?.name || 'Unknown';
+      const repo = repositoryInfo || repoInfo;
+      const stars = repo?.stars ?? 0;
+      const forks = repo?.forks ?? 0;
+      const language = repo?.language || "Unknown";
+      const license = repo?.license?.name || "Unknown";
 
-    return { title, description, stars, forks, language, license };
-  }, [repoInfo]);
+      return { title, description, stars, forks, language, license };
+    },
+    [repoInfo]
+  );
 
   const handleCopyCode = async () => {
     if (!docsData?.content) return;
-    
+
     try {
       await navigator.clipboard.writeText(docsData.content);
       setIsCopied(true);
-      toast.success('Documentation copied to clipboard!', {
-        description: 'The markdown content has been copied successfully.',
+      toast.success("Documentation copied to clipboard!", {
+        description: "The markdown content has been copied successfully.",
       });
-      
+
       setTimeout(() => {
         setIsCopied(false);
       }, 2000);
     } catch (err) {
-      console.error('Failed to copy:', err);
-      toast.error('Failed to copy documentation', {
-        description: 'Unable to copy content to clipboard.',
+      console.error("Failed to copy:", err);
+      toast.error("Failed to copy documentation", {
+        description: "Unable to copy content to clipboard.",
       });
     }
   };
 
-  const fetchDocs = async () => {
+  const fetchDocs = useCallback(async () => {
     if (!selectedProjectId) return;
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
-      // Fetch repository info first
-      if (selectedProject?.repoUrl) {
-        await fetchRepository(selectedProject.repoUrl);
+      const project = projectsRef.current.find(
+        (p) => p.id === selectedProjectId
+      );
+
+      let fetchedRepoInfo = repoInfo;
+      if (project?.repoUrl) {
+        try {
+          const repoInfoResult = await fetchRepository(project.repoUrl);
+          fetchedRepoInfo = repoInfoResult || repoInfo;
+        } catch (repoError) {
+          console.error("Error fetching repository info:", repoError);
+        }
       }
-      
-      // Then fetch docs
+
       const docs = await getProjectDocs(selectedProjectId);
       setDocsData(docs);
+
       if (docs?.content) {
-        setMetadata(parseDocsMetadata(docs.content));
+        setMetadata(parseDocsMetadata(docs.content, fetchedRepoInfo));
       }
+
+      const embeddingsStatus = await checkEmbeddingsStatus(selectedProjectId);
+      setHasEmbeddings(embeddingsStatus.hasEmbeddings);
     } catch (err) {
-      console.error('Error fetching docs:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch documentation');
+      console.error("Error fetching docs:", err);
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch documentation"
+      );
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedProjectId, fetchRepository, parseDocsMetadata]);
 
   const handleRegenerateDocs = async () => {
     if (!selectedProjectId) return;
-    
+
     setIsRegenerating(true);
     setError(null);
     setUpgradeRequired(false);
-    
+
     try {
       const newDocs = await regenerateProjectDocs(selectedProjectId);
       setDocsData(newDocs);
       if (newDocs.content) {
         setMetadata(parseDocsMetadata(newDocs.content));
       }
-      toast.success('Documentation regenerated successfully!', {
-        description: 'The technical documentation has been updated with the latest codebase analysis.',
-      });
+
+      const isPreview =
+        newDocs.prompt?.toLowerCase().includes("demo") ||
+        newDocs.prompt?.toLowerCase().includes("preview");
+
+      if (isPreview) {
+        toast.success("Demo documentation generated!", {
+          description:
+            "Indexing is in progress (takes 5-15 minutes). Please try again after indexing is ready for comprehensive docs. Thank you!",
+          duration: 7000,
+        });
+      } else {
+        toast.success("Documentation regenerated successfully!", {
+          description:
+            "The technical documentation has been updated with the latest codebase analysis.",
+        });
+      }
     } catch (err) {
-      console.error('Error regenerating docs:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to regenerate documentation';
-      
-      if (errorMessage.includes('UPGRADE_REQUIRED')) {
+      console.error("Error regenerating docs:", err);
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "Failed to regenerate documentation";
+
+      if (errorMessage.includes("UPGRADE_REQUIRED")) {
         setUpgradeRequired(true);
-        toast.error('Upgrade required', {
-          description: 'Upgrade to Professional for 10 projects or Enterprise for unlimited.',
+        toast.error("Upgrade required", {
+          description:
+            "Upgrade to Professional for 10 projects or Enterprise for unlimited.",
         });
       } else {
         setError(errorMessage);
-        toast.error('Failed to regenerate documentation', {
+        toast.error("Failed to regenerate documentation", {
           description: errorMessage,
         });
       }
@@ -234,46 +307,46 @@ function DocsPage() {
   };
 
   const handleQnaSubmit = async () => {
-    // Get value from ref if available, otherwise use state
     const questionValue = qnaInputRef.current?.value || qnaQuestion;
     if (!selectedProjectId || !questionValue.trim()) return;
-    
+
     setIsProcessingQna(true);
     setError(null);
     setUpgradeRequired(false);
-    
+
     try {
       const result = await modifyDocsWithQna(selectedProjectId, questionValue);
       setDocsData(result.docs);
       if (result.docs.content) {
         setMetadata(parseDocsMetadata(result.docs.content));
       }
-      
-      // Add to Q&A history
-      setQnaHistory(prev => [result.qnaRecord, ...prev]);
-      setQnaQuestion('');
+
+      setQnaHistory((prev) => [result.qnaRecord, ...prev]);
+      setQnaQuestion("");
       if (qnaInputRef.current) {
-        qnaInputRef.current.value = '';
+        qnaInputRef.current.value = "";
       }
-      
-      // Switch to preview tab to show the updated docs
-      setActiveTab('preview');
-      
-      toast.success('Documentation updated successfully!', {
-        description: 'Your request has been processed and the documentation has been modified.',
+
+      setActiveTab("preview");
+
+      toast.success("Documentation updated successfully!", {
+        description:
+          "Your request has been processed and the documentation has been modified.",
       });
     } catch (err) {
-      console.error('Error processing Q&A:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to modify documentation';
-      
-      if (errorMessage.includes('UPGRADE_REQUIRED')) {
+      console.error("Error processing Q&A:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to modify documentation";
+
+      if (errorMessage.includes("UPGRADE_REQUIRED")) {
         setUpgradeRequired(true);
-        toast.error('Upgrade required', {
-          description: 'Upgrade to Professional for 10 projects or Enterprise for unlimited.',
+        toast.error("Upgrade required", {
+          description:
+            "Upgrade to Professional for 10 projects or Enterprise for unlimited.",
         });
       } else {
         setError(errorMessage);
-        toast.error('Failed to modify documentation', {
+        toast.error("Failed to modify documentation", {
           description: errorMessage,
         });
       }
@@ -282,67 +355,68 @@ function DocsPage() {
     }
   };
 
-  // Optimized onChange handler to prevent lag - debounced state update for button disabled state
-  const handleQnaQuestionChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    // Update state with a small delay to prevent blocking the input
-    // The input itself updates immediately (uncontrolled), state syncs for button logic
-    setTimeout(() => {
-      setQnaQuestion(value);
-    }, 0);
-  }, []);
+  const handleQnaQuestionChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const value = e.target.value;
+      setTimeout(() => {
+        setQnaQuestion(value);
+      }, 0);
+    },
+    []
+  );
 
-  const fetchQnaHistory = async () => {
+  const fetchQnaHistory = useCallback(async () => {
     if (!selectedProjectId) return;
-    
+
     try {
       const docsWithQna = await getDocsQnaHistory(selectedProjectId);
       if (docsWithQna?.qnaHistory) {
         setQnaHistory(docsWithQna.qnaHistory);
       }
     } catch (err) {
-      console.error('Error fetching Q&A history:', err);
+      console.error("Error fetching Q&A history:", err);
     }
-  };
+  }, [selectedProjectId]);
 
-  const fetchShareData = async () => {
+  const fetchShareData = useCallback(async () => {
     if (!selectedProjectId) return;
-    
+
     try {
       const share = await getDocsShare(selectedProjectId);
       if (share && share.isActive) {
         setShareToken(share.shareToken);
       }
     } catch (err) {
-      console.error('Error fetching share data:', err);
+      console.error("Error fetching share data:", err);
     }
-  };
+  }, [selectedProjectId]);
 
   const handleCreateShare = async () => {
     if (!selectedProjectId) return;
-    
+
     setIsCreatingShare(true);
     setError(null);
-    
+
     try {
       const share = await createDocsShare(selectedProjectId);
       setShareToken(share.shareToken);
       setShowShareModal(true);
-      
+
       if (share.isActive) {
-        toast.success('Share link ready!', {
-          description: 'Your documentation is publicly accessible.',
+        toast.success("Share link ready!", {
+          description: "Your documentation is publicly accessible.",
         });
       } else {
-        toast.success('Share link created!', {
-          description: 'Your documentation is now publicly accessible.',
+        toast.success("Share link created!", {
+          description: "Your documentation is now publicly accessible.",
         });
       }
     } catch (err) {
-      console.error('Error creating share:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create share link';
+      console.error("Error creating share:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to create share link";
       setError(errorMessage);
-      toast.error('Failed to create share link', {
+      toast.error("Failed to create share link", {
         description: errorMessage,
       });
     } finally {
@@ -352,23 +426,24 @@ function DocsPage() {
 
   const handleRevokeShare = async () => {
     if (!selectedProjectId) return;
-    
+
     setIsRevokingShare(true);
     setError(null);
-    
+
     try {
       await revokeDocsShare(selectedProjectId);
       setShareToken(null);
       setShowShareModal(false);
-      
-      toast.success('Share link revoked!', {
-        description: 'Your documentation is no longer publicly accessible.',
+
+      toast.success("Share link revoked!", {
+        description: "Your documentation is no longer publicly accessible.",
       });
     } catch (err) {
-      console.error('Error revoking share:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to revoke share link';
+      console.error("Error revoking share:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to revoke share link";
       setError(errorMessage);
-      toast.error('Failed to revoke share link', {
+      toast.error("Failed to revoke share link", {
         description: errorMessage,
       });
     } finally {
@@ -378,42 +453,43 @@ function DocsPage() {
 
   const handleCopyShareLink = async () => {
     if (!shareToken) return;
-    
+
     const shareUrl = `${window.location.origin}/docs/${shareToken}`;
-    
+
     try {
       await navigator.clipboard.writeText(shareUrl);
-      toast.success('Share link copied!', {
-        description: 'The public link has been copied to your clipboard.',
+      toast.success("Share link copied!", {
+        description: "The public link has been copied to your clipboard.",
       });
     } catch (err) {
-      console.error('Failed to copy:', err);
-      toast.error('Failed to copy share link', {
-        description: 'Unable to copy link to clipboard.',
+      console.error("Failed to copy:", err);
+      toast.error("Failed to copy share link", {
+        description: "Unable to copy link to clipboard.",
       });
     }
   };
 
   const handleDeleteQnaRecord = async (qnaId: string) => {
     if (!selectedProjectId) return;
-    
+
     setIsDeletingQna(true);
     setError(null);
-    
+
     try {
       await deleteDocsQnaRecord(selectedProjectId, qnaId);
-      setQnaHistory(prev => prev.filter(qna => qna.id !== qnaId));
+      setQnaHistory((prev) => prev.filter((qna) => qna.id !== qnaId));
       setShowDeleteDialog(false);
       setQnaToDelete(null);
-      
-      toast.success('Q&A record deleted!', {
-        description: 'The conversation has been removed from history.',
+
+      toast.success("Q&A record deleted!", {
+        description: "The conversation has been removed from history.",
       });
     } catch (err) {
-      console.error('Error deleting Q&A record:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete Q&A record';
+      console.error("Error deleting Q&A record:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to delete Q&A record";
       setError(errorMessage);
-      toast.error('Failed to delete Q&A record', {
+      toast.error("Failed to delete Q&A record", {
         description: errorMessage,
       });
     } finally {
@@ -423,23 +499,24 @@ function DocsPage() {
 
   const handleDeleteAllQnaHistory = async () => {
     if (!selectedProjectId) return;
-    
+
     setIsDeletingAllQna(true);
     setError(null);
-    
+
     try {
       await deleteAllDocsQnaHistory(selectedProjectId);
       setQnaHistory([]);
       setShowDeleteAllDialog(false);
-      
-      toast.success('All Q&A history deleted!', {
-        description: 'All conversations have been removed from history.',
+
+      toast.success("All Q&A history deleted!", {
+        description: "All conversations have been removed from history.",
       });
     } catch (err) {
-      console.error('Error deleting all Q&A history:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete Q&A history';
+      console.error("Error deleting all Q&A history:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to delete Q&A history";
       setError(errorMessage);
-      toast.error('Failed to delete Q&A history', {
+      toast.error("Failed to delete Q&A history", {
         description: errorMessage,
       });
     } finally {
@@ -457,17 +534,99 @@ function DocsPage() {
   };
 
   useEffect(() => {
-    fetchDocs();
-    fetchQnaHistory();
-    fetchShareData();
+    if (selectedProjectId) {
+      fetchDocs();
+      fetchQnaHistory();
+      fetchShareData();
+    }
   }, [selectedProjectId]);
 
-  // Update metadata when repoInfo or docsData changes
   useEffect(() => {
     if (docsData?.content) {
-      setMetadata(parseDocsMetadata(docsData.content));
+      setMetadata(parseDocsMetadata(docsData.content, repoInfo));
     }
-  }, [repoInfo, docsData, parseDocsMetadata]);
+  }, [repoInfo, docsData?.id, parseDocsMetadata]);
+
+  useEffect(() => {
+    if (!selectedProjectId || !docsData) {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      return;
+    }
+
+    const isPreview =
+      docsData.prompt?.toLowerCase().includes("demo") ||
+      docsData.prompt?.toLowerCase().includes("preview");
+
+    if (
+      isPreview &&
+      hasEmbeddings === false &&
+      !hasShownIndexingCompleteToast
+    ) {
+      const maxPollingTime = 60 * 60 * 1000;
+      const pollingStartTime = Date.now();
+
+      pollingIntervalRef.current = setInterval(async () => {
+        try {
+          if (Date.now() - pollingStartTime > maxPollingTime) {
+            if (pollingIntervalRef.current) {
+              clearInterval(pollingIntervalRef.current);
+              pollingIntervalRef.current = null;
+            }
+            return;
+          }
+
+          const status = await checkEmbeddingsStatus(selectedProjectId);
+
+          setHasEmbeddings(status.hasEmbeddings);
+
+          if (status.hasEmbeddings && status.count > 0) {
+            if (pollingIntervalRef.current) {
+              clearInterval(pollingIntervalRef.current);
+              pollingIntervalRef.current = null;
+            }
+
+            setHasShownIndexingCompleteToast(true);
+
+            toast.success("🎉 Embedding is done!", {
+              description: "You can regenerate now for better documentation.",
+              duration: 3000,
+            });
+          }
+        } catch (error) {
+          console.error("Error checking embeddings status:", error);
+        }
+      }, 30000);
+
+      return () => {
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+        }
+      };
+    } else {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    }
+  }, [
+    selectedProjectId,
+    docsData?.id,
+    hasEmbeddings,
+    hasShownIndexingCompleteToast,
+  ]);
+
+  useEffect(() => {
+    setHasShownIndexingCompleteToast(false);
+    setHasEmbeddings(null);
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+  }, [selectedProjectId]);
 
   if (!selectedProjectId) {
     return (
@@ -476,7 +635,9 @@ function DocsPage() {
           <CardContent className="pt-6">
             <div className="text-center">
               <BookOpen className="h-12 w-12 mx-auto text-white/50 mb-4" />
-              <h3 className="text-lg font-semibold text-white mb-2">No Project</h3>
+              <h3 className="text-lg font-semibold text-white mb-2">
+                No Project
+              </h3>
               <p className="text-white/50">
                 Select a project to view technical documentation.
               </p>
@@ -494,10 +655,10 @@ function DocsPage() {
           <CardContent className="pt-6">
             <div className="text-center">
               <AlertCircle className="h-12 w-12 mx-auto text-red-400 mb-4" />
-              <h3 className="text-lg font-semibold text-white mb-2">Project Not Found</h3>
-              <p className="text-white/50">
-                Project not found.
-              </p>
+              <h3 className="text-lg font-semibold text-white mb-2">
+                Project Not Found
+              </h3>
+              <p className="text-white/50">Project not found.</p>
             </div>
           </CardContent>
         </Card>
@@ -509,43 +670,42 @@ function DocsPage() {
     <div className="h-full flex flex-col mobile-layout">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 mt-2 sm:mt-4 px-2 sm:px-4 gap-3 sm:gap-4">
         <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
-          <div className="p-2 sm:p-3 bg-white/10 border border-white/20 rounded-xl flex-shrink-0">
+          <div className="p-2 sm:p-3 bg-white/10 border border-white/20 rounded-xl shrink-0">
             <BookOpen className="h-5 w-5 sm:h-6 sm:w-6 text-white/70" />
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-white mobile-no-truncate">
-              { 'Technical Documentation'}
+              {"Technical Documentation"}
             </h1>
             <p className="text-white/50 mt-1 text-xs sm:text-sm md:text-base mobile-no-truncate">
               {selectedProject.name}
             </p>
           </div>
         </div>
-        
-        {/* Quality disclaimer */}
+
         <div className="hidden lg:flex items-center justify-start flex-1 -ml-16">
           <p className="text-white/40 text-xs italic text-center animate-pulse">
             ✨ This may take time because we focus on quality documentation
           </p>
         </div>
-        
+
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
           <Button
             onClick={() => setIsQnaPanelOpen(!isQnaPanelOpen)}
             variant="outline"
             className="border-white/20 text-white hover:bg-white/10 px-3 sm:px-4 md:px-6 py-2 rounded-lg transition-all duration-200 w-full sm:w-auto text-xs sm:text-sm"
           >
-            <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+            <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
             <span className="mobile-no-truncate">Need Help?</span>
           </Button>
-          
-          {user?.plan === 'starter' ? (
+
+          {user?.plan === "starter" ? (
             <Button
               asChild
               className="bg-gray-600 hover:bg-gray-500 text-white px-3 sm:px-4 md:px-6 py-2 rounded-lg transition-all duration-200 w-full sm:w-auto text-xs sm:text-sm"
             >
               <NextLink href="/pricing">
-                <Lock className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+                <Lock className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
                 <span className="mobile-no-truncate">Upgrade to Share</span>
               </NextLink>
             </Button>
@@ -554,7 +714,7 @@ function DocsPage() {
               onClick={() => setShowShareModal(true)}
               className="bg-green-600 hover:bg-green-700 text-white px-3 sm:px-4 md:px-6 py-2 rounded-lg transition-all duration-200 w-full sm:w-auto text-xs sm:text-sm"
             >
-              <Globe className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+              <Globe className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
               <span className="mobile-no-truncate">View Share Link</span>
             </Button>
           ) : (
@@ -565,18 +725,18 @@ function DocsPage() {
             >
               {isCreatingShare ? (
                 <>
-                  <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin flex-shrink-0" />
+                  <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin shrink-0" />
                   <span className="mobile-no-truncate">Creating...</span>
                 </>
               ) : (
                 <>
-                  <Share2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+                  <Share2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
                   <span className="mobile-no-truncate">Share Publicly</span>
                 </>
               )}
             </Button>
           )}
-          
+
           <Button
             onClick={handleRegenerateDocs}
             disabled={isRegenerating || isLoading}
@@ -584,12 +744,12 @@ function DocsPage() {
           >
             {isRegenerating ? (
               <>
-                <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin flex-shrink-0" />
+                <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin shrink-0" />
                 <span className="mobile-no-truncate">Regenerating...</span>
               </>
             ) : (
               <>
-                <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+                <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
                 <span className="mobile-no-truncate">Regenerate Docs</span>
               </>
             )}
@@ -597,12 +757,13 @@ function DocsPage() {
         </div>
       </div>
 
-      {/* Regenerating Status Indicator */}
       {isRegenerating && (
         <div className="mx-2 sm:mx-4 mb-4 sm:mb-6">
           <div className="bg-white/10 border border-white/20 rounded-lg px-3 sm:px-4 py-2 sm:py-3 flex items-center gap-2 sm:gap-3">
-            <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 text-white animate-spin flex-shrink-0" />
-            <span className="text-white text-sm sm:text-base mobile-no-truncate">Regenerating documentation...</span>
+            <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 text-white animate-spin shrink-0" />
+            <span className="text-white text-sm sm:text-base mobile-no-truncate">
+              Regenerating documentation...
+            </span>
           </div>
         </div>
       )}
@@ -612,39 +773,55 @@ function DocsPage() {
           <div className="flex flex-wrap gap-1 sm:gap-2 md:gap-3">
             <div className="flex items-center bg-gray-600 rounded-sm overflow-hidden shadow-sm">
               <div className="flex items-center gap-1 px-1.5 sm:gap-1.5 sm:px-2 py-1 bg-gray-600">
-                <Star className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white flex-shrink-0" />
-                <span className="text-white text-xs font-medium mobile-no-truncate">Stars</span>
+                <Star className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white shrink-0" />
+                <span className="text-white text-xs font-medium mobile-no-truncate">
+                  Stars
+                </span>
               </div>
               <div className="px-1.5 sm:px-2 py-1 bg-gray-500">
-                <span className="text-white text-xs font-medium mobile-no-truncate">{metadata.stars}</span>
+                <span className="text-white text-xs font-medium mobile-no-truncate">
+                  {metadata.stars}
+                </span>
               </div>
             </div>
-            
+
             <div className="flex items-center bg-gray-600 rounded-sm overflow-hidden shadow-sm">
               <div className="flex items-center gap-1 px-1.5 sm:px-2 py-1 bg-gray-600">
-                <GitFork className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white flex-shrink-0" />
-                <span className="text-white text-xs font-medium mobile-no-truncate">Forks</span>
+                <GitFork className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white shrink-0" />
+                <span className="text-white text-xs font-medium mobile-no-truncate">
+                  Forks
+                </span>
               </div>
               <div className="px-1.5 sm:px-2 py-1 bg-gray-500">
-                <span className="text-white text-xs font-medium mobile-no-truncate">{metadata.forks}</span>
+                <span className="text-white text-xs font-medium mobile-no-truncate">
+                  {metadata.forks}
+                </span>
               </div>
             </div>
-            
+
             <div className="flex items-center bg-gray-600 rounded-sm overflow-hidden shadow-sm">
               <div className="px-1.5 sm:px-2 py-1 bg-gray-600">
-                <span className="text-white text-xs font-medium mobile-no-truncate">Language</span>
+                <span className="text-white text-xs font-medium mobile-no-truncate">
+                  Language
+                </span>
               </div>
               <div className="px-1.5 sm:px-2 py-1 bg-blue-500">
-                <span className="text-white text-xs font-medium mobile-no-truncate">{metadata.language}</span>
+                <span className="text-white text-xs font-medium mobile-no-truncate">
+                  {metadata.language}
+                </span>
               </div>
             </div>
-            
+
             <div className="flex items-center bg-gray-600 rounded-sm overflow-hidden shadow-sm">
               <div className="px-1.5 sm:px-2 py-1 bg-gray-600">
-                <span className="text-white text-xs font-medium mobile-no-truncate">License</span>
+                <span className="text-white text-xs font-medium mobile-no-truncate">
+                  License
+                </span>
               </div>
               <div className="px-1.5 sm:px-2 py-1 bg-green-500">
-                <span className="text-white text-xs font-medium mobile-no-truncate">{metadata.license}</span>
+                <span className="text-white text-xs font-medium mobile-no-truncate">
+                  {metadata.license}
+                </span>
               </div>
             </div>
           </div>
@@ -659,15 +836,13 @@ function DocsPage() {
       {error && (
         <Alert className="mb-6 mx-4 border-red-500/50 bg-red-500/10">
           <AlertCircle className="h-4 w-4 text-red-400" />
-          <AlertDescription className="text-red-300">
-            {error}
-          </AlertDescription>
+          <AlertDescription className="text-red-300">{error}</AlertDescription>
         </Alert>
       )}
 
       {upgradeRequired && (
         <div className="mb-6 mx-2 sm:mx-4">
-          <div className="bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/50 rounded-lg p-4">
+          <div className="bg-linear-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/50 rounded-lg p-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <div className="flex items-center gap-3 flex-1">
                 <div className="p-2 bg-amber-500/20 rounded-lg">
@@ -678,13 +853,14 @@ function DocsPage() {
                     Upgrade Required
                   </h3>
                   <p className="text-amber-300/80 text-sm mt-1">
-                    This project exceeds your starter plan limit. Upgrade to Professional for 10 projects or Enterprise for unlimited.
+                    This project exceeds your starter plan limit. Upgrade to
+                    Professional for 10 projects or Enterprise for unlimited.
                   </p>
                 </div>
               </div>
               <Button
                 asChild
-                className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold px-6"
+                className="bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold px-6"
               >
                 <NextLink href="/pricing">
                   <Crown className="h-4 w-4 mr-2" />
@@ -720,7 +896,6 @@ function DocsPage() {
             </div>
           ) : docsData ? (
             <div className="h-full">
-              {/* Docs Preview - Full width, no layout changes */}
               <div className="h-full rounded-lg shadow-sm backdrop-blur-sm overflow-hidden">
                 <div className="h-full overflow-hidden">
                   <ScrollArea className="h-full overflow-x-hidden">
@@ -766,8 +941,12 @@ function DocsPage() {
                             ),
                             li: ({ children }) => (
                               <li className="flex items-baseline gap-1 sm:gap-2 mobile-no-truncate">
-                                <span className="text-white/40 flex-shrink-0 leading-relaxed">•</span>
-                                <span className="mobile-no-truncate leading-relaxed">{children}</span>
+                                <span className="text-white/40 shrink-0 leading-relaxed">
+                                  •
+                                </span>
+                                <span className="mobile-no-truncate leading-relaxed">
+                                  {children}
+                                </span>
                               </li>
                             ),
                             code: ({ children }) => (
@@ -785,12 +964,16 @@ function DocsPage() {
                               </div>
                             ),
                             img: ({ src, alt, ...props }) => (
-                              <img 
-                                src={src} 
-                                alt={alt} 
+                              <img
+                                src={src}
+                                alt={alt}
                                 {...props}
                                 className="inline-block mr-1 sm:mr-2 mb-1 sm:mb-2 max-w-full h-auto"
-                                style={{ display: 'inline-block', marginRight: '4px', marginBottom: '4px' }}
+                                style={{
+                                  display: "inline-block",
+                                  marginRight: "4px",
+                                  marginBottom: "4px",
+                                }}
                               />
                             ),
                             blockquote: ({ children }) => (
@@ -825,22 +1008,27 @@ function DocsPage() {
                 </div>
               </div>
 
-              {/* Q&A Sheet - Proper overlay that doesn't affect main content */}
               <Sheet open={isQnaPanelOpen} onOpenChange={setIsQnaPanelOpen}>
-                <SheetContent side="right" className="min-w-[300px] sm:min-w-[400px] md:min-w-[500px] w-[90vw] sm:w-[400px] md:w-[500px] bg-black/30 border-l border-white/10 backdrop-blur-md px-2 sm:px-4">
+                <SheetContent
+                  side="right"
+                  className="min-w-[300px] sm:min-w-[400px] md:min-w-[500px] w-[90vw] sm:w-[400px] md:w-[500px] bg-black/30 border-l border-white/10 backdrop-blur-md px-2 sm:px-4"
+                >
                   <SheetHeader className="pb-4 sm:pb-6">
                     <div className="flex items-center gap-2 sm:gap-3">
-                      <div className="p-1.5 sm:p-2 bg-blue-500/20 border border-blue-500/30 rounded-lg w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0">
+                      <div className="p-1.5 sm:p-2 bg-blue-500/20 border border-blue-500/30 rounded-lg w-8 h-8 sm:w-10 sm:h-10 shrink-0">
                         <Bot className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <SheetTitle className="text-lg sm:text-xl md:text-2xl font-semibold text-white leading-tight mobile-no-truncate">Ask a question</SheetTitle>
-                        <SheetDescription className="text-white/60 text-xs sm:text-sm mt-1 mobile-no-truncate">Modify your documentation</SheetDescription>
+                        <SheetTitle className="text-lg sm:text-xl md:text-2xl font-semibold text-white leading-tight mobile-no-truncate">
+                          Ask a question
+                        </SheetTitle>
+                        <SheetDescription className="text-white/60 text-xs sm:text-sm mt-1 mobile-no-truncate">
+                          Modify your documentation
+                        </SheetDescription>
                       </div>
                     </div>
                   </SheetHeader>
-                  
-                  {/* Q&A Input Section */}
+
                   <div className="pb-4 sm:pb-6 border-b border-white/10">
                     <div className="space-y-4 sm:space-y-6">
                       <textarea
@@ -850,7 +1038,7 @@ function DocsPage() {
                         placeholder="Which file contains authentication logic?"
                         className="w-full h-[60px] sm:h-[80px] p-2 sm:p-3 bg-black/30 border border-white/20 rounded-lg resize-none text-sm sm:text-base text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent mobile-no-truncate"
                         onKeyDown={(e) => {
-                          if (e.key === 'Enter' && e.ctrlKey) {
+                          if (e.key === "Enter" && e.ctrlKey) {
                             e.preventDefault();
                             handleQnaSubmit();
                           }
@@ -862,27 +1050,35 @@ function DocsPage() {
                       />
                       <Button
                         onClick={handleQnaSubmit}
-                        disabled={isProcessingQna || !(qnaInputRef.current?.value || qnaQuestion).trim()}
+                        disabled={
+                          isProcessingQna ||
+                          !(qnaInputRef.current?.value || qnaQuestion).trim()
+                        }
                         className="w-full bg-red-600 hover:bg-red-700 text-white py-2 sm:py-3 rounded-lg transition-colors h-[40px] sm:h-[48px] text-sm sm:text-base font-medium"
                       >
                         {isProcessingQna ? (
                           <>
-                            <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin flex-shrink-0" />
-                            <span className="mobile-no-truncate">Processing...</span>
+                            <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin shrink-0" />
+                            <span className="mobile-no-truncate">
+                              Processing...
+                            </span>
                           </>
                         ) : (
-                          <span className="mobile-no-truncate">Ask RepoDocs</span>
+                          <span className="mobile-no-truncate">
+                            Ask RepoDocs
+                          </span>
                         )}
                       </Button>
                     </div>
                   </div>
-                  
-                  {/* Q&A History */}
+
                   <div className="flex-1 mt-4 sm:mt-6 overflow-hidden">
                     <div className="flex items-center justify-between mb-3 sm:mb-4">
                       <div className="flex items-center gap-1 sm:gap-2">
-                        <History className="h-3 w-3 sm:h-4 sm:w-4 text-white/60 flex-shrink-0" />
-                        <h4 className="text-sm sm:text-base font-medium text-white/80 mobile-no-truncate">Recent Questions</h4>
+                        <History className="h-3 w-3 sm:h-4 sm:w-4 text-white/60 shrink-0" />
+                        <h4 className="text-sm sm:text-base font-medium text-white/80 mobile-no-truncate">
+                          Recent Questions
+                        </h4>
                       </div>
                       {qnaHistory.length > 0 && (
                         <Button
@@ -891,54 +1087,74 @@ function DocsPage() {
                           size="sm"
                           className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/30 text-xs px-2 sm:px-3 py-1 h-6 sm:h-7"
                         >
-                          <Trash2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1 flex-shrink-0" />
+                          <Trash2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1 shrink-0" />
                           <span className="mobile-no-truncate">Clear All</span>
                         </Button>
                       )}
                     </div>
-                    
+
                     <ScrollArea className="h-full max-h-[400px]">
                       <div className="pr-4">
                         {qnaHistory.length > 0 ? (
                           <div className="space-y-3 sm:space-y-4">
                             {qnaHistory.map((qna, index) => (
-                              <div key={qna.id} className="bg-black/30 border border-white/10 rounded-lg p-3 sm:p-4">
+                              <div
+                                key={qna.id}
+                                className="bg-black/30 border border-white/10 rounded-lg p-3 sm:p-4"
+                              >
                                 <div className="space-y-2 sm:space-y-3">
                                   <div className="flex items-start justify-between">
                                     <div className="flex-1 min-w-0">
-                                      <p className="text-white/90 text-sm sm:text-base font-medium mb-1 mobile-no-truncate">Your Question:</p>
-                                      <p className="text-white/70 text-sm sm:text-base break-words mobile-no-truncate">{qna.question}</p>
+                                      <p className="text-white/90 text-sm sm:text-base font-medium mb-1 mobile-no-truncate">
+                                        Your Question:
+                                      </p>
+                                      <p className="text-white/70 text-sm sm:text-base wrap-break-word mobile-no-truncate">
+                                        {qna.question}
+                                      </p>
                                     </div>
                                     <DropdownMenu>
                                       <DropdownMenuTrigger asChild>
                                         <Button
                                           variant="ghost"
                                           size="sm"
-                                          className="h-5 w-5 sm:h-6 sm:w-6 p-0 text-white/50 hover:text-white/80 hover:bg-white/10 ml-1 sm:ml-2 flex-shrink-0"
+                                          className="h-5 w-5 sm:h-6 sm:w-6 p-0 text-white/50 hover:text-white/80 hover:bg-white/10 ml-1 sm:ml-2 shrink-0"
                                         >
                                           <MoreVertical className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                                         </Button>
                                       </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end" className="bg-gray-800 border-white/20">
+                                      <DropdownMenuContent
+                                        align="end"
+                                        className="bg-gray-800 border-white/20"
+                                      >
                                         <DropdownMenuItem
-                                          onClick={() => openDeleteDialog(qna.id)}
+                                          onClick={() =>
+                                            openDeleteDialog(qna.id)
+                                          }
                                           className="text-red-400 hover:bg-red-500/10 focus:bg-red-500/10"
                                         >
                                           <Trash2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1 sm:mr-2" />
-                                          <span className="mobile-no-truncate">Delete</span>
+                                          <span className="mobile-no-truncate">
+                                            Delete
+                                          </span>
                                         </DropdownMenuItem>
                                       </DropdownMenuContent>
                                     </DropdownMenu>
                                   </div>
-                                  
+
                                   <div>
-                                    <p className="text-white/90 text-sm sm:text-base font-medium mb-1 mobile-no-truncate">AI Response:</p>
-                                    <p className="text-white/70 text-sm sm:text-base break-words mobile-no-truncate">{qna.answer}</p>
+                                    <p className="text-white/90 text-sm sm:text-base font-medium mb-1 mobile-no-truncate">
+                                      AI Response:
+                                    </p>
+                                    <p className="text-white/70 text-sm sm:text-base wrap-break-word mobile-no-truncate">
+                                      {qna.answer}
+                                    </p>
                                   </div>
-                                  
+
                                   <div className="flex items-center gap-1 sm:gap-2 text-xs text-white/50 pt-1 sm:pt-2 border-t border-white/10">
-                                    <Clock className="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" />
-                                    <span className="mobile-no-truncate">{new Date(qna.createdAt).toLocaleString()}</span>
+                                    <Clock className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
+                                    <span className="mobile-no-truncate">
+                                      {new Date(qna.createdAt).toLocaleString()}
+                                    </span>
                                   </div>
                                 </div>
                               </div>
@@ -949,15 +1165,23 @@ function DocsPage() {
                             <div className="p-3 sm:p-4 bg-black/30 border border-white/20 rounded-2xl mb-3 sm:mb-4 inline-block">
                               <MessageSquare className="h-6 w-6 sm:h-8 sm:w-8 text-white/50" />
                             </div>
-                            <h4 className="text-sm sm:text-base font-semibold text-white mb-2 mobile-no-truncate">No questions yet</h4>
+                            <h4 className="text-sm sm:text-base font-semibold text-white mb-2 mobile-no-truncate">
+                              No questions yet
+                            </h4>
                             <p className="text-white/60 text-xs sm:text-sm mb-3 sm:mb-4 mobile-no-truncate">
                               Ask questions to modify your documentation
                             </p>
                             <div className="space-y-1 text-xs text-white/50">
                               <p className="mobile-no-truncate">Try asking:</p>
-                              <p className="mobile-no-truncate">&quot;Add API examples&quot;</p>
-                              <p className="mobile-no-truncate">&quot;Update installation guide&quot;</p>
-                              <p className="mobile-no-truncate">&quot;Add troubleshooting section&quot;</p>
+                              <p className="mobile-no-truncate">
+                                &quot;Add API examples&quot;
+                              </p>
+                              <p className="mobile-no-truncate">
+                                &quot;Update installation guide&quot;
+                              </p>
+                              <p className="mobile-no-truncate">
+                                &quot;Add troubleshooting section&quot;
+                              </p>
                             </div>
                           </div>
                         )}
@@ -973,9 +1197,12 @@ function DocsPage() {
                 <div className="p-6 bg-white/10 border border-white/20 rounded-2xl mb-6 inline-block">
                   <BookOpen className="h-16 w-16 text-white/50" />
                 </div>
-                <h3 className="text-xl font-semibold text-white mb-3">No Documentation</h3>
+                <h3 className="text-xl font-semibold text-white mb-3">
+                  No Documentation
+                </h3>
                 <p className="text-white/50 mb-6">
-                  Generate comprehensive technical documentation for your codebase.
+                  Generate comprehensive technical documentation for your
+                  codebase.
                 </p>
                 <Button
                   onClick={handleRegenerateDocs}
@@ -984,7 +1211,7 @@ function DocsPage() {
                 >
                   {isRegenerating ? (
                     <>
-                      <Loader2 className="h-5 w-5 mr-2 animate-spin flex-shrink-0" />
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin shrink-0" />
                       <span>Generating Documentation...</span>
                     </>
                   ) : (
@@ -1000,7 +1227,6 @@ function DocsPage() {
         </CardContent>
       </Card>
 
-      {/* Share Modal */}
       {showShareModal && shareToken && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <Card className="w-full max-w-md border border-white/20 bg-gray-900">
@@ -1017,10 +1243,12 @@ function DocsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-white/80">Public Link</label>
+                <label className="text-sm font-medium text-white/80">
+                  Public Link
+                </label>
                 <div className="flex items-center gap-2">
                   <Input
-                    value={`${typeof window !== 'undefined' ? window.location.origin : ''}/docs/${shareToken}`}
+                    value={`${typeof window !== "undefined" ? window.location.origin : ""}/docs/${shareToken}`}
                     readOnly
                     className="bg-white/5 border-white/20 text-white text-sm"
                   />
@@ -1033,17 +1261,20 @@ function DocsPage() {
                   </Button>
                 </div>
               </div>
-              
+
               <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <Globe className="h-4 w-4 text-blue-400" />
-                  <span className="text-sm font-medium text-blue-400">Public Access</span>
+                  <span className="text-sm font-medium text-blue-400">
+                    Public Access
+                  </span>
                 </div>
                 <p className="text-xs text-white/60">
-                  Anyone with this link can view your technical documentation. The link will remain active until you revoke it.
+                  Anyone with this link can view your technical documentation.
+                  The link will remain active until you revoke it.
                 </p>
               </div>
-              
+
               <div className="flex gap-3">
                 <Button
                   onClick={handleRevokeShare}
@@ -1057,7 +1288,7 @@ function DocsPage() {
                       Revoking...
                     </>
                   ) : (
-                    'Revoke Access'
+                    "Revoke Access"
                   )}
                 </Button>
                 <Button
@@ -1072,13 +1303,13 @@ function DocsPage() {
         </div>
       )}
 
-      {/* Delete Single Q&A Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent className="bg-gray-900 border-white/20">
           <DialogHeader>
             <DialogTitle className="text-white">Delete Q&A Record</DialogTitle>
             <DialogDescription className="text-white/60">
-              Are you sure you want to delete this conversation? This action cannot be undone.
+              Are you sure you want to delete this conversation? This action
+              cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -1110,13 +1341,15 @@ function DocsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete All Q&A Dialog */}
       <Dialog open={showDeleteAllDialog} onOpenChange={setShowDeleteAllDialog}>
         <DialogContent className="bg-gray-900 border-white/20">
           <DialogHeader>
-            <DialogTitle className="text-white">Delete All Q&A History</DialogTitle>
+            <DialogTitle className="text-white">
+              Delete All Q&A History
+            </DialogTitle>
             <DialogDescription className="text-white/60">
-              Are you sure you want to delete all conversation history? This action cannot be undone and will remove all Q&A records.
+              Are you sure you want to delete all conversation history? This
+              action cannot be undone and will remove all Q&A records.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -1152,4 +1385,3 @@ function DocsPage() {
 }
 
 export default DocsPage;
-

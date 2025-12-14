@@ -1,5 +1,5 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { GitHubRepoInfo } from '../github';
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { GitHubRepoInfo } from "../github";
 
 interface RepositoryState {
   currentRepository: GitHubRepoInfo | null;
@@ -16,7 +16,7 @@ const initialState: RepositoryState = {
 };
 
 const repositorySlice = createSlice({
-  name: 'repository',
+  name: "repository",
   initialState,
   reducers: {
     setLoading: (state, action: PayloadAction<boolean>) => {
@@ -35,7 +35,14 @@ const repositorySlice = createSlice({
       state.error = null;
       state.lastFetched = null;
     },
-    updateRepositoryStats: (state, action: PayloadAction<Partial<Pick<GitHubRepoInfo, 'stars' | 'forks' | 'watchers' | 'openIssues'>>>) => {
+    updateRepositoryStats: (
+      state,
+      action: PayloadAction<
+        Partial<
+          Pick<GitHubRepoInfo, "stars" | "forks" | "watchers" | "openIssues">
+        >
+      >
+    ) => {
       if (state.currentRepository) {
         state.currentRepository = {
           ...state.currentRepository,

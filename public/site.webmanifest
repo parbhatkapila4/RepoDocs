@@ -4,14 +4,8 @@
   "description": "Auto-generate README & Docs from any GitHub repo",
   "icons": [
     {
-      "src": "/favicon.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/favicon.png",
-      "sizes": "512x512",
-      "type": "image/png"
+      "src": "/favicon.ico",
+      "sizes": "any"
     }
   ],
   "theme_color": "#000000",

@@ -1,127 +1,119 @@
-"use client"
-import React, { useState, useEffect, useCallback } from 'react'
-import Link from 'next/link'
-import Image from 'next/image'
-import { Menu, X, Crown, Sparkles, Zap, ArrowRight } from "lucide-react"
-import { RepoDocLogo } from "@/components/ui/repodoc-logo"
-import { useUser as useClerkUser, useClerk } from "@clerk/nextjs"
+"use client";
+import React, { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { Menu, X, Crown, Sparkles, Zap, ArrowRight } from "lucide-react";
+import { RepoDocLogo } from "@/components/ui/repodoc-logo";
+import { useUser as useClerkUser, useClerk } from "@clerk/nextjs";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
-  Sheet,
-  SheetContent,
-  SheetTitle,
-} from "@/components/ui/sheet"
-import { usePathname, useSearchParams, useRouter } from 'next/navigation'
-import { getCurrentUser } from '@/lib/actions'
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { motion, AnimatePresence } from "motion/react"
+} from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { usePathname, useSearchParams, useRouter } from "next/navigation";
+import { getCurrentUser } from "@/lib/actions";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { motion, AnimatePresence } from "motion/react";
 
 export default function Navigation() {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [userPlan, setUserPlan] = useState<string | null>(null)
-  const [scrolled, setScrolled] = useState(false)
-  const { user, isSignedIn } = useClerkUser()
-  const { signOut } = useClerk()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const router = useRouter()
-  
-  // Check if we just completed a payment
-  const paymentStatus = searchParams.get('payment')
-  const planFromUrl = searchParams.get('plan')
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [userPlan, setUserPlan] = useState<string | null>(null);
+  const [scrolled, setScrolled] = useState(false);
+  const { user, isSignedIn } = useClerkUser();
+  const { signOut } = useClerk();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
-  // Check if we're in a payment success state - if so, don't fetch from DB
-  const isPaymentSuccess = paymentStatus === 'success' && planFromUrl
+  const paymentStatus = searchParams.get("payment");
+  const planFromUrl = searchParams.get("plan");
 
-  // Handle scroll effect
+  const isPaymentSuccess = paymentStatus === "success" && planFromUrl;
+
   useEffect(() => {
     const handleScroll = () => {
-      setScrolled(window.scrollY > 20)
-    }
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
-  // Fetch user plan function - but skip if we're handling a payment success
   const fetchUserPlan = useCallback(async () => {
     if (isPaymentSuccess) {
-      console.log('Skipping fetchUserPlan - payment success in progress')
-      return
+      return;
     }
-    
+
     if (isSignedIn) {
       try {
-        const dbUser = await getCurrentUser()
+        const dbUser = await getCurrentUser();
         if (dbUser?.plan) {
-          setUserPlan(dbUser.plan)
+          setUserPlan(dbUser.plan);
         }
-      } catch (error) {
-        console.error('Error fetching user plan:', error)
-      }
+      } catch (error) {}
     }
-  }, [isSignedIn, isPaymentSuccess])
+  }, [isSignedIn, isPaymentSuccess]);
 
-  // Handle successful payment - set plan from URL IMMEDIATELY and lock it
   useEffect(() => {
-    if (paymentStatus === 'success' && planFromUrl) {
-      console.log('Payment success detected, setting plan to:', planFromUrl)
-      setUserPlan(planFromUrl)
+    if (paymentStatus === "success" && planFromUrl) {
+      setUserPlan(planFromUrl);
     }
-  }, [paymentStatus, planFromUrl])
+  }, [paymentStatus, planFromUrl]);
 
-  // Fetch user plan when signed in (but not during payment success)
   useEffect(() => {
     if (!isPaymentSuccess) {
-      fetchUserPlan()
+      fetchUserPlan();
     }
-  }, [fetchUserPlan, isPaymentSuccess])
+  }, [fetchUserPlan, isPaymentSuccess]);
 
   const getPlanBadge = () => {
-    if (!userPlan) return null
-    
+    if (!userPlan) return null;
+
     switch (userPlan) {
-      case 'professional':
+      case "professional":
         return (
           <div className="absolute -bottom-1 -right-1">
-            <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 rounded-full shadow-lg shadow-amber-500/30">
+            <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-linear-to-r from-amber-500 via-orange-500 to-amber-500 rounded-full shadow-lg shadow-amber-500/30">
               <Zap className="h-2 w-2 text-white" />
-              <span className="text-[7px] font-black text-white tracking-wider">PRO</span>
+              <span className="text-[7px] font-black text-white tracking-wider">
+                PRO
+              </span>
             </div>
           </div>
-        )
-      case 'enterprise':
+        );
+      case "enterprise":
         return (
           <div className="absolute -bottom-1 -right-1">
-            <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 rounded-full shadow-lg shadow-purple-500/30">
+            <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-linear-to-r from-violet-500 via-purple-500 to-fuchsia-500 rounded-full shadow-lg shadow-purple-500/30">
               <Crown className="h-2 w-2 text-white" />
-              <span className="text-[7px] font-black text-white tracking-wider">ENT</span>
+              <span className="text-[7px] font-black text-white tracking-wider">
+                ENT
+              </span>
             </div>
           </div>
-        )
-      case 'starter':
+        );
+      case "starter":
       default:
-        return null
+        return null;
     }
-  }
+  };
 
   const navLinks = [
-    { href: '/', label: 'Home' },
-    { href: '/about', label: 'About' },
-    ...(isSignedIn ? [{ href: '/dashboard', label: 'Dashboard' }] : [{ href: '/contact', label: 'Contact' }]),
-    { href: '/pricing', label: 'Pricing' },
-  ]
+    { href: "/", label: "Home" },
+    { href: "/about", label: "About" },
+    ...(isSignedIn
+      ? [{ href: "/dashboard", label: "Dashboard" }]
+      : [{ href: "/contact", label: "Contact" }]),
+    { href: "/pricing", label: "Pricing" },
+  ];
 
   return (
-    <motion.nav 
+    <motion.nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled 
-          ? 'bg-black/80 backdrop-blur-xl border-b border-white/10' 
-          : 'bg-transparent'
+        scrolled
+          ? "bg-black/80 backdrop-blur-xl border-b border-white/10"
+          : "bg-transparent"
       }`}
       initial={{ y: -100 }}
       animate={{ y: 0 }}
@@ -129,13 +121,16 @@ export default function Navigation() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 lg:h-20">
-          {/* Logo */}
           <Link href="/" className="flex items-center gap-3 group">
-            <RepoDocLogo size="md" className="text-white group-hover:scale-105 transition-transform" />
-            <span className="text-xl font-semibold text-white tracking-tight">RepoDoc</span>
+            <RepoDocLogo
+              size="md"
+              className="text-white group-hover:scale-105 transition-transform"
+            />
+            <span className="text-xl font-semibold text-white tracking-tight">
+              RepoDoc
+            </span>
           </Link>
 
-          {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => (
               <Link
@@ -143,8 +138,8 @@ export default function Navigation() {
                 href={link.href}
                 className={`relative px-4 py-2 text-sm font-medium transition-colors rounded-lg ${
                   pathname === link.href
-                    ? 'text-white'
-                    : 'text-white/60 hover:text-white hover:bg-white/5'
+                    ? "text-white"
+                    : "text-white/60 hover:text-white hover:bg-white/5"
                 }`}
               >
                 {link.label}
@@ -159,7 +154,6 @@ export default function Navigation() {
             ))}
           </div>
 
-          {/* Right side */}
           <div className="flex items-center gap-3">
             {isSignedIn && user ? (
               <DropdownMenu>
@@ -173,14 +167,17 @@ export default function Navigation() {
                         width={32}
                         height={32}
                         className="w-8 h-8 rounded-full ring-2 ring-white/20"
-                        src={user.imageUrl || "/docs/images/people/profile-picture-3.jpg"}
+                        src={
+                          user.imageUrl ||
+                          "/docs/images/people/profile-picture-3.jpg"
+                        }
                         alt="user photo"
                         unoptimized
                       />
                       {getPlanBadge()}
                     </div>
                     <span className="text-sm text-white/80 hidden sm:block">
-                      {user.firstName || 'Account'}
+                      {user.firstName || "Account"}
                     </span>
                   </button>
                 </DropdownMenuTrigger>
@@ -188,22 +185,21 @@ export default function Navigation() {
                   align="end"
                   className="z-50 mt-2 w-64 bg-[#0c0c0f]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden"
                 >
-                  {/* User Info & Plan */}
                   <div className="px-4 py-3 border-b border-white/10">
                     <span className="block text-sm text-white font-medium truncate">
-                      {user.firstName || user.username || 'User'}
+                      {user.firstName || user.username || "User"}
                     </span>
                     <span className="block text-xs text-white/50 truncate">
                       {user.emailAddresses[0]?.emailAddress}
                     </span>
                     <div className="mt-2">
-                      {userPlan === 'professional' ? (
-                        <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs px-2 py-0.5 font-semibold border-0">
+                      {userPlan === "professional" ? (
+                        <Badge className="bg-linear-to-r from-amber-500 to-orange-500 text-white text-xs px-2 py-0.5 font-semibold border-0">
                           <Crown className="h-3 w-3 mr-1" />
                           Professional
                         </Badge>
-                      ) : userPlan === 'enterprise' ? (
-                        <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs px-2 py-0.5 font-semibold border-0">
+                      ) : userPlan === "enterprise" ? (
+                        <Badge className="bg-linear-to-r from-purple-500 to-pink-500 text-white text-xs px-2 py-0.5 font-semibold border-0">
                           <Sparkles className="h-3 w-3 mr-1" />
                           Enterprise
                         </Badge>
@@ -215,7 +211,7 @@ export default function Navigation() {
                     </div>
                   </div>
                   <div className="py-2">
-                    {userPlan === 'starter' && (
+                    {userPlan === "starter" && (
                       <Link
                         href="/pricing"
                         className="flex items-center w-full text-left px-4 py-2.5 text-sm text-amber-400 hover:bg-white/5 transition-colors"
@@ -245,7 +241,7 @@ export default function Navigation() {
                 <Button
                   size="sm"
                   className="h-9 px-4 bg-white text-black hover:bg-white/90 rounded-lg font-medium"
-                  onClick={() => router.push('/sign-up')}
+                  onClick={() => router.push("/sign-up")}
                 >
                   Get Started
                   <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
@@ -253,7 +249,6 @@ export default function Navigation() {
               </div>
             )}
 
-            {/* Mobile menu button */}
             <button
               type="button"
               className="md:hidden p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors"
@@ -270,12 +265,11 @@ export default function Navigation() {
         </div>
       </div>
 
-      {/* Mobile Menu */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
+            animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2 }}
             className="md:hidden bg-black/95 backdrop-blur-xl border-t border-white/10"
@@ -288,8 +282,8 @@ export default function Navigation() {
                   onClick={() => setIsMobileMenuOpen(false)}
                   className={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                     pathname === link.href
-                      ? 'text-white bg-white/10'
-                      : 'text-white/60 hover:text-white hover:bg-white/5'
+                      ? "text-white bg-white/10"
+                      : "text-white/60 hover:text-white hover:bg-white/5"
                   }`}
                 >
                   {link.label}
@@ -311,5 +305,5 @@ export default function Navigation() {
         )}
       </AnimatePresence>
     </motion.nav>
-  )
+  );
 }

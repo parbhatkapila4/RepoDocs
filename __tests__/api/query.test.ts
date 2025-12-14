@@ -1,37 +1,53 @@
-import { NextRequest } from 'next/server';
-import { POST } from '@/app/api/query/route';
-import { auth } from '@clerk/nextjs/server';
+import { NextRequest } from "next/server";
+import { POST } from "@/app/api/query/route";
 
-jest.mock('@clerk/nextjs/server');
-jest.mock('@/lib/rag', () => ({
-  queryCodebase: jest.fn(),
+const mockAuth = jest.fn();
+jest.mock("@clerk/nextjs/server", () => ({
+  auth: () => mockAuth(),
 }));
-jest.mock('@/lib/prisma', () => ({
-  __esModule: true,
-  default: {
-    project: {
-      findUnique: jest.fn(),
-    },
+
+const mockQueryCodebase = jest.fn();
+jest.mock("@/lib/rag", () => ({
+  queryCodebase: mockQueryCodebase,
+}));
+
+const mockPrisma = {
+  user: {
+    findUnique: jest.fn(),
   },
+  project: {
+    findFirst: jest.fn(),
+  },
+  sourceCodeEmbiddings: {
+    count: jest.fn(),
+  },
+  $executeRaw: jest.fn(),
+};
+
+jest.mock("@/lib/prisma", () => ({
+  __esModule: true,
+  default: mockPrisma,
 }));
 
-describe('/api/query', () => {
+describe("/api/query", () => {
   beforeEach(() => {
-    (auth as jest.Mock).mockResolvedValue({ userId: 'user123' });
+    jest.clearAllMocks();
+    mockAuth.mockResolvedValue({ userId: "user123" });
+    mockPrisma.user.findUnique.mockResolvedValue({ id: "user123" });
   });
 
   afterEach(() => {
     jest.clearAllMocks();
   });
 
-  it('returns 401 if user is not authenticated', async () => {
-    (auth as jest.Mock).mockResolvedValue({ userId: null });
+  it("returns 401 if user is not authenticated", async () => {
+    mockAuth.mockResolvedValue({ userId: null });
 
-    const request = new NextRequest('http://localhost:3000/api/query', {
-      method: 'POST',
+    const request = new NextRequest("http://localhost:3000/api/query", {
+      method: "POST",
       body: JSON.stringify({
-        projectId: 'proj1',
-        question: 'Test question',
+        projectId: "proj1",
+        question: "Test question",
       }),
     });
 
@@ -39,11 +55,11 @@ describe('/api/query', () => {
     expect(response.status).toBe(401);
   });
 
-  it('returns 400 if required fields are missing', async () => {
-    const request = new NextRequest('http://localhost:3000/api/query', {
-      method: 'POST',
+  it("returns 400 if required fields are missing", async () => {
+    const request = new NextRequest("http://localhost:3000/api/query", {
+      method: "POST",
       body: JSON.stringify({
-        projectId: 'proj1',
+        projectId: "proj1",
       }),
     });
 
@@ -51,40 +67,91 @@ describe('/api/query', () => {
     expect(response.status).toBe(400);
   });
 
-  it('successfully processes a query', async () => {
-    const mockQueryCodebase = require('@/lib/rag').queryCodebase;
-    mockQueryCodebase.mockResolvedValue({
-      answer: 'Test answer',
-      sources: [],
-    });
+  it("returns 404 if user is not found in database", async () => {
+    mockPrisma.user.findUnique.mockResolvedValue(null);
 
-    const mockPrisma = require('@/lib/prisma').default;
-    mockPrisma.project.findUnique.mockResolvedValue({
-      id: 'proj1',
-      userId: 'user123',
-      name: 'Test Project',
-    });
-
-    const request = new NextRequest('http://localhost:3000/api/query', {
-      method: 'POST',
+    const request = new NextRequest("http://localhost:3000/api/query", {
+      method: "POST",
       body: JSON.stringify({
-        projectId: 'proj1',
-        question: 'How does authentication work?',
+        projectId: "proj1",
+        question: "Test question",
+      }),
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(404);
+  });
+
+  it("successfully processes a query", async () => {
+    mockQueryCodebase.mockResolvedValue({
+      answer: "Test answer",
+      sources: [{ fileName: "test.ts", content: "test code", lineNumber: 1 }],
+    });
+
+    mockPrisma.project.findFirst.mockResolvedValue({
+      id: "proj1",
+      userId: "user123",
+      name: "Test Project",
+    });
+
+    mockPrisma.sourceCodeEmbiddings.count.mockResolvedValue(10);
+    mockPrisma.$executeRaw.mockResolvedValue(undefined);
+
+    const request = new NextRequest("http://localhost:3000/api/query", {
+      method: "POST",
+      body: JSON.stringify({
+        projectId: "proj1",
+        question: "How does authentication work?",
       }),
     });
 
     const response = await POST(request);
     expect(response.status).toBe(200);
-    
+
     const data = await response.json();
-    expect(data).toHaveProperty('answer');
-    expect(data).toHaveProperty('sources');
+    expect(data).toHaveProperty("answer");
+    expect(data).toHaveProperty("sources");
+    expect(data).toHaveProperty("metadata");
+    expect(data.answer).toBe("Test answer");
+    expect(data.sources).toHaveLength(1);
   });
 
-  it('handles rate limiting correctly', async () => {
-    // This would test rate limiting if implemented
-    // Placeholder for now
-    expect(true).toBe(true);
+  it("returns 400 if project is not indexed", async () => {
+    mockPrisma.project.findFirst.mockResolvedValue({
+      id: "proj1",
+      userId: "user123",
+      name: "Test Project",
+    });
+
+    mockPrisma.sourceCodeEmbiddings.count.mockResolvedValue(0);
+
+    const request = new NextRequest("http://localhost:3000/api/query", {
+      method: "POST",
+      body: JSON.stringify({
+        projectId: "proj1",
+        question: "Test question",
+      }),
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(400);
+
+    const data = await response.json();
+    expect(data.error).toBe("Project not indexed yet");
+  });
+
+  it("returns 404 if project is not found or unauthorized", async () => {
+    mockPrisma.project.findFirst.mockResolvedValue(null);
+
+    const request = new NextRequest("http://localhost:3000/api/query", {
+      method: "POST",
+      body: JSON.stringify({
+        projectId: "proj1",
+        question: "Test question",
+      }),
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(404);
   });
 });
-

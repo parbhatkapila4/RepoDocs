@@ -1,18 +1,18 @@
-import React from 'react';
-import { getPublicDocs } from '@/lib/actions';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  BookOpen, 
-  Star, 
-  GitFork, 
-  Globe, 
+import React from "react";
+import { getPublicDocs } from "@/lib/actions";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  BookOpen,
+  Star,
+  GitFork,
+  Globe,
   Calendar,
-  ExternalLink
-} from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+  ExternalLink,
+} from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface PublicDocsPageProps {
   params: {
@@ -23,7 +23,7 @@ interface PublicDocsPageProps {
 export default async function PublicDocsPage({ params }: PublicDocsPageProps) {
   try {
     const share = await getPublicDocs(params.token);
-    
+
     if (!share) {
       return (
         <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
@@ -31,7 +31,9 @@ export default async function PublicDocsPage({ params }: PublicDocsPageProps) {
             <CardContent className="pt-6">
               <div className="text-center">
                 <BookOpen className="h-12 w-12 mx-auto text-white/50 mb-4" />
-                <h3 className="text-lg font-semibold text-white mb-2">Documentation Not Found</h3>
+                <h3 className="text-lg font-semibold text-white mb-2">
+                  Documentation Not Found
+                </h3>
                 <p className="text-white/50">
                   This documentation link is invalid or has expired.
                 </p>
@@ -47,7 +49,6 @@ export default async function PublicDocsPage({ params }: PublicDocsPageProps) {
 
     return (
       <div className="min-h-screen bg-gray-900">
-        {/* Header */}
         <div className="border-b border-white/10 bg-gray-800/50 backdrop-blur-sm">
           <div className="max-w-6xl mx-auto px-4 py-6">
             <div className="flex items-center justify-between">
@@ -59,14 +60,15 @@ export default async function PublicDocsPage({ params }: PublicDocsPageProps) {
                   <h1 className="text-2xl font-bold text-white">
                     {project.name} - Technical Documentation
                   </h1>
-                  <p className="text-white/50 mt-1">
-                    Public documentation
-                  </p>
+                  <p className="text-white/50 mt-1">Public documentation</p>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-3">
-                <Badge variant="outline" className="border-white/20 text-white/70">
+                <Badge
+                  variant="outline"
+                  className="border-white/20 text-white/70"
+                >
                   <Globe className="h-3 w-3 mr-1" />
                   Public
                 </Badge>
@@ -84,7 +86,6 @@ export default async function PublicDocsPage({ params }: PublicDocsPageProps) {
           </div>
         </div>
 
-        {/* Content */}
         <div className="max-w-6xl mx-auto px-4 py-8">
           <Card className="border border-white/20 shadow-xl bg-gray-800/50">
             <CardContent className="p-0">
@@ -117,12 +118,18 @@ export default async function PublicDocsPage({ params }: PublicDocsPageProps) {
                             </h4>
                           ),
                           p: ({ children }) => {
-                            const hasOnlyImages = React.Children.toArray(children).every(
-                              child => React.isValidElement(child) && child.type === 'img'
+                            const hasOnlyImages = React.Children.toArray(
+                              children
+                            ).every(
+                              (child) =>
+                                React.isValidElement(child) &&
+                                child.type === "img"
                             );
-                            
+
                             return (
-                              <p className={`text-white/80 leading-relaxed ${hasOnlyImages ? 'mb-4' : 'mb-4'}`}>
+                              <p
+                                className={`text-white/80 leading-relaxed ${hasOnlyImages ? "mb-4" : "mb-4"}`}
+                              >
                                 {children}
                               </p>
                             );
@@ -139,8 +146,12 @@ export default async function PublicDocsPage({ params }: PublicDocsPageProps) {
                           ),
                           li: ({ children }) => (
                             <li className="flex items-baseline gap-2">
-                              <span className="text-white/40 leading-relaxed">•</span>
-                              <span className="leading-relaxed">{children}</span>
+                              <span className="text-white/40 leading-relaxed">
+                                •
+                              </span>
+                              <span className="leading-relaxed">
+                                {children}
+                              </span>
                             </li>
                           ),
                           code: ({ children }) => (
@@ -158,12 +169,16 @@ export default async function PublicDocsPage({ params }: PublicDocsPageProps) {
                             </div>
                           ),
                           img: ({ src, alt, ...props }) => (
-                            <img 
-                              src={src} 
-                              alt={alt} 
+                            <img
+                              src={src}
+                              alt={alt}
                               {...props}
                               className="inline-block mr-2 mb-2"
-                              style={{ display: 'inline-block', marginRight: '8px', marginBottom: '8px' }}
+                              style={{
+                                display: "inline-block",
+                                marginRight: "8px",
+                                marginBottom: "8px",
+                              }}
                             />
                           ),
                           blockquote: ({ children }) => (
@@ -200,18 +215,21 @@ export default async function PublicDocsPage({ params }: PublicDocsPageProps) {
           </Card>
         </div>
 
-        {/* Footer */}
         <div className="border-t border-white/10 bg-gray-800/50 backdrop-blur-sm mt-8">
           <div className="max-w-6xl mx-auto px-4 py-6">
             <div className="flex items-center justify-between text-white/50 text-sm">
               <div className="flex items-center gap-4">
                 <span>Generated by RepoDocs</span>
                 <span>•</span>
-                <span>Last updated: {new Date(docs.updatedAt).toLocaleDateString()}</span>
+                <span>
+                  Last updated: {new Date(docs.updatedAt).toLocaleDateString()}
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-                <span>Created: {new Date(docs.createdAt).toLocaleDateString()}</span>
+                <span>
+                  Created: {new Date(docs.createdAt).toLocaleDateString()}
+                </span>
               </div>
             </div>
           </div>
@@ -219,15 +237,17 @@ export default async function PublicDocsPage({ params }: PublicDocsPageProps) {
       </div>
     );
   } catch (error) {
-    console.error('Error fetching public docs:', error);
-    
+    console.error("Error fetching public docs:", error);
+
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
         <Card className="w-full max-w-md border border-white/20 bg-gray-800">
           <CardContent className="pt-6">
             <div className="text-center">
               <BookOpen className="h-12 w-12 mx-auto text-white/50 mb-4" />
-              <h3 className="text-lg font-semibold text-white mb-2">Documentation Not Found</h3>
+              <h3 className="text-lg font-semibold text-white mb-2">
+                Documentation Not Found
+              </h3>
               <p className="text-white/50">
                 This documentation link is invalid or has expired.
               </p>

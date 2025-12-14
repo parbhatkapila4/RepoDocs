@@ -5,7 +5,6 @@ generator client {
 
 datasource db {
   provider   = "postgresql"
-  url        = env("DATABASE_URL") // Required for Prisma 6 - linter shows false positive for Prisma 7
   extensions = [vector]
 }
 
@@ -18,7 +17,7 @@ model User {
   lastName     String?
   emailAddress String    @unique
   credits      Int       @default(150)
-  plan         String    @default("starter") // "starter", "professional", "enterprise"
+  plan         String    @default("starter")
   projects     Project[]
 }
 

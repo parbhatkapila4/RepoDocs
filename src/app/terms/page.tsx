@@ -1,8 +1,7 @@
-import React from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { 
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
   FileText,
   BookOpen,
   Mail,
@@ -15,24 +14,22 @@ import {
   Scale,
   Gavel,
   Settings,
-  Database
-} from "lucide-react"
-import Link from 'next/link'
+  Database,
+} from "lucide-react";
+import Link from "next/link";
 
 export default function TermsOfServicePage() {
   return (
     <div className="min-h-screen black-bg relative overflow-hidden">
-      {/* Background Elements - Optimized */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/3 rounded-full blur-2xl"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-white/2 rounded-full blur-2xl"></div>
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Back to Home Button */}
         <div className="mb-8">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="border-subtle text-white/70 hover:text-white hover:bg-white/5 glass-card"
             asChild
           >
@@ -43,23 +40,25 @@ export default function TermsOfServicePage() {
           </Button>
         </div>
 
-        {/* Header */}
         <div className="text-center mb-16">
-          <Badge variant="secondary" className="mb-6 px-4 py-2 text-sm glass-card text-white/90 border-subtle">
+          <Badge
+            variant="secondary"
+            className="mb-6 px-4 py-2 text-sm glass-card text-white/90 border-subtle"
+          >
             <FileText className="w-4 h-4 mr-2 text-white/80" />
             Terms of Service
           </Badge>
-          
+
           <h1 className="text-4xl sm:text-5xl font-bold text-white mb-6 leading-tight">
             Terms of Service
           </h1>
-          
+
           <p className="text-xl text-white/70 max-w-3xl mx-auto mb-8">
-            The terms and conditions governing your use of RepoDoc's RAG-powered codebase intelligence platform.
+            The terms and conditions governing your use of RepoDoc's RAG-powered
+            codebase intelligence platform.
           </p>
         </div>
 
-        {/* Table of Contents */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-16">
           <div className="lg:col-span-1">
             <Card className="glass-card border-subtle sticky top-8">
@@ -67,21 +66,65 @@ export default function TermsOfServicePage() {
                 <CardTitle className="text-white">Table of Contents</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <a href="#acceptance" className="block text-white/60 hover:text-white transition-colors text-sm">Acceptance of Terms</a>
-                <a href="#description" className="block text-white/60 hover:text-white transition-colors text-sm">Service Description</a>
-                <a href="#user-accounts" className="block text-white/60 hover:text-white transition-colors text-sm">User Accounts</a>
-                <a href="#acceptable-use" className="block text-white/60 hover:text-white transition-colors text-sm">Acceptable Use</a>
-                <a href="#intellectual-property" className="block text-white/60 hover:text-white transition-colors text-sm">Intellectual Property</a>
-                <a href="#privacy" className="block text-white/60 hover:text-white transition-colors text-sm">Privacy & Data</a>
-                <a href="#limitations" className="block text-white/60 hover:text-white transition-colors text-sm">Limitations</a>
-                <a href="#termination" className="block text-white/60 hover:text-white transition-colors text-sm">Termination</a>
-                <a href="#contact" className="block text-white/60 hover:text-white transition-colors text-sm">Contact</a>
+                <a
+                  href="#acceptance"
+                  className="block text-white/60 hover:text-white transition-colors text-sm"
+                >
+                  Acceptance of Terms
+                </a>
+                <a
+                  href="#description"
+                  className="block text-white/60 hover:text-white transition-colors text-sm"
+                >
+                  Service Description
+                </a>
+                <a
+                  href="#user-accounts"
+                  className="block text-white/60 hover:text-white transition-colors text-sm"
+                >
+                  User Accounts
+                </a>
+                <a
+                  href="#acceptable-use"
+                  className="block text-white/60 hover:text-white transition-colors text-sm"
+                >
+                  Acceptable Use
+                </a>
+                <a
+                  href="#intellectual-property"
+                  className="block text-white/60 hover:text-white transition-colors text-sm"
+                >
+                  Intellectual Property
+                </a>
+                <a
+                  href="#privacy"
+                  className="block text-white/60 hover:text-white transition-colors text-sm"
+                >
+                  Privacy & Data
+                </a>
+                <a
+                  href="#limitations"
+                  className="block text-white/60 hover:text-white transition-colors text-sm"
+                >
+                  Limitations
+                </a>
+                <a
+                  href="#termination"
+                  className="block text-white/60 hover:text-white transition-colors text-sm"
+                >
+                  Termination
+                </a>
+                <a
+                  href="#contact"
+                  className="block text-white/60 hover:text-white transition-colors text-sm"
+                >
+                  Contact
+                </a>
               </CardContent>
             </Card>
           </div>
 
           <div className="lg:col-span-3 space-y-12">
-            {/* Acceptance of Terms Section */}
             <section id="acceptance">
               <Card className="glass-card border-subtle">
                 <CardHeader>
@@ -92,29 +135,37 @@ export default function TermsOfServicePage() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <p className="text-white/70 text-lg leading-relaxed">
-                    By accessing or using RepoDoc, you agree to be bound by these Terms of Service and all applicable laws and regulations.
+                    By accessing or using RepoDoc, you agree to be bound by
+                    these Terms of Service and all applicable laws and
+                    regulations.
                   </p>
-                  
+
                   <div className="glass-card p-6 rounded-lg border-subtle">
-                    <h4 className="text-white font-semibold mb-3">Agreement to Terms</h4>
+                    <h4 className="text-white font-semibold mb-3">
+                      Agreement to Terms
+                    </h4>
                     <p className="text-white/70">
-                      If you do not agree with any of these terms, you are prohibited from using or accessing this site. 
-                      The materials contained in this website are protected by applicable copyright and trademark law.
+                      If you do not agree with any of these terms, you are
+                      prohibited from using or accessing this site. The
+                      materials contained in this website are protected by
+                      applicable copyright and trademark law.
                     </p>
                   </div>
 
                   <div className="glass-card p-6 rounded-lg border-subtle bg-white/5">
-                    <h4 className="text-white font-semibold mb-3">Updates to Terms</h4>
+                    <h4 className="text-white font-semibold mb-3">
+                      Updates to Terms
+                    </h4>
                     <p className="text-white/70 text-sm">
-                      We reserve the right to modify these terms at any time. Continued use of the service after changes 
-                      constitutes acceptance of the new terms.
+                      We reserve the right to modify these terms at any time.
+                      Continued use of the service after changes constitutes
+                      acceptance of the new terms.
                     </p>
                   </div>
                 </CardContent>
               </Card>
             </section>
 
-            {/* Service Description Section */}
             <section id="description">
               <Card className="glass-card border-subtle">
                 <CardHeader>
@@ -125,7 +176,8 @@ export default function TermsOfServicePage() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <p className="text-white/70 text-lg leading-relaxed">
-                    RepoDoc is a RAG-powered platform that transforms your GitHub repositories into queryable knowledge bases.
+                    RepoDoc is a RAG-powered platform that transforms your
+                    GitHub repositories into queryable knowledge bases.
                   </p>
 
                   <div className="space-y-6">
@@ -136,27 +188,40 @@ export default function TermsOfServicePage() {
                       </h4>
                       <ul className="space-y-3 text-white/70">
                         <li className="flex items-start">
-                          <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                          <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 shrink-0"></div>
                           <div>
-                            <strong className="text-white">Codebase Analysis:</strong> AI-powered analysis of your repository structure and content
+                            <strong className="text-white">
+                              Codebase Analysis:
+                            </strong>{" "}
+                            AI-powered analysis of your repository structure and
+                            content
                           </div>
                         </li>
                         <li className="flex items-start">
-                          <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                          <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 shrink-0"></div>
                           <div>
-                            <strong className="text-white">Intelligent Queries:</strong> Natural language questions about your codebase
+                            <strong className="text-white">
+                              Intelligent Queries:
+                            </strong>{" "}
+                            Natural language questions about your codebase
                           </div>
                         </li>
                         <li className="flex items-start">
-                          <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                          <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 shrink-0"></div>
                           <div>
-                            <strong className="text-white">Knowledge Base:</strong> Searchable repository documentation and insights
+                            <strong className="text-white">
+                              Knowledge Base:
+                            </strong>{" "}
+                            Searchable repository documentation and insights
                           </div>
                         </li>
                         <li className="flex items-start">
-                          <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                          <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 shrink-0"></div>
                           <div>
-                            <strong className="text-white">Code References:</strong> Direct links to relevant code sections and files
+                            <strong className="text-white">
+                              Code References:
+                            </strong>{" "}
+                            Direct links to relevant code sections and files
                           </div>
                         </li>
                       </ul>
@@ -169,21 +234,24 @@ export default function TermsOfServicePage() {
                       </h4>
                       <ul className="space-y-3 text-white/70">
                         <li className="flex items-start">
-                          <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                          <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 shrink-0"></div>
                           <div>
-                            <strong className="text-white">Uptime:</strong> We strive for 99.9% service availability
+                            <strong className="text-white">Uptime:</strong> We
+                            strive for 99.9% service availability
                           </div>
                         </li>
                         <li className="flex items-start">
-                          <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                          <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 shrink-0"></div>
                           <div>
-                            <strong className="text-white">Maintenance:</strong> Scheduled maintenance with advance notice
+                            <strong className="text-white">Maintenance:</strong>{" "}
+                            Scheduled maintenance with advance notice
                           </div>
                         </li>
                         <li className="flex items-start">
-                          <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                          <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 shrink-0"></div>
                           <div>
-                            <strong className="text-white">Support:</strong> Technical support during business hours
+                            <strong className="text-white">Support:</strong>{" "}
+                            Technical support during business hours
                           </div>
                         </li>
                       </ul>
@@ -193,7 +261,6 @@ export default function TermsOfServicePage() {
               </Card>
             </section>
 
-            {/* User Accounts Section */}
             <section id="user-accounts">
               <Card className="glass-card border-subtle">
                 <CardHeader>
@@ -204,12 +271,15 @@ export default function TermsOfServicePage() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <p className="text-white/70 text-lg leading-relaxed">
-                    To use RepoDoc, you must create an account and provide accurate information.
+                    To use RepoDoc, you must create an account and provide
+                    accurate information.
                   </p>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3">Account Requirements</h4>
+                      <h4 className="text-white font-semibold mb-3">
+                        Account Requirements
+                      </h4>
                       <ul className="space-y-2 text-white/70 text-sm">
                         <li>• Valid email address</li>
                         <li>• GitHub account connection</li>
@@ -220,7 +290,9 @@ export default function TermsOfServicePage() {
                     </div>
 
                     <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3">Account Security</h4>
+                      <h4 className="text-white font-semibold mb-3">
+                        Account Security
+                      </h4>
                       <ul className="space-y-2 text-white/70 text-sm">
                         <li>• Keep credentials secure</li>
                         <li>• Notify us of breaches</li>
@@ -232,17 +304,19 @@ export default function TermsOfServicePage() {
                   </div>
 
                   <div className="glass-card p-6 rounded-lg border-subtle bg-white/5">
-                    <h4 className="text-white font-semibold mb-3">Account Responsibilities</h4>
+                    <h4 className="text-white font-semibold mb-3">
+                      Account Responsibilities
+                    </h4>
                     <p className="text-white/70 text-sm">
-                      You are responsible for all activities that occur under your account. 
-                      You must notify us immediately of any unauthorized use of your account.
+                      You are responsible for all activities that occur under
+                      your account. You must notify us immediately of any
+                      unauthorized use of your account.
                     </p>
                   </div>
                 </CardContent>
               </Card>
             </section>
 
-            {/* Acceptable Use Section */}
             <section id="acceptable-use">
               <Card className="glass-card border-subtle">
                 <CardHeader>
@@ -253,7 +327,8 @@ export default function TermsOfServicePage() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <p className="text-white/70 text-lg leading-relaxed">
-                    You agree to use RepoDoc only for lawful purposes and in accordance with these terms.
+                    You agree to use RepoDoc only for lawful purposes and in
+                    accordance with these terms.
                   </p>
 
                   <div className="space-y-4">
@@ -290,7 +365,6 @@ export default function TermsOfServicePage() {
               </Card>
             </section>
 
-            {/* Intellectual Property Section */}
             <section id="intellectual-property">
               <Card className="glass-card border-subtle">
                 <CardHeader>
@@ -301,15 +375,19 @@ export default function TermsOfServicePage() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <p className="text-white/70 text-lg leading-relaxed">
-                    Respect for intellectual property is fundamental to our service.
+                    Respect for intellectual property is fundamental to our
+                    service.
                   </p>
 
                   <div className="space-y-6">
                     <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3">Your Content</h4>
+                      <h4 className="text-white font-semibold mb-3">
+                        Your Content
+                      </h4>
                       <p className="text-white/70 text-sm mb-3">
-                        You retain all rights to your code and repository content. We only process and analyze 
-                        your content to provide our services.
+                        You retain all rights to your code and repository
+                        content. We only process and analyze your content to
+                        provide our services.
                       </p>
                       <ul className="space-y-2 text-white/70 text-sm">
                         <li>• You own your code and documentation</li>
@@ -320,9 +398,12 @@ export default function TermsOfServicePage() {
                     </div>
 
                     <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3">Our Platform</h4>
+                      <h4 className="text-white font-semibold mb-3">
+                        Our Platform
+                      </h4>
                       <p className="text-white/70 text-sm mb-3">
-                        RepoDoc's platform, algorithms, and technology are protected by intellectual property laws.
+                        RepoDoc's platform, algorithms, and technology are
+                        protected by intellectual property laws.
                       </p>
                       <ul className="space-y-2 text-white/70 text-sm">
                         <li>• Our AI models and algorithms</li>
@@ -336,7 +417,6 @@ export default function TermsOfServicePage() {
               </Card>
             </section>
 
-            {/* Privacy & Data Section */}
             <section id="privacy">
               <Card className="glass-card border-subtle">
                 <CardHeader>
@@ -352,7 +432,9 @@ export default function TermsOfServicePage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3">Data Handling</h4>
+                      <h4 className="text-white font-semibold mb-3">
+                        Data Handling
+                      </h4>
                       <ul className="space-y-2 text-white/70 text-sm">
                         <li>• Secure data processing</li>
                         <li>• Encrypted data storage</li>
@@ -363,7 +445,9 @@ export default function TermsOfServicePage() {
                     </div>
 
                     <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3">Your Rights</h4>
+                      <h4 className="text-white font-semibold mb-3">
+                        Your Rights
+                      </h4>
                       <ul className="space-y-2 text-white/70 text-sm">
                         <li>• Access your data</li>
                         <li>• Correct inaccuracies</li>
@@ -375,17 +459,25 @@ export default function TermsOfServicePage() {
                   </div>
 
                   <div className="glass-card p-6 rounded-lg border-subtle bg-white/5">
-                    <h4 className="text-white font-semibold mb-3">Privacy Policy</h4>
+                    <h4 className="text-white font-semibold mb-3">
+                      Privacy Policy
+                    </h4>
                     <p className="text-white/70 text-sm">
-                      For detailed information about how we collect, use, and protect your data, 
-                      please review our <Link href="/privacy" className="text-white hover:underline">Privacy Policy</Link>.
+                      For detailed information about how we collect, use, and
+                      protect your data, please review our{" "}
+                      <Link
+                        href="/privacy"
+                        className="text-white hover:underline"
+                      >
+                        Privacy Policy
+                      </Link>
+                      .
                     </p>
                   </div>
                 </CardContent>
               </Card>
             </section>
 
-            {/* Limitations Section */}
             <section id="limitations">
               <Card className="glass-card border-subtle">
                 <CardHeader>
@@ -396,12 +488,15 @@ export default function TermsOfServicePage() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <p className="text-white/70 text-lg leading-relaxed">
-                    Please understand the limitations and disclaimers of our service.
+                    Please understand the limitations and disclaimers of our
+                    service.
                   </p>
 
                   <div className="space-y-4">
                     <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3">Service Limitations</h4>
+                      <h4 className="text-white font-semibold mb-3">
+                        Service Limitations
+                      </h4>
                       <ul className="space-y-2 text-white/70 text-sm">
                         <li>• AI responses may not always be accurate</li>
                         <li>• Service availability not guaranteed</li>
@@ -412,11 +507,14 @@ export default function TermsOfServicePage() {
                     </div>
 
                     <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3">Disclaimers</h4>
+                      <h4 className="text-white font-semibold mb-3">
+                        Disclaimers
+                      </h4>
                       <p className="text-white/70 text-sm">
-                        RepoDoc is provided "as is" without warranties of any kind. We do not guarantee 
-                        the accuracy, completeness, or reliability of AI-generated responses. 
-                        Use our service at your own risk.
+                        RepoDoc is provided "as is" without warranties of any
+                        kind. We do not guarantee the accuracy, completeness, or
+                        reliability of AI-generated responses. Use our service
+                        at your own risk.
                       </p>
                     </div>
                   </div>
@@ -424,7 +522,6 @@ export default function TermsOfServicePage() {
               </Card>
             </section>
 
-            {/* Termination Section */}
             <section id="termination">
               <Card className="glass-card border-subtle">
                 <CardHeader>
@@ -440,7 +537,9 @@ export default function TermsOfServicePage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3">Your Termination Rights</h4>
+                      <h4 className="text-white font-semibold mb-3">
+                        Your Termination Rights
+                      </h4>
                       <ul className="space-y-2 text-white/70 text-sm">
                         <li>• Cancel account anytime</li>
                         <li>• Delete all your data</li>
@@ -451,7 +550,9 @@ export default function TermsOfServicePage() {
                     </div>
 
                     <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3">Our Termination Rights</h4>
+                      <h4 className="text-white font-semibold mb-3">
+                        Our Termination Rights
+                      </h4>
                       <ul className="space-y-2 text-white/70 text-sm">
                         <li>• Violation of terms</li>
                         <li>• Illegal activities</li>
@@ -465,7 +566,6 @@ export default function TermsOfServicePage() {
               </Card>
             </section>
 
-            {/* Contact Section */}
             <section id="contact">
               <Card className="glass-card border-subtle">
                 <CardHeader>
@@ -480,25 +580,33 @@ export default function TermsOfServicePage() {
                   </p>
 
                   <div className="glass-card p-6 rounded-lg border-subtle">
-                    <h4 className="text-white font-semibold mb-3">Get in Touch</h4>
+                    <h4 className="text-white font-semibold mb-3">
+                      Get in Touch
+                    </h4>
                     <div className="space-y-3">
                       <p className="text-white/70">
-                        <strong className="text-white">Email:</strong> help@productsolution.net
+                        <strong className="text-white">Email:</strong>{" "}
+                        help@productsolution.net
                       </p>
                       <p className="text-white/70">
-                        <strong className="text-white">Response Time:</strong> We respond to all legal inquiries within 48 hours
+                        <strong className="text-white">Response Time:</strong>{" "}
+                        We respond to all legal inquiries within 48 hours
                       </p>
                       <p className="text-white/70">
-                        <strong className="text-white">Support:</strong> Available for technical and account issues
+                        <strong className="text-white">Support:</strong>{" "}
+                        Available for technical and account issues
                       </p>
                     </div>
                   </div>
 
                   <div className="glass-card p-6 rounded-lg border-subtle bg-white/5">
-                    <h4 className="text-white font-semibold mb-3">Terms Updates</h4>
+                    <h4 className="text-white font-semibold mb-3">
+                      Terms Updates
+                    </h4>
                     <p className="text-white/70 text-sm mb-3">
-                      We may update these Terms of Service from time to time. We will notify you of any material changes 
-                      by email or through our platform.
+                      We may update these Terms of Service from time to time. We
+                      will notify you of any material changes by email or
+                      through our platform.
                     </p>
                     <p className="text-white/50 text-sm">
                       Last Updated: October 2025
@@ -511,5 +619,5 @@ export default function TermsOfServicePage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

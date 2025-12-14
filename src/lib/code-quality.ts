@@ -1,15 +1,9 @@
-/**
- * Code Quality Analyzer
- * AI-powered code quality insights and recommendations
- * This is a UNIQUE feature that differentiates RepoDoc
- */
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '');
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "");
 
 export interface CodeQualityMetrics {
-  overallScore: number; // 0-100
+  overallScore: number;
   maintainability: number;
   complexity: number;
   testCoverage: number;
@@ -19,7 +13,7 @@ export interface CodeQualityMetrics {
 
 export interface CodeSmell {
   type: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  severity: "low" | "medium" | "high" | "critical";
   file: string;
   line: number;
   description: string;
@@ -40,29 +34,30 @@ export interface CodeQualityReport {
   timestamp: Date;
 }
 
-/**
- * Analyze codebase quality using AI
- */
 export async function analyzeCodeQuality(
   files: Array<{ path: string; content: string }>,
   projectName: string
 ): Promise<CodeQualityReport> {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
-    // Prepare code analysis prompt
     const prompt = `
 Analyze the following codebase for quality, security, and best practices.
 Project: ${projectName}
 Files analyzed: ${files.length}
 
 Code samples:
-${files.slice(0, 10).map(f => `
+${files
+  .slice(0, 10)
+  .map(
+    (f) => `
 File: ${f.path}
 \`\`\`
 ${f.content.slice(0, 1000)}
 \`\`\`
-`).join('\n')}
+`
+  )
+  .join("\n")}
 
 Provide analysis in the following JSON format:
 {
@@ -107,10 +102,9 @@ Focus on:
     const response = await result.response;
     const text = response.text();
 
-    // Parse AI response
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      throw new Error('Failed to parse AI response');
+      throw new Error("Failed to parse AI response");
     }
 
     const analysis = JSON.parse(jsonMatch[0]);
@@ -131,9 +125,8 @@ Focus on:
       timestamp: new Date(),
     };
   } catch (error) {
-    console.error('Error analyzing code quality:', error);
-    
-    // Return default metrics if analysis fails
+    console.error("Error analyzing code quality:", error);
+
     return {
       metrics: {
         overallScore: 0,
@@ -144,7 +137,7 @@ Focus on:
         security: 0,
       },
       smells: [],
-      suggestions: ['Unable to analyze code quality. Please try again.'],
+      suggestions: ["Unable to analyze code quality. Please try again."],
       strengths: [],
       securityIssues: [],
       timestamp: new Date(),
@@ -152,15 +145,12 @@ Focus on:
   }
 }
 
-/**
- * Generate automated improvement PR description
- */
 export async function generatePRDescription(
   changes: Array<{ file: string; additions: number; deletions: number }>,
   commitMessage: string
 ): Promise<string> {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
     const prompt = `
 Generate a comprehensive Pull Request description for the following changes:
@@ -168,7 +158,7 @@ Generate a comprehensive Pull Request description for the following changes:
 Commit Message: ${commitMessage}
 
 Files Changed:
-${changes.map(c => `- ${c.file} (+${c.additions} -${c.deletions})`).join('\n')}
+${changes.map((c) => `- ${c.file} (+${c.additions} -${c.deletions})`).join("\n")}
 
 Create a PR description that includes:
 1. Summary of changes
@@ -184,26 +174,25 @@ Format in Markdown.
     const response = await result.response;
     return response.text();
   } catch (error) {
-    console.error('Error generating PR description:', error);
-    return `## Changes\n\n${commitMessage}\n\n### Files Modified\n${changes.map(c => `- ${c.file}`).join('\n')}`;
+    console.error("Error generating PR description:", error);
+    return `## Changes\n\n${commitMessage}\n\n### Files Modified\n${changes.map((c) => `- ${c.file}`).join("\n")}`;
   }
 }
 
-/**
- * Detect security vulnerabilities
- */
 export async function detectSecurityVulnerabilities(
   code: string,
   language: string
-): Promise<Array<{
-  line: number;
-  type: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  description: string;
-  fix: string;
-}>> {
+): Promise<
+  Array<{
+    line: number;
+    type: string;
+    severity: "low" | "medium" | "high" | "critical";
+    description: string;
+    fix: string;
+  }>
+> {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
     const prompt = `
 Analyze this ${language} code for security vulnerabilities:
@@ -235,44 +224,39 @@ Return JSON array of vulnerabilities with: line, type, severity, description, fi
 
     return [];
   } catch (error) {
-    console.error('Error detecting vulnerabilities:', error);
+    console.error("Error detecting vulnerabilities:", error);
     return [];
   }
 }
 
-/**
- * Calculate code complexity score
- */
 export function calculateComplexity(code: string): number {
   let score = 0;
 
-  // Cyclomatic complexity indicators
-  const controlFlow = (code.match(/\b(if|else|for|while|switch|case)\b/g) || []).length;
+  const controlFlow = (code.match(/\b(if|else|for|while|switch|case)\b/g) || [])
+    .length;
   const functions = (code.match(/\bfunction\b|\=\>/g) || []).length;
   const ternary = (code.match(/\?.*:/g) || []).length;
   const logicalOps = (code.match(/\&\&|\|\|/g) || []).length;
 
   score = controlFlow + functions + ternary + logicalOps;
 
-  // Normalize to 0-100 scale (higher = more complex)
   return Math.min(Math.round((score / Math.max(functions, 1)) * 10), 100);
 }
 
-/**
- * Suggest refactoring opportunities
- */
 export async function suggestRefactoring(
   code: string,
   language: string
-): Promise<Array<{
-  type: string;
-  description: string;
-  before: string;
-  after: string;
-  benefit: string;
-}>> {
+): Promise<
+  Array<{
+    type: string;
+    description: string;
+    before: string;
+    after: string;
+    benefit: string;
+  }>
+> {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
     const prompt = `
 Analyze this ${language} code and suggest refactoring opportunities:
@@ -303,8 +287,7 @@ Return JSON array with: type, description, before (code), after (improved), bene
 
     return [];
   } catch (error) {
-    console.error('Error suggesting refactoring:', error);
+    console.error("Error suggesting refactoring:", error);
     return [];
   }
 }
-

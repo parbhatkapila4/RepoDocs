@@ -1,60 +1,43 @@
-import { NextResponse } from 'next/server';
-import { monitoring } from '@/lib/monitoring';
-import prisma from '@/lib/prisma';
-import { cache } from '@/lib/cache';
+import { NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
+import { cache } from "@/lib/cache";
 
-export const runtime = 'nodejs';
+export const runtime = "nodejs";
 
-/**
- * GET /api/health
- * Health check endpoint for monitoring
- */
 export async function GET() {
   try {
-    const healthStatus = monitoring.getHealthStatus();
-    const perfStats = monitoring.getPerformanceStats();
-    const errorStats = monitoring.getErrorStats();
     const cacheStats = cache.getStats();
 
-    // Check database connection
-    let dbStatus = 'healthy';
+    let dbStatus = "healthy";
     try {
       await prisma.$queryRaw`SELECT 1`;
     } catch (error) {
-      dbStatus = 'unhealthy';
-      healthStatus.status = 'unhealthy';
+      dbStatus = "unhealthy";
     }
 
+    const overallStatus = dbStatus === "healthy" ? "healthy" : "unhealthy";
+
     const response = {
-      status: healthStatus.status,
+      status: overallStatus,
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       checks: {
-        ...healthStatus.checks,
         database: { status: dbStatus },
-        cache: { status: 'healthy', ...cacheStats },
-      },
-      metrics: {
-        performance: perfStats,
-        errors: {
-          total: errorStats.total,
-          bySeverity: errorStats.bySeverity,
-        },
+        cache: { status: "healthy", ...cacheStats },
       },
     };
 
-    const statusCode = healthStatus.status === 'healthy' ? 200 : 503;
+    const statusCode = overallStatus === "healthy" ? 200 : 503;
 
     return NextResponse.json(response, { status: statusCode });
   } catch (error) {
     return NextResponse.json(
       {
-        status: 'unhealthy',
-        error: 'Health check failed',
+        status: "unhealthy",
+        error: "Health check failed",
         timestamp: new Date().toISOString(),
       },
       { status: 500 }
     );
   }
 }
-

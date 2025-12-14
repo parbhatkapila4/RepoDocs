@@ -1,25 +1,53 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { useProjectsContext } from '@/context/ProjectsContext';
-import { useUser } from '@/hooks/useUser';
-import { getProjectReadme, regenerateProjectReadme, modifyReadmeWithQna, getReadmeQnaHistory, createReadmeShare, revokeReadmeShare, getReadmeShare, deleteReadmeQnaRecord, deleteAllReadmeQnaHistory } from '@/lib/actions';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { 
-  FileText, 
-  RefreshCw, 
-  Calendar, 
-  Clock, 
+import React, { useState, useEffect } from "react";
+import { useProjectsContext } from "@/context/ProjectsContext";
+import { useUser } from "@/hooks/useUser";
+import {
+  getProjectReadme,
+  regenerateProjectReadme,
+  modifyReadmeWithQna,
+  getReadmeQnaHistory,
+  createReadmeShare,
+  revokeReadmeShare,
+  getReadmeShare,
+  deleteReadmeQnaRecord,
+  deleteAllReadmeQnaHistory,
+} from "@/lib/actions";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  FileText,
+  RefreshCw,
+  Calendar,
+  Clock,
   AlertCircle,
   CheckCircle,
   Loader2,
@@ -41,12 +69,12 @@ import {
   Trash2,
   MoreVertical,
   Crown,
-  Lock
-} from 'lucide-react';
-import NextLink from 'next/link';
-import { toast } from 'sonner';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+  Lock,
+} from "lucide-react";
+import NextLink from "next/link";
+import { toast } from "sonner";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface ReadmeData {
   id: string;
@@ -87,9 +115,9 @@ function ReadmePage() {
   const [error, setError] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
   const [qnaHistory, setQnaHistory] = useState<QnaRecord[]>([]);
-  const [qnaQuestion, setQnaQuestion] = useState('');
+  const [qnaQuestion, setQnaQuestion] = useState("");
   const [isProcessingQna, setIsProcessingQna] = useState(false);
-  const [activeTab, setActiveTab] = useState('preview');
+  const [activeTab, setActiveTab] = useState("preview");
   const [shareToken, setShareToken] = useState<string | null>(null);
   const [isCreatingShare, setIsCreatingShare] = useState(false);
   const [isRevokingShare, setIsRevokingShare] = useState(false);
@@ -101,33 +129,36 @@ function ReadmePage() {
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
   const [upgradeRequired, setUpgradeRequired] = useState(false);
 
-  const selectedProject = projects.find(p => p.id === selectedProjectId);
+  const selectedProject = projects.find((p) => p.id === selectedProjectId);
 
   const parseReadmeMetadata = (content: string): ReadmeMetadata => {
-    const lines = content.split('\n');
-    let title = 'README';
-    let description = '';
+    const lines = content.split("\n");
+    let title = "README";
+    let description = "";
     let stars = 0;
     let forks = 0;
-    let language = 'Unknown';
-    let license = 'Unknown';
+    let language = "Unknown";
+    let license = "Unknown";
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
-      
-      if (line.startsWith('# ')) {
+
+      if (line.startsWith("# ")) {
         title = line.substring(2);
-      } else if (line.includes('stars') && line.includes('img.shields.io')) {
+      } else if (line.includes("stars") && line.includes("img.shields.io")) {
         const match = line.match(/stars\/(\d+)/);
         if (match) stars = parseInt(match[1]);
-      } else if (line.includes('forks') && line.includes('img.shields.io')) {
+      } else if (line.includes("forks") && line.includes("img.shields.io")) {
         const match = line.match(/forks\/(\d+)/);
         if (match) forks = parseInt(match[1]);
-      } else if (line.includes('Language-TypeScript')) {
-        language = 'TypeScript';
-      } else if (line.includes('License-MIT')) {
-        license = 'MIT';
-      } else if (line.startsWith('## ') && line.toLowerCase().includes('description')) {
+      } else if (line.includes("Language-TypeScript")) {
+        language = "TypeScript";
+      } else if (line.includes("License-MIT")) {
+        license = "MIT";
+      } else if (
+        line.startsWith("## ") &&
+        line.toLowerCase().includes("description")
+      ) {
         if (i + 1 < lines.length) {
           description = lines[i + 1].trim();
         }
@@ -139,31 +170,31 @@ function ReadmePage() {
 
   const handleCopyCode = async () => {
     if (!readmeData?.content) return;
-    
+
     try {
       await navigator.clipboard.writeText(readmeData.content);
       setIsCopied(true);
-      toast.success('README copied to clipboard!', {
-        description: 'The markdown content has been copied successfully.',
+      toast.success("README copied to clipboard!", {
+        description: "The markdown content has been copied successfully.",
       });
-      
+
       setTimeout(() => {
         setIsCopied(false);
       }, 2000);
     } catch (err) {
-      console.error('Failed to copy:', err);
-      toast.error('Failed to copy README', {
-        description: 'Unable to copy content to clipboard.',
+      console.error("Failed to copy:", err);
+      toast.error("Failed to copy README", {
+        description: "Unable to copy content to clipboard.",
       });
     }
   };
 
   const fetchReadme = async () => {
     if (!selectedProjectId) return;
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const readme = await getProjectReadme(selectedProjectId);
       setReadmeData(readme);
@@ -171,8 +202,8 @@ function ReadmePage() {
         setMetadata(parseReadmeMetadata(readme.content));
       }
     } catch (err) {
-      console.error('Error fetching README:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch README');
+      console.error("Error fetching README:", err);
+      setError(err instanceof Error ? err.message : "Failed to fetch README");
     } finally {
       setIsLoading(false);
     }
@@ -180,32 +211,35 @@ function ReadmePage() {
 
   const handleRegenerateReadme = async () => {
     if (!selectedProjectId) return;
-    
+
     setIsRegenerating(true);
     setError(null);
     setUpgradeRequired(false);
-    
+
     try {
       const newReadme = await regenerateProjectReadme(selectedProjectId);
       setReadmeData(newReadme);
       if (newReadme.content) {
         setMetadata(parseReadmeMetadata(newReadme.content));
       }
-      toast.success('README regenerated successfully!', {
-        description: 'The README has been updated with the latest codebase analysis.',
+      toast.success("README regenerated successfully!", {
+        description:
+          "The README has been updated with the latest codebase analysis.",
       });
     } catch (err) {
-      console.error('Error regenerating README:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to regenerate README';
-      
-      if (errorMessage.includes('UPGRADE_REQUIRED')) {
+      console.error("Error regenerating README:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to regenerate README";
+
+      if (errorMessage.includes("UPGRADE_REQUIRED")) {
         setUpgradeRequired(true);
-        toast.error('Upgrade required', {
-          description: 'Upgrade to Professional for 10 projects or Enterprise for unlimited.',
+        toast.error("Upgrade required", {
+          description:
+            "Upgrade to Professional for 10 projects or Enterprise for unlimited.",
         });
       } else {
         setError(errorMessage);
-        toast.error('Failed to regenerate README', {
+        toast.error("Failed to regenerate README", {
           description: errorMessage,
         });
       }
@@ -216,40 +250,41 @@ function ReadmePage() {
 
   const handleQnaSubmit = async () => {
     if (!selectedProjectId || !qnaQuestion.trim()) return;
-    
+
     setIsProcessingQna(true);
     setError(null);
     setUpgradeRequired(false);
-    
+
     try {
       const result = await modifyReadmeWithQna(selectedProjectId, qnaQuestion);
       setReadmeData(result.readme);
       if (result.readme.content) {
         setMetadata(parseReadmeMetadata(result.readme.content));
       }
-      
-      // Add to Q&A history
-      setQnaHistory(prev => [result.qnaRecord, ...prev]);
-      setQnaQuestion('');
-      
-      // Switch to preview tab to show the updated README
-      setActiveTab('preview');
-      
-      toast.success('README updated successfully!', {
-        description: 'Your request has been processed and the README has been modified.',
+
+      setQnaHistory((prev) => [result.qnaRecord, ...prev]);
+      setQnaQuestion("");
+
+      setActiveTab("preview");
+
+      toast.success("README updated successfully!", {
+        description:
+          "Your request has been processed and the README has been modified.",
       });
     } catch (err) {
-      console.error('Error processing Q&A:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to modify README';
-      
-      if (errorMessage.includes('UPGRADE_REQUIRED')) {
+      console.error("Error processing Q&A:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to modify README";
+
+      if (errorMessage.includes("UPGRADE_REQUIRED")) {
         setUpgradeRequired(true);
-        toast.error('Upgrade required', {
-          description: 'Upgrade to Professional for 10 projects or Enterprise for unlimited.',
+        toast.error("Upgrade required", {
+          description:
+            "Upgrade to Professional for 10 projects or Enterprise for unlimited.",
         });
       } else {
         setError(errorMessage);
-        toast.error('Failed to modify README', {
+        toast.error("Failed to modify README", {
           description: errorMessage,
         });
       }
@@ -260,55 +295,56 @@ function ReadmePage() {
 
   const fetchQnaHistory = async () => {
     if (!selectedProjectId) return;
-    
+
     try {
       const readmeWithQna = await getReadmeQnaHistory(selectedProjectId);
       if (readmeWithQna?.qnaHistory) {
         setQnaHistory(readmeWithQna.qnaHistory);
       }
     } catch (err) {
-      console.error('Error fetching Q&A history:', err);
+      console.error("Error fetching Q&A history:", err);
     }
   };
 
   const fetchShareData = async () => {
     if (!selectedProjectId) return;
-    
+
     try {
       const share = await getReadmeShare(selectedProjectId);
       if (share && share.isActive) {
         setShareToken(share.shareToken);
       }
     } catch (err) {
-      console.error('Error fetching share data:', err);
+      console.error("Error fetching share data:", err);
     }
   };
 
   const handleCreateShare = async () => {
     if (!selectedProjectId) return;
-    
+
     setIsCreatingShare(true);
     setError(null);
-    
+
     try {
       const share = await createReadmeShare(selectedProjectId);
       setShareToken(share.shareToken);
       setShowShareModal(true);
-      
+
       if (share.isActive) {
-        toast.success('Share link ready!', {
-          description: 'Your README is publicly accessible.',
+        toast.success("Share link ready!", {
+          description: "Your README is publicly accessible.",
         });
       } else {
-        toast.success('Share link created!', {
-          description: 'Your README is now publicly accessible.',
+        toast.success("Share link created!", {
+          description: "Your README is now publicly accessible.",
         });
       }
     } catch (err) {
-      console.error('Error creating share:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create share link';
+      console.error("Error creating share:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to create share link";
       setError(errorMessage);
-      toast.error('Failed to create share link', {
+      toast.error("Failed to create share link", {
         description: errorMessage,
       });
     } finally {
@@ -318,23 +354,24 @@ function ReadmePage() {
 
   const handleRevokeShare = async () => {
     if (!selectedProjectId) return;
-    
+
     setIsRevokingShare(true);
     setError(null);
-    
+
     try {
       await revokeReadmeShare(selectedProjectId);
       setShareToken(null);
       setShowShareModal(false);
-      
-      toast.success('Share link revoked!', {
-        description: 'Your README is no longer publicly accessible.',
+
+      toast.success("Share link revoked!", {
+        description: "Your README is no longer publicly accessible.",
       });
     } catch (err) {
-      console.error('Error revoking share:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to revoke share link';
+      console.error("Error revoking share:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to revoke share link";
       setError(errorMessage);
-      toast.error('Failed to revoke share link', {
+      toast.error("Failed to revoke share link", {
         description: errorMessage,
       });
     } finally {
@@ -344,42 +381,43 @@ function ReadmePage() {
 
   const handleCopyShareLink = async () => {
     if (!shareToken) return;
-    
+
     const shareUrl = `${window.location.origin}/readme/${shareToken}`;
-    
+
     try {
       await navigator.clipboard.writeText(shareUrl);
-      toast.success('Share link copied!', {
-        description: 'The public link has been copied to your clipboard.',
+      toast.success("Share link copied!", {
+        description: "The public link has been copied to your clipboard.",
       });
     } catch (err) {
-      console.error('Failed to copy:', err);
-      toast.error('Failed to copy share link', {
-        description: 'Unable to copy link to clipboard.',
+      console.error("Failed to copy:", err);
+      toast.error("Failed to copy share link", {
+        description: "Unable to copy link to clipboard.",
       });
     }
   };
 
   const handleDeleteQnaRecord = async (qnaId: string) => {
     if (!selectedProjectId) return;
-    
+
     setIsDeletingQna(true);
     setError(null);
-    
+
     try {
       await deleteReadmeQnaRecord(selectedProjectId, qnaId);
-      setQnaHistory(prev => prev.filter(qna => qna.id !== qnaId));
+      setQnaHistory((prev) => prev.filter((qna) => qna.id !== qnaId));
       setShowDeleteDialog(false);
       setQnaToDelete(null);
-      
-      toast.success('Q&A record deleted!', {
-        description: 'The conversation has been removed from history.',
+
+      toast.success("Q&A record deleted!", {
+        description: "The conversation has been removed from history.",
       });
     } catch (err) {
-      console.error('Error deleting Q&A record:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete Q&A record';
+      console.error("Error deleting Q&A record:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to delete Q&A record";
       setError(errorMessage);
-      toast.error('Failed to delete Q&A record', {
+      toast.error("Failed to delete Q&A record", {
         description: errorMessage,
       });
     } finally {
@@ -389,23 +427,24 @@ function ReadmePage() {
 
   const handleDeleteAllQnaHistory = async () => {
     if (!selectedProjectId) return;
-    
+
     setIsDeletingAllQna(true);
     setError(null);
-    
+
     try {
       await deleteAllReadmeQnaHistory(selectedProjectId);
       setQnaHistory([]);
       setShowDeleteAllDialog(false);
-      
-      toast.success('All Q&A history deleted!', {
-        description: 'All conversations have been removed from history.',
+
+      toast.success("All Q&A history deleted!", {
+        description: "All conversations have been removed from history.",
       });
     } catch (err) {
-      console.error('Error deleting all Q&A history:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete Q&A history';
+      console.error("Error deleting all Q&A history:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to delete Q&A history";
       setError(errorMessage);
-      toast.error('Failed to delete Q&A history', {
+      toast.error("Failed to delete Q&A history", {
         description: errorMessage,
       });
     } finally {
@@ -435,10 +474,10 @@ function ReadmePage() {
           <CardContent className="pt-6">
             <div className="text-center">
               <FileText className="h-12 w-12 mx-auto text-white/50 mb-4" />
-              <h3 className="text-lg font-semibold text-white mb-2">No Project</h3>
-              <p className="text-white/50">
-                Select a project to view README.
-              </p>
+              <h3 className="text-lg font-semibold text-white mb-2">
+                No Project
+              </h3>
+              <p className="text-white/50">Select a project to view README.</p>
             </div>
           </CardContent>
         </Card>
@@ -453,10 +492,10 @@ function ReadmePage() {
           <CardContent className="pt-6">
             <div className="text-center">
               <AlertCircle className="h-12 w-12 mx-auto text-red-400 mb-4" />
-              <h3 className="text-lg font-semibold text-white mb-2">Project Not Found</h3>
-              <p className="text-white/50">
-                Project not found.
-              </p>
+              <h3 className="text-lg font-semibold text-white mb-2">
+                Project Not Found
+              </h3>
+              <p className="text-white/50">Project not found.</p>
             </div>
           </CardContent>
         </Card>
@@ -468,27 +507,27 @@ function ReadmePage() {
     <div className="h-full flex flex-col mobile-layout">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 mt-2 sm:mt-4 px-2 sm:px-4 gap-3 sm:gap-4">
         <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
-          <div className="p-2 sm:p-3 bg-white/10 border border-white/20 rounded-xl flex-shrink-0">
+          <div className="p-2 sm:p-3 bg-white/10 border border-white/20 rounded-xl shrink-0">
             <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-white/70" />
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-white mobile-no-truncate">
-              {metadata?.title || 'README'}
+              {metadata?.title || "README"}
             </h1>
             <p className="text-white/50 mt-1 text-xs sm:text-sm md:text-base mobile-no-truncate">
               {selectedProject.name}
             </p>
           </div>
         </div>
-        
+
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
-          {user?.plan === 'starter' ? (
+          {user?.plan === "starter" ? (
             <Button
               asChild
               className="bg-gray-600 hover:bg-gray-500 text-white px-3 sm:px-4 md:px-6 py-2 rounded-lg transition-all duration-200 w-full sm:w-auto text-xs sm:text-sm"
             >
               <NextLink href="/pricing">
-                <Lock className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+                <Lock className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
                 <span className="mobile-no-truncate">Upgrade to Share</span>
               </NextLink>
             </Button>
@@ -497,7 +536,7 @@ function ReadmePage() {
               onClick={() => setShowShareModal(true)}
               className="bg-green-600 hover:bg-green-700 text-white px-3 sm:px-4 md:px-6 py-2 rounded-lg transition-all duration-200 w-full sm:w-auto text-xs sm:text-sm"
             >
-              <Globe className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+              <Globe className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
               <span className="mobile-no-truncate">View Share Link</span>
             </Button>
           ) : (
@@ -508,18 +547,18 @@ function ReadmePage() {
             >
               {isCreatingShare ? (
                 <>
-                  <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin flex-shrink-0" />
+                  <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin shrink-0" />
                   <span className="mobile-no-truncate">Creating...</span>
                 </>
               ) : (
                 <>
-                  <Share2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+                  <Share2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
                   <span className="mobile-no-truncate">Share Publicly</span>
                 </>
               )}
             </Button>
           )}
-          
+
           <Button
             onClick={handleRegenerateReadme}
             disabled={isRegenerating || isLoading}
@@ -527,12 +566,12 @@ function ReadmePage() {
           >
             {isRegenerating ? (
               <>
-                <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin flex-shrink-0" />
+                <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin shrink-0" />
                 <span className="mobile-no-truncate">Regenerating...</span>
               </>
             ) : (
               <>
-                <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+                <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
                 <span className="mobile-no-truncate">Regenerate README</span>
               </>
             )}
@@ -545,39 +584,55 @@ function ReadmePage() {
           <div className="flex flex-wrap gap-1 sm:gap-2 md:gap-3">
             <div className="flex items-center bg-gray-600 rounded-sm overflow-hidden shadow-sm">
               <div className="flex items-center gap-1 px-1.5 sm:gap-1.5 sm:px-2 py-1 bg-gray-600">
-                <Star className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white flex-shrink-0" />
-                <span className="text-white text-xs font-medium mobile-no-truncate">Stars</span>
+                <Star className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white shrink-0" />
+                <span className="text-white text-xs font-medium mobile-no-truncate">
+                  Stars
+                </span>
               </div>
               <div className="px-1.5 sm:px-2 py-1 bg-gray-500">
-                <span className="text-white text-xs font-medium mobile-no-truncate">{metadata.stars}</span>
+                <span className="text-white text-xs font-medium mobile-no-truncate">
+                  {metadata.stars}
+                </span>
               </div>
             </div>
-            
+
             <div className="flex items-center bg-gray-600 rounded-sm overflow-hidden shadow-sm">
               <div className="flex items-center gap-1 px-1.5 sm:px-2 py-1 bg-gray-600">
-                <GitFork className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white flex-shrink-0" />
-                <span className="text-white text-xs font-medium mobile-no-truncate">Forks</span>
+                <GitFork className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white shrink-0" />
+                <span className="text-white text-xs font-medium mobile-no-truncate">
+                  Forks
+                </span>
               </div>
               <div className="px-1.5 sm:px-2 py-1 bg-gray-500">
-                <span className="text-white text-xs font-medium mobile-no-truncate">{metadata.forks}</span>
+                <span className="text-white text-xs font-medium mobile-no-truncate">
+                  {metadata.forks}
+                </span>
               </div>
             </div>
-            
+
             <div className="flex items-center bg-gray-600 rounded-sm overflow-hidden shadow-sm">
               <div className="px-1.5 sm:px-2 py-1 bg-gray-600">
-                <span className="text-white text-xs font-medium mobile-no-truncate">Language</span>
+                <span className="text-white text-xs font-medium mobile-no-truncate">
+                  Language
+                </span>
               </div>
               <div className="px-1.5 sm:px-2 py-1 bg-blue-500">
-                <span className="text-white text-xs font-medium mobile-no-truncate">{metadata.language}</span>
+                <span className="text-white text-xs font-medium mobile-no-truncate">
+                  {metadata.language}
+                </span>
               </div>
             </div>
-            
+
             <div className="flex items-center bg-gray-600 rounded-sm overflow-hidden shadow-sm">
               <div className="px-1.5 sm:px-2 py-1 bg-gray-600">
-                <span className="text-white text-xs font-medium mobile-no-truncate">License</span>
+                <span className="text-white text-xs font-medium mobile-no-truncate">
+                  License
+                </span>
               </div>
               <div className="px-1.5 sm:px-2 py-1 bg-green-500">
-                <span className="text-white text-xs font-medium mobile-no-truncate">{metadata.license}</span>
+                <span className="text-white text-xs font-medium mobile-no-truncate">
+                  {metadata.license}
+                </span>
               </div>
             </div>
           </div>
@@ -592,15 +647,13 @@ function ReadmePage() {
       {error && (
         <Alert className="mb-6 mx-4 border-red-500/50 bg-red-500/10">
           <AlertCircle className="h-4 w-4 text-red-400" />
-          <AlertDescription className="text-red-300">
-            {error}
-          </AlertDescription>
+          <AlertDescription className="text-red-300">{error}</AlertDescription>
         </Alert>
       )}
 
       {upgradeRequired && (
         <div className="mb-6 mx-2 sm:mx-4">
-          <div className="bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/50 rounded-lg p-4">
+          <div className="bg-linear-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/50 rounded-lg p-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <div className="flex items-center gap-3 flex-1">
                 <div className="p-2 bg-amber-500/20 rounded-lg">
@@ -611,13 +664,14 @@ function ReadmePage() {
                     Upgrade Required
                   </h3>
                   <p className="text-amber-300/80 text-sm mt-1">
-                    This project exceeds your starter plan limit. Upgrade to Professional for 10 projects or Enterprise for unlimited.
+                    This project exceeds your starter plan limit. Upgrade to
+                    Professional for 10 projects or Enterprise for unlimited.
                   </p>
                 </div>
               </div>
               <Button
                 asChild
-                className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold px-6"
+                className="bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold px-6"
               >
                 <NextLink href="/pricing">
                   <Crown className="h-4 w-4 mr-2" />
@@ -652,10 +706,17 @@ function ReadmePage() {
               </div>
             </div>
           ) : readmeData ? (
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
+            <Tabs
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="h-full flex flex-col"
+            >
               <div className="border-b border-white/10 px-3 sm:px-6 py-2 pb-6 sm:pb-8">
                 <TabsList className="grid w-full grid-cols-3 bg-white/5 border border-white/10 text-xs sm:text-sm">
-                  <TabsTrigger value="preview" className="flex items-center gap-2">
+                  <TabsTrigger
+                    value="preview"
+                    className="flex items-center gap-2"
+                  >
                     <Eye className="h-4 w-4" />
                     Preview
                   </TabsTrigger>
@@ -669,7 +730,7 @@ function ReadmePage() {
                   </TabsTrigger>
                 </TabsList>
               </div>
-              
+
               <TabsContent value="preview" className="flex-1 m-0">
                 <ScrollArea className="h-full overflow-x-hidden">
                   <div className="p-2 sm:p-4 md:p-8 mobile-card-content">
@@ -695,13 +756,18 @@ function ReadmePage() {
                               </h3>
                             ),
                             p: ({ children }) => {
-                              // Check if this paragraph contains only images (badges)
-                              const hasOnlyImages = React.Children.toArray(children).every(
-                                child => React.isValidElement(child) && child.type === 'img'
+                              const hasOnlyImages = React.Children.toArray(
+                                children
+                              ).every(
+                                (child) =>
+                                  React.isValidElement(child) &&
+                                  child.type === "img"
                               );
-                              
+
                               return (
-                                <p className={`text-white/80 leading-relaxed ${hasOnlyImages ? 'mb-2 sm:mb-3 md:mb-4' : 'mb-2 sm:mb-3 md:mb-4'} text-xs sm:text-sm md:text-base mobile-no-truncate`}>
+                                <p
+                                  className={`text-white/80 leading-relaxed ${hasOnlyImages ? "mb-2 sm:mb-3 md:mb-4" : "mb-2 sm:mb-3 md:mb-4"} text-xs sm:text-sm md:text-base mobile-no-truncate`}
+                                >
                                   {children}
                                 </p>
                               );
@@ -713,8 +779,12 @@ function ReadmePage() {
                             ),
                             li: ({ children }) => (
                               <li className="flex items-baseline gap-1 sm:gap-2 mobile-no-truncate">
-                                <span className="text-white/40 flex-shrink-0 leading-relaxed">•</span>
-                                <span className="mobile-no-truncate leading-relaxed">{children}</span>
+                                <span className="text-white/40 shrink-0 leading-relaxed">
+                                  •
+                                </span>
+                                <span className="mobile-no-truncate leading-relaxed">
+                                  {children}
+                                </span>
                               </li>
                             ),
                             code: ({ children }) => (
@@ -728,12 +798,16 @@ function ReadmePage() {
                               </pre>
                             ),
                             img: ({ src, alt, ...props }) => (
-                              <img 
-                                src={src} 
-                                alt={alt} 
+                              <img
+                                src={src}
+                                alt={alt}
                                 {...props}
                                 className="inline-block mr-1 sm:mr-2 mb-1 sm:mb-2 max-w-full h-auto"
-                                style={{ display: 'inline-block', marginRight: '4px', marginBottom: '4px' }}
+                                style={{
+                                  display: "inline-block",
+                                  marginRight: "4px",
+                                  marginBottom: "4px",
+                                }}
                               />
                             ),
                             blockquote: ({ children }) => (
@@ -750,14 +824,16 @@ function ReadmePage() {
                   </div>
                 </ScrollArea>
               </TabsContent>
-              
+
               <TabsContent value="code" className="flex-1 m-0">
                 <ScrollArea className="h-full overflow-x-hidden">
                   <div className="p-2 sm:p-4 md:p-8 mobile-card-content">
                     <div className="max-w-4xl mx-auto">
                       <div className="relative">
                         <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-lg font-semibold text-white">README.md</h3>
+                          <h3 className="text-lg font-semibold text-white">
+                            README.md
+                          </h3>
                           <Button
                             onClick={handleCopyCode}
                             variant="outline"
@@ -787,7 +863,7 @@ function ReadmePage() {
                   </div>
                 </ScrollArea>
               </TabsContent>
-              
+
               <TabsContent value="qna" className="flex-1 m-0">
                 <div className="h-full flex flex-col">
                   <div className="p-2 sm:p-4 md:p-6 border-b border-white/10 mobile-card-content">
@@ -797,11 +873,15 @@ function ReadmePage() {
                           <Bot className="h-5 w-5 text-blue-400" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-sm sm:text-base md:text-lg font-semibold text-white mobile-no-truncate">AI README Assistant</h3>
-                          <p className="text-white/60 text-xs sm:text-sm mobile-no-truncate">Ask me to modify your README content</p>
+                          <h3 className="text-sm sm:text-base md:text-lg font-semibold text-white mobile-no-truncate">
+                            AI README Assistant
+                          </h3>
+                          <p className="text-white/60 text-xs sm:text-sm mobile-no-truncate">
+                            Ask me to modify your README content
+                          </p>
                         </div>
                       </div>
-                      
+
                       <div className="flex flex-col sm:flex-row gap-3">
                         <Input
                           value={qnaQuestion}
@@ -809,7 +889,7 @@ function ReadmePage() {
                           placeholder="e.g., Add a deployment section, Update the installation instructions, Add more examples..."
                           className="flex-1 bg-white/5 border-white/20 text-white placeholder:text-white/50 text-xs sm:text-sm mobile-no-truncate"
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
+                            if (e.key === "Enter" && !e.shiftKey) {
                               e.preventDefault();
                               handleQnaSubmit();
                             }
@@ -821,19 +901,21 @@ function ReadmePage() {
                           className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 md:px-6 w-full sm:w-auto text-xs sm:text-sm"
                         >
                           {isProcessingQna ? (
-                            <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin flex-shrink-0" />
+                            <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin shrink-0" />
                           ) : (
-                            <Send className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                            <Send className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
                           )}
                         </Button>
                       </div>
-                      
+
                       <div className="mt-2 sm:mt-3 text-xs text-white/50 mobile-no-truncate">
-                        Examples: &quot;Add a troubleshooting section&quot;, &quot;Include more code examples&quot;, &quot;Update the description&quot;
+                        Examples: &quot;Add a troubleshooting section&quot;,
+                        &quot;Include more code examples&quot;, &quot;Update the
+                        description&quot;
                       </div>
                     </div>
                   </div>
-                  
+
                   <ScrollArea className="flex-1 overflow-x-hidden">
                     <div className="p-2 sm:p-4 md:p-6 mobile-card-content">
                       <div className="max-w-4xl mx-auto">
@@ -842,7 +924,9 @@ function ReadmePage() {
                             <div className="flex items-center justify-between mb-6">
                               <div className="flex items-center gap-2">
                                 <History className="h-4 w-4 text-white/60" />
-                                <h4 className="text-sm font-medium text-white/80">Modification History</h4>
+                                <h4 className="text-sm font-medium text-white/80">
+                                  Modification History
+                                </h4>
                               </div>
                               <Button
                                 onClick={openDeleteAllDialog}
@@ -854,9 +938,12 @@ function ReadmePage() {
                                 Clear All
                               </Button>
                             </div>
-                            
+
                             {qnaHistory.map((qna, index) => (
-                              <Card key={qna.id} className="bg-white/5 border-white/10">
+                              <Card
+                                key={qna.id}
+                                className="bg-white/5 border-white/10"
+                              >
                                 <CardContent className="p-4">
                                   <div className="space-y-3">
                                     <div className="flex items-start gap-3">
@@ -864,8 +951,12 @@ function ReadmePage() {
                                         <MessageSquare className="h-3 w-3 text-blue-400" />
                                       </div>
                                       <div className="flex-1">
-                                        <p className="text-white/90 text-sm font-medium mb-1">Your Request:</p>
-                                        <p className="text-white/70 text-sm">{qna.question}</p>
+                                        <p className="text-white/90 text-sm font-medium mb-1">
+                                          Your Request:
+                                        </p>
+                                        <p className="text-white/70 text-sm">
+                                          {qna.question}
+                                        </p>
                                       </div>
                                       <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
@@ -877,9 +968,14 @@ function ReadmePage() {
                                             <MoreVertical className="h-4 w-4" />
                                           </Button>
                                         </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="bg-gray-800 border-white/20">
+                                        <DropdownMenuContent
+                                          align="end"
+                                          className="bg-gray-800 border-white/20"
+                                        >
                                           <DropdownMenuItem
-                                            onClick={() => openDeleteDialog(qna.id)}
+                                            onClick={() =>
+                                              openDeleteDialog(qna.id)
+                                            }
                                             className="text-red-400 hover:bg-red-500/10 focus:bg-red-500/10"
                                           >
                                             <Trash2 className="h-4 w-4 mr-2" />
@@ -888,20 +984,28 @@ function ReadmePage() {
                                         </DropdownMenuContent>
                                       </DropdownMenu>
                                     </div>
-                                    
+
                                     <div className="flex items-start gap-3">
                                       <div className="p-1.5 bg-green-500/20 border border-green-500/30 rounded">
                                         <CheckCircle className="h-3 w-3 text-green-400" />
                                       </div>
                                       <div className="flex-1">
-                                        <p className="text-white/90 text-sm font-medium mb-1">AI Response:</p>
-                                        <p className="text-white/70 text-sm">{qna.answer}</p>
+                                        <p className="text-white/90 text-sm font-medium mb-1">
+                                          AI Response:
+                                        </p>
+                                        <p className="text-white/70 text-sm">
+                                          {qna.answer}
+                                        </p>
                                       </div>
                                     </div>
-                                    
+
                                     <div className="flex items-center gap-2 text-xs text-white/50 pt-2 border-t border-white/10">
                                       <Clock className="h-3 w-3" />
-                                      <span>{new Date(qna.createdAt).toLocaleString()}</span>
+                                      <span>
+                                        {new Date(
+                                          qna.createdAt
+                                        ).toLocaleString()}
+                                      </span>
                                     </div>
                                   </div>
                                 </CardContent>
@@ -913,9 +1017,13 @@ function ReadmePage() {
                             <div className="p-4 bg-white/10 border border-white/20 rounded-2xl mb-4 inline-block">
                               <MessageSquare className="h-12 w-12 text-white/50" />
                             </div>
-                            <h4 className="text-lg font-semibold text-white mb-2">No Modifications Yet</h4>
+                            <h4 className="text-lg font-semibold text-white mb-2">
+                              No Modifications Yet
+                            </h4>
                             <p className="text-white/60 mb-6 max-w-md mx-auto">
-                              Start a conversation with the AI to modify your README. Ask for changes, additions, or improvements.
+                              Start a conversation with the AI to modify your
+                              README. Ask for changes, additions, or
+                              improvements.
                             </p>
                             <div className="space-y-2 text-sm text-white/50">
                               <p>Try asking:</p>
@@ -937,7 +1045,9 @@ function ReadmePage() {
                 <div className="p-6 bg-white/10 border border-white/20 rounded-2xl mb-6 inline-block">
                   <FileText className="h-16 w-16 text-white/50" />
                 </div>
-                <h3 className="text-xl font-semibold text-white mb-3">No README</h3>
+                <h3 className="text-xl font-semibold text-white mb-3">
+                  No README
+                </h3>
                 <p className="text-white/50 mb-6">
                   Generate AI-powered documentation for your codebase.
                 </p>
@@ -964,7 +1074,6 @@ function ReadmePage() {
         </CardContent>
       </Card>
 
-      {/* Share Modal */}
       {showShareModal && shareToken && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <Card className="w-full max-w-md border border-white/20 bg-gray-900">
@@ -981,10 +1090,12 @@ function ReadmePage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-white/80">Public Link</label>
+                <label className="text-sm font-medium text-white/80">
+                  Public Link
+                </label>
                 <div className="flex items-center gap-2">
                   <Input
-                    value={`${typeof window !== 'undefined' ? window.location.origin : ''}/readme/${shareToken}`}
+                    value={`${typeof window !== "undefined" ? window.location.origin : ""}/readme/${shareToken}`}
                     readOnly
                     className="bg-white/5 border-white/20 text-white text-sm"
                   />
@@ -997,17 +1108,20 @@ function ReadmePage() {
                   </Button>
                 </div>
               </div>
-              
+
               <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <Globe className="h-4 w-4 text-blue-400" />
-                  <span className="text-sm font-medium text-blue-400">Public Access</span>
+                  <span className="text-sm font-medium text-blue-400">
+                    Public Access
+                  </span>
                 </div>
                 <p className="text-xs text-white/60">
-                  Anyone with this link can view your README. The link will remain active until you revoke it.
+                  Anyone with this link can view your README. The link will
+                  remain active until you revoke it.
                 </p>
               </div>
-              
+
               <div className="flex gap-3">
                 <Button
                   onClick={handleRevokeShare}
@@ -1021,7 +1135,7 @@ function ReadmePage() {
                       Revoking...
                     </>
                   ) : (
-                    'Revoke Access'
+                    "Revoke Access"
                   )}
                 </Button>
                 <Button
@@ -1036,13 +1150,13 @@ function ReadmePage() {
         </div>
       )}
 
-      {/* Delete Single Q&A Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent className="bg-gray-900 border-white/20">
           <DialogHeader>
             <DialogTitle className="text-white">Delete Q&A Record</DialogTitle>
             <DialogDescription className="text-white/60">
-              Are you sure you want to delete this conversation? This action cannot be undone.
+              Are you sure you want to delete this conversation? This action
+              cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -1074,13 +1188,15 @@ function ReadmePage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete All Q&A Dialog */}
       <Dialog open={showDeleteAllDialog} onOpenChange={setShowDeleteAllDialog}>
         <DialogContent className="bg-gray-900 border-white/20">
           <DialogHeader>
-            <DialogTitle className="text-white">Delete All Q&A History</DialogTitle>
+            <DialogTitle className="text-white">
+              Delete All Q&A History
+            </DialogTitle>
             <DialogDescription className="text-white/60">
-              Are you sure you want to delete all conversation history? This action cannot be undone and will remove all Q&A records.
+              Are you sure you want to delete all conversation history? This
+              action cannot be undone and will remove all Q&A records.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

@@ -1,7 +1,3 @@
-/**
- * Custom error classes for better error handling
- */
-
 export class AppError extends Error {
   constructor(
     message: string,
@@ -16,54 +12,50 @@ export class AppError extends Error {
 }
 
 export class AuthenticationError extends AppError {
-  constructor(message: string = 'Authentication failed') {
-    super(message, 401, 'AUTH_ERROR');
+  constructor(message: string = "Authentication failed") {
+    super(message, 401, "AUTH_ERROR");
   }
 }
 
 export class AuthorizationError extends AppError {
-  constructor(message: string = 'Not authorized') {
-    super(message, 403, 'FORBIDDEN');
+  constructor(message: string = "Not authorized") {
+    super(message, 403, "FORBIDDEN");
   }
 }
 
 export class NotFoundError extends AppError {
-  constructor(resource: string = 'Resource') {
-    super(`${resource} not found`, 404, 'NOT_FOUND');
+  constructor(resource: string = "Resource") {
+    super(`${resource} not found`, 404, "NOT_FOUND");
   }
 }
 
 export class ValidationError extends AppError {
-  constructor(message: string = 'Validation failed', public details?: any) {
-    super(message, 400, 'VALIDATION_ERROR');
+  constructor(
+    message: string = "Validation failed",
+    public details?: any
+  ) {
+    super(message, 400, "VALIDATION_ERROR");
   }
 }
 
 export class RateLimitError extends AppError {
-  constructor(message: string = 'Rate limit exceeded') {
-    super(message, 429, 'RATE_LIMIT');
+  constructor(message: string = "Rate limit exceeded") {
+    super(message, 429, "RATE_LIMIT");
   }
 }
 
 export class ExternalAPIError extends AppError {
   constructor(service: string, message?: string) {
-    super(
-      message || `${service} API error`,
-      502,
-      'EXTERNAL_API_ERROR'
-    );
+    super(message || `${service} API error`, 502, "EXTERNAL_API_ERROR");
   }
 }
 
 export class DatabaseError extends AppError {
-  constructor(message: string = 'Database operation failed') {
-    super(message, 500, 'DATABASE_ERROR');
+  constructor(message: string = "Database operation failed") {
+    super(message, 500, "DATABASE_ERROR");
   }
 }
 
-/**
- * Retry wrapper for async functions with exponential backoff
- */
 export async function retryAsync<T>(
   fn: () => Promise<T>,
   options: {
@@ -91,37 +83,29 @@ export async function retryAsync<T>(
     } catch (error) {
       lastError = error;
 
-      // Don't retry if this is the last attempt or if retryIf returns false
       if (attempt === maxRetries || !retryIf(error)) {
         throw error;
       }
 
-      // Wait before retrying
-      await new Promise(resolve => setTimeout(resolve, delay));
-      
-      // Exponential backoff
+      await new Promise((resolve) => setTimeout(resolve, delay));
+
       delay = Math.min(delay * backoffMultiplier, maxDelay);
-      
-      console.log(`Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms`);
     }
   }
 
   throw lastError;
 }
 
-/**
- * Async timeout wrapper
- */
 export async function withTimeout<T>(
   promise: Promise<T>,
   timeoutMs: number,
-  errorMessage: string = 'Operation timed out'
+  errorMessage: string = "Operation timed out"
 ): Promise<T> {
   let timeoutId: NodeJS.Timeout;
-  
+
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeoutId = setTimeout(() => {
-      reject(new AppError(errorMessage, 408, 'TIMEOUT'));
+      reject(new AppError(errorMessage, 408, "TIMEOUT"));
     }, timeoutMs);
   });
 
@@ -132,34 +116,27 @@ export async function withTimeout<T>(
   }
 }
 
-/**
- * Error logger helper
- */
 export function logError(error: any, context?: Record<string, any>) {
-  const timestamp = new Date().toISOString();
-  const errorInfo = {
-    timestamp,
-    message: error?.message || 'Unknown error',
-    stack: error?.stack,
-    code: error?.code,
-    statusCode: error?.statusCode,
-    ...context,
-  };
-
-  console.error('Error:', JSON.stringify(errorInfo, null, 2));
-
-  // In production, you would send this to a monitoring service like Sentry
-  // if (process.env.NODE_ENV === 'production') {
-  //   Sentry.captureException(error, { extra: errorInfo });
-  // }
+  const errorMessage = error?.message || "Unknown error";
+  const errorStack = error?.stack;
+  if (context?.projectId || context?.file) {
+    console.error("Indexing/Embedding Error:", {
+      message: errorMessage,
+      context: context,
+      stack: errorStack,
+    });
+  } else {
+    if (process.env.NODE_ENV === "development") {
+      console.error(
+        "Error:",
+        errorMessage,
+        context ? `Context: ${JSON.stringify(context)}` : ""
+      );
+    }
+  }
 }
 
-/**
- * Safe async handler wrapper for API routes
- */
-export function asyncHandler(
-  handler: (req: any, res?: any) => Promise<any>
-) {
+export function asyncHandler(handler: (req: any, res?: any) => Promise<any>) {
   return async (req: any, res?: any) => {
     try {
       return await handler(req, res);
@@ -172,4 +149,3 @@ export function asyncHandler(
     }
   };
 }
-

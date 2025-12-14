@@ -1,34 +1,33 @@
-"use client"
+"use client";
 
-import React, { useState } from 'react'
-import { motion } from "motion/react"
-import { ArrowRight, Github } from "lucide-react"
-import { useUser } from '@/hooks/useUser'
-import { useRouter } from 'next/navigation'
+import React, { useState } from "react";
+import { motion } from "motion/react";
+import { ArrowRight, Github } from "lucide-react";
+import { useUser } from "@/hooks/useUser";
+import { useRouter } from "next/navigation";
 
 export default function Demo() {
-  const { isAuthenticated } = useUser()
-  const router = useRouter()
-  const [repoUrl, setRepoUrl] = useState('')
+  const { isAuthenticated } = useUser();
+  const router = useRouter();
+  const [repoUrl, setRepoUrl] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    const destination = isAuthenticated 
-      ? `/create${repoUrl ? `?url=${encodeURIComponent(repoUrl)}` : ''}`
-      : `/sign-up${repoUrl ? `?url=${encodeURIComponent(repoUrl)}` : ''}`
-    router.push(destination)
-  }
+    e.preventDefault();
+    const destination = isAuthenticated
+      ? `/create${repoUrl ? `?url=${encodeURIComponent(repoUrl)}` : ""}`
+      : `/sign-up${repoUrl ? `?url=${encodeURIComponent(repoUrl)}` : ""}`;
+    router.push(destination);
+  };
 
   const popularRepos = [
-    { name: 'vercel/next.js', stars: '120k' },
-    { name: 'facebook/react', stars: '220k' },
-    { name: 'microsoft/vscode', stars: '160k' },
-  ]
+    { name: "vercel/next.js", stars: "120k" },
+    { name: "facebook/react", stars: "220k" },
+    { name: "microsoft/vscode", stars: "160k" },
+  ];
 
   return (
     <section className="bg-[#0a0a0a] py-32 border-t border-[#1a1a1a] relative">
-      {/* Grain texture */}
-      <div 
+      <div
         className="absolute inset-0 opacity-[0.12] pointer-events-none z-0"
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
@@ -47,8 +46,7 @@ export default function Demo() {
           </p>
         </div>
 
-        {/* Input */}
-        <motion.form 
+        <motion.form
           onSubmit={handleSubmit}
           className="max-w-xl mx-auto mb-8"
           initial={{ opacity: 0, y: 20 }}
@@ -76,12 +74,17 @@ export default function Demo() {
           </div>
         </motion.form>
 
-        {/* Popular repos */}
         <div className="flex flex-wrap justify-center gap-3">
           {popularRepos.map((repo) => (
             <button
               key={repo.name}
-              onClick={() => router.push(isAuthenticated ? `/create?url=https://github.com/${repo.name}` : `/sign-up?url=https://github.com/${repo.name}`)}
+              onClick={() =>
+                router.push(
+                  isAuthenticated
+                    ? `/create?url=https://github.com/${repo.name}`
+                    : `/sign-up?url=https://github.com/${repo.name}`
+                )
+              }
               className="px-4 py-2 bg-[#1a1a1a] border border-[#333] rounded-lg text-[#888] hover:text-white hover:border-[#555] transition-colors text-sm font-mono"
             >
               {repo.name}
@@ -91,5 +94,5 @@ export default function Demo() {
         </div>
       </div>
     </section>
-  )
+  );
 }

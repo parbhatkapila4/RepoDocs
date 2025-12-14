@@ -1,32 +1,29 @@
-import React from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { 
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
   Mail,
   MessageSquare,
   Github,
   ArrowLeft,
   Send,
   MapPin,
-  Phone
-} from "lucide-react"
-import Link from 'next/link'
+  Phone,
+} from "lucide-react";
+import Link from "next/link";
 
 export default function ContactPage() {
   return (
     <div className="min-h-screen black-bg relative overflow-hidden">
-      {/* Background Elements - Optimized */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/3 rounded-full blur-2xl"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-white/2 rounded-full blur-2xl"></div>
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Back to Home Button */}
         <div className="mb-8">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="border-subtle text-white/70 hover:text-white hover:bg-white/5 glass-card"
             asChild
           >
@@ -37,25 +34,26 @@ export default function ContactPage() {
           </Button>
         </div>
 
-        {/* Header */}
         <div className="text-center mb-16">
-          <Badge variant="secondary" className="mb-6 px-4 py-2 text-sm glass-card text-white/90 border-subtle">
+          <Badge
+            variant="secondary"
+            className="mb-6 px-4 py-2 text-sm glass-card text-white/90 border-subtle"
+          >
             <MessageSquare className="w-4 h-4 mr-2 text-white/80" />
             Get in Touch
           </Badge>
-          
+
           <h1 className="text-4xl sm:text-5xl font-bold text-white mb-6 leading-tight">
             Contact Us
           </h1>
-          
+
           <p className="text-xl text-white/70 max-w-3xl mx-auto mb-8">
-            Have questions, feedback, or want to collaborate? We'd love to hear from you!
+            Have questions, feedback, or want to collaborate? We'd love to hear
+            from you!
           </p>
         </div>
 
-        {/* Contact Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Contact Information Cards */}
           <div className="lg:col-span-1 space-y-6">
             <Card className="glass-card border-subtle">
               <CardHeader>
@@ -65,8 +63,8 @@ export default function ContactPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <a 
-                  href="mailto:help@productsolutions.net" 
+                <a
+                  href="mailto:help@productsolutions.net"
                   className="text-white/70 hover:text-white transition-colors text-lg"
                 >
                   help@productsolutions.net
@@ -82,9 +80,9 @@ export default function ContactPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <a 
-                  href="https://github.com/parbhatkapila4/RepoDocs" 
-                  target="_blank" 
+                <a
+                  href="https://github.com/parbhatkapila4/RepoDocs"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="text-white/70 hover:text-white transition-colors text-lg"
                 >
@@ -102,13 +100,13 @@ export default function ContactPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-white/70">
-                  For technical support, feature requests, or bug reports, please open an issue on our GitHub repository.
+                  For technical support, feature requests, or bug reports,
+                  please open an issue on our GitHub repository.
                 </p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Contact Form */}
           <div className="lg:col-span-2">
             <Card className="glass-card border-subtle">
               <CardHeader>
@@ -118,7 +116,10 @@ export default function ContactPage() {
                 <form className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label htmlFor="name" className="block text-sm font-medium text-white/80 mb-2">
+                      <label
+                        htmlFor="name"
+                        className="block text-sm font-medium text-white/80 mb-2"
+                      >
                         Name
                       </label>
                       <input
@@ -130,7 +131,10 @@ export default function ContactPage() {
                       />
                     </div>
                     <div>
-                      <label htmlFor="email" className="block text-sm font-medium text-white/80 mb-2">
+                      <label
+                        htmlFor="email"
+                        className="block text-sm font-medium text-white/80 mb-2"
+                      >
                         Email
                       </label>
                       <input
@@ -142,9 +146,12 @@ export default function ContactPage() {
                       />
                     </div>
                   </div>
-                  
+
                   <div>
-                    <label htmlFor="subject" className="block text-sm font-medium text-white/80 mb-2">
+                    <label
+                      htmlFor="subject"
+                      className="block text-sm font-medium text-white/80 mb-2"
+                    >
                       Subject
                     </label>
                     <input
@@ -155,9 +162,12 @@ export default function ContactPage() {
                       placeholder="What's this about?"
                     />
                   </div>
-                  
+
                   <div>
-                    <label htmlFor="message" className="block text-sm font-medium text-white/80 mb-2">
+                    <label
+                      htmlFor="message"
+                      className="block text-sm font-medium text-white/80 mb-2"
+                    >
                       Message
                     </label>
                     <textarea
@@ -168,8 +178,8 @@ export default function ContactPage() {
                       placeholder="Tell us what's on your mind..."
                     />
                   </div>
-                  
-                  <Button 
+
+                  <Button
                     type="submit"
                     className="w-full bg-white/10 hover:bg-white/20 text-white h-12 text-lg border border-subtle glow-subtle"
                   >
@@ -180,28 +190,37 @@ export default function ContactPage() {
               </CardContent>
             </Card>
 
-            {/* Additional Information */}
             <Card className="glass-card border-subtle mt-6">
               <CardHeader>
-                <CardTitle className="text-white">Other Ways to Connect</CardTitle>
+                <CardTitle className="text-white">
+                  Other Ways to Connect
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-start">
-                  <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                  <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 shrink-0"></div>
                   <p className="text-white/70">
-                    <strong className="text-white">Open Source Contributions:</strong> We welcome contributions! Check out our GitHub repository for open issues and contribution guidelines.
+                    <strong className="text-white">
+                      Open Source Contributions:
+                    </strong>{" "}
+                    We welcome contributions! Check out our GitHub repository
+                    for open issues and contribution guidelines.
                   </p>
                 </div>
                 <div className="flex items-start">
-                  <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                  <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 shrink-0"></div>
                   <p className="text-white/70">
-                    <strong className="text-white">Feature Requests:</strong> Have an idea for a new feature? Open a discussion on GitHub or send us an email.
+                    <strong className="text-white">Feature Requests:</strong>{" "}
+                    Have an idea for a new feature? Open a discussion on GitHub
+                    or send us an email.
                   </p>
                 </div>
                 <div className="flex items-start">
-                  <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                  <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 shrink-0"></div>
                   <p className="text-white/70">
-                    <strong className="text-white">Partnerships:</strong> Interested in partnering with RepoDoc? Reach out to discuss collaboration opportunities.
+                    <strong className="text-white">Partnerships:</strong>{" "}
+                    Interested in partnering with RepoDoc? Reach out to discuss
+                    collaboration opportunities.
                   </p>
                 </div>
               </CardContent>
@@ -210,6 +229,5 @@ export default function ContactPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
-

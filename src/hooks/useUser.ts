@@ -1,8 +1,13 @@
-import { useEffect, useCallback, useRef } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '@/lib/store';
-import { setUser, clearUser, setLoading, setError } from '@/lib/slices/userSlice';
-import { getCurrentUser } from '@/lib/actions';
+import { useEffect, useCallback, useRef } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "@/lib/store";
+import {
+  setUser,
+  clearUser,
+  setLoading,
+  setError,
+} from "@/lib/slices/userSlice";
+import { getCurrentUser } from "@/lib/actions";
 
 export const useUser = () => {
   const dispatch = useDispatch();
@@ -14,8 +19,7 @@ export const useUser = () => {
 
   const loadUser = useCallback(async () => {
     if (retryCountRef.current >= maxRetries) {
-      console.error('Max retries reached for loading user');
-      dispatch(setError('Failed to load user after multiple attempts'));
+      dispatch(setError("Failed to load user after multiple attempts"));
       dispatch(setLoading(false));
       return;
     }
@@ -23,9 +27,9 @@ export const useUser = () => {
     try {
       dispatch(setLoading(true));
       dispatch(setError(null));
-      
+
       const user = await getCurrentUser();
-      
+
       if (user) {
         dispatch(setUser(user));
         retryCountRef.current = 0;
@@ -34,30 +38,27 @@ export const useUser = () => {
         retryCountRef.current++;
       }
     } catch (error) {
-      console.error('Error loading user:', error);
       retryCountRef.current++;
-      dispatch(setError('Failed to load user'));
+      dispatch(setError("Failed to load user"));
       dispatch(clearUser());
     } finally {
       dispatch(setLoading(false));
     }
   }, [dispatch]);
 
-  // Force refresh user data (bypasses retry limit) - useful after plan upgrade
   const refreshUser = useCallback(async () => {
-    retryCountRef.current = 0; // Reset retry count
+    retryCountRef.current = 0;
     try {
       dispatch(setLoading(true));
       dispatch(setError(null));
-      
+
       const user = await getCurrentUser();
-      
+
       if (user) {
         dispatch(setUser(user));
       }
     } catch (error) {
-      console.error('Error refreshing user:', error);
-      dispatch(setError('Failed to refresh user'));
+      dispatch(setError("Failed to refresh user"));
     } finally {
       dispatch(setLoading(false));
     }
@@ -73,7 +74,12 @@ export const useUser = () => {
   }, []);
 
   useEffect(() => {
-    if (!currentUser && !isLoading && !error && retryCountRef.current < maxRetries) {
+    if (
+      !currentUser &&
+      !isLoading &&
+      !error &&
+      retryCountRef.current < maxRetries
+    ) {
       loadUser();
     }
   }, [currentUser, isLoading, error, loadUser]);

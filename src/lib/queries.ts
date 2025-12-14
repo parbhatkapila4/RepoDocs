@@ -1,28 +1,28 @@
-import prisma from './prisma';
-import { Project, Prisma } from '@prisma/client';
-import { auth } from '@clerk/nextjs/server';
-import { indexGithubRepository } from './github';
+import prisma from "./prisma";
+import { Project, Prisma } from "@prisma/client";
+import { auth } from "@clerk/nextjs/server";
+import { indexGithubRepository } from "./github";
 
-// Plan limits constants
 const PLAN_LIMITS = {
   starter: { maxProjects: 3 },
   professional: { maxProjects: 10 },
   enterprise: { maxProjects: Infinity },
 } as const;
 
-// Normalize plan names (handles variations like "pro" -> "professional")
 function normalizePlanName(plan: string): keyof typeof PLAN_LIMITS {
   const planLower = plan.toLowerCase();
-  if (planLower === 'pro' || planLower === 'professional') {
-    return 'professional';
+  if (planLower === "pro" || planLower === "professional") {
+    return "professional";
   }
-  if (planLower === 'enterprise' || planLower === 'ent') {
-    return 'enterprise';
+  if (planLower === "enterprise" || planLower === "ent") {
+    return "enterprise";
   }
-  return 'starter';
+  return "starter";
 }
 
-export async function createProject(data: Prisma.ProjectCreateInput): Promise<Project> {
+export async function createProject(
+  data: Prisma.ProjectCreateInput
+): Promise<Project> {
   try {
     const project = await prisma.project.create({
       data,
@@ -30,47 +30,45 @@ export async function createProject(data: Prisma.ProjectCreateInput): Promise<Pr
 
     return project;
   } catch (error) {
-    console.error('Error creating project:', error);
-    throw new Error('Failed to create project');
+    console.error("Error creating project:", error);
+    throw new Error("Failed to create project");
   }
 }
 
-export async function createProjectWithAuth(name: string, githubUrl: string, githubToken?: string): Promise<Project> {
+export async function createProjectWithAuth(
+  name: string,
+  githubUrl: string,
+  githubToken?: string
+): Promise<Project> {
   try {
     const { userId } = await auth();
-    
+
     if (!userId) {
-      throw new Error('Unauthorized');
+      throw new Error("Unauthorized");
     }
 
     if (!name || !githubUrl) {
-      throw new Error('Name and GitHub URL are required');
+      throw new Error("Name and GitHub URL are required");
     }
 
-    // First, ensure the user exists in the database
     let existingUser = await prisma.user.findUnique({
       where: { id: userId },
     });
 
     if (!existingUser) {
-      // User doesn't exist with this ID - check by email or create
-      console.log('User not found by ID, checking by email...');
       try {
-        const { clerkClient } = await import('@clerk/nextjs/server');
+        const { clerkClient } = await import("@clerk/nextjs/server");
         const client = await clerkClient();
         const clerkUser = await client.users.getUser(userId);
-        
+
         if (clerkUser.emailAddresses[0]?.emailAddress) {
           const userEmail = clerkUser.emailAddresses[0].emailAddress;
-          
-          // Check if user exists with this email
+
           existingUser = await prisma.user.findUnique({
             where: { emailAddress: userEmail },
           });
-          
+
           if (existingUser) {
-            // User exists with email but different ID - update their info
-            console.log('User found by email, updating...');
             existingUser = await prisma.user.update({
               where: { emailAddress: userEmail },
               data: {
@@ -80,8 +78,6 @@ export async function createProjectWithAuth(name: string, githubUrl: string, git
               },
             });
           } else {
-            // Create new user
-            console.log('Creating new user...');
             existingUser = await prisma.user.create({
               data: {
                 id: userId,
@@ -92,45 +88,47 @@ export async function createProjectWithAuth(name: string, githubUrl: string, git
               },
             });
           }
-          console.log('User ready');
         } else {
-          throw new Error('User email not found');
+          throw new Error("User email not found");
         }
       } catch (userError) {
-        console.error('Error handling user:', userError);
-        throw new Error('Failed to create user account');
+        console.error("Error handling user:", userError);
+        throw new Error("Failed to create user account");
       }
     }
 
-    // Now check project limit using the actual user ID from database
-    let plan: keyof typeof PLAN_LIMITS = 'starter';
+    let plan: keyof typeof PLAN_LIMITS = "starter";
     try {
-      const planResult = await prisma.$queryRaw<{plan: string}[]>`SELECT plan FROM "User" WHERE id = ${existingUser.id} LIMIT 1`;
+      const planResult = await prisma.$queryRaw<
+        { plan: string }[]
+      >`SELECT plan FROM "User" WHERE id = ${existingUser.id} LIMIT 1`;
       if (planResult && planResult[0]?.plan) {
         plan = normalizePlanName(planResult[0].plan);
       }
     } catch {
-      plan = 'starter';
+      plan = "starter";
     }
 
     const maxProjects = PLAN_LIMITS[plan]?.maxProjects ?? 3;
 
-    // If maxProjects is Infinity, allow unlimited projects (skip limit check)
     if (maxProjects !== Infinity) {
       const projectCount = await prisma.project.count({
         where: {
-          userId: existingUser.id, // Use the actual user ID
+          userId: existingUser.id,
           deletedAt: null,
         },
       });
 
       if (projectCount >= maxProjects) {
-        const upgradeMessage = plan === 'starter' 
-          ? 'Please upgrade to Professional for 10 projects or Enterprise for unlimited projects.'
-          : plan === 'professional'
-          ? 'Please upgrade to Enterprise for unlimited projects.'
-          : '';
-        throw new Error(`PROJECT_LIMIT_REACHED: You've reached the maximum of ${maxProjects} projects on the ${plan} plan. ${upgradeMessage}`);
+        const upgradeMessage =
+          plan === "starter"
+            ? "Please upgrade to Professional for 10 projects or Enterprise for unlimited projects."
+            : plan === "professional"
+              ? "Please upgrade to Enterprise for unlimited projects."
+              : "";
+        throw new Error(
+          `PROJECT_LIMIT_REACHED: You've reached the maximum of ${maxProjects} projects on the ${plan} plan. ${upgradeMessage}`
+        );
       }
     }
 
@@ -140,29 +138,38 @@ export async function createProjectWithAuth(name: string, githubUrl: string, git
         repoUrl: githubUrl,
         user: {
           connect: {
-            id: existingUser.id, // Use the actual user ID from database
+            id: existingUser.id,
           },
         },
       },
     });
 
-    // Index the GitHub repository after project creation
     try {
       await indexGithubRepository(project.id, githubUrl, githubToken);
-      console.log(`Successfully indexed repository for project: ${project.name}`);
     } catch (indexingError) {
-      console.error('Error indexing GitHub repository:', indexingError);
-      // Don't throw here - project creation succeeded, indexing failed
-      // The project can still be used, just without the indexed content
+      const errorMessage =
+        indexingError instanceof Error
+          ? indexingError.message
+          : String(indexingError);
+      if (
+        errorMessage.includes("authentication") ||
+        errorMessage.includes("rate limit") ||
+        errorMessage.includes("forbidden")
+      ) {
+        console.error("Critical indexing error:", errorMessage);
+      }
     }
 
     return project;
   } catch (error) {
-    console.error('Error creating project:', error);
-    if (error instanceof Error && error.message.startsWith('PROJECT_LIMIT_REACHED:')) {
+    console.error("Error creating project:", error);
+    if (
+      error instanceof Error &&
+      error.message.startsWith("PROJECT_LIMIT_REACHED:")
+    ) {
       throw error;
     }
-    throw new Error('Failed to create project');
+    throw new Error("Failed to create project");
   }
 }
 
@@ -174,18 +181,21 @@ export async function getUserProjects(userId: string): Promise<Project[]> {
         deletedAt: null,
       },
       orderBy: {
-        createdAt: 'desc',
+        createdAt: "desc",
       },
     });
 
     return projects;
   } catch (error) {
-    console.error('Error fetching user projects:', error);
-    throw new Error('Failed to fetch projects');
+    console.error("Error fetching user projects:", error);
+    throw new Error("Failed to fetch projects");
   }
 }
 
-export async function getProjectById(projectId: string, userId: string): Promise<Project | null> {
+export async function getProjectById(
+  projectId: string,
+  userId: string
+): Promise<Project | null> {
   try {
     const project = await prisma.project.findFirst({
       where: {
@@ -197,8 +207,8 @@ export async function getProjectById(projectId: string, userId: string): Promise
 
     return project;
   } catch (error) {
-    console.error('Error fetching project:', error);
-    throw new Error('Failed to fetch project');
+    console.error("Error fetching project:", error);
+    throw new Error("Failed to fetch project");
   }
 }
 
@@ -218,12 +228,15 @@ export async function updateProject(
 
     return project;
   } catch (error) {
-    console.error('Error updating project:', error);
-    throw new Error('Failed to update project');
+    console.error("Error updating project:", error);
+    throw new Error("Failed to update project");
   }
 }
 
-export async function deleteProject(projectId: string, userId: string): Promise<Project> {
+export async function deleteProject(
+  projectId: string,
+  userId: string
+): Promise<Project> {
   try {
     const project = await prisma.project.update({
       where: {
@@ -237,7 +250,7 @@ export async function deleteProject(projectId: string, userId: string): Promise<
 
     return project;
   } catch (error) {
-    console.error('Error deleting project:', error);
-    throw new Error('Failed to delete project');
+    console.error("Error deleting project:", error);
+    throw new Error("Failed to delete project");
   }
 }

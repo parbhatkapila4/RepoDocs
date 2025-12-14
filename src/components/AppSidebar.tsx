@@ -1,22 +1,22 @@
-"use client"
+"use client";
 
-import React, { useState } from 'react'
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { 
-  Sidebar, 
-  SidebarContent, 
-  SidebarFooter, 
-  SidebarGroup, 
-  SidebarGroupContent, 
-  SidebarGroupLabel, 
-  SidebarHeader, 
-  SidebarMenu, 
-  SidebarMenuButton, 
+import React, { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
   SidebarMenuItem,
   SidebarSeparator,
-  useSidebar
-} from "@/components/ui/sidebar"
+  useSidebar,
+} from "@/components/ui/sidebar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,9 +26,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { 
-  LayoutDashboard, 
+} from "@/components/ui/alert-dialog";
+import {
+  LayoutDashboard,
   Github,
   Brain,
   LogOut,
@@ -41,21 +41,21 @@ import {
   Crown,
   Zap,
   RefreshCw,
-  BarChart3
-} from "lucide-react"
-import { RepoDocLogo } from "@/components/ui/repodoc-logo"
-import { useUser } from "@/hooks/useUser"
-import { useProjectsContext } from "@/context/ProjectsContext"
-import { useClerk } from "@clerk/nextjs"
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
+  BarChart3,
+  Search,
+} from "lucide-react";
+import { RepoDocLogo } from "@/components/ui/repodoc-logo";
+import { useUser } from "@/hooks/useUser";
+import { useProjectsContext } from "@/context/ProjectsContext";
+import { useClerk } from "@clerk/nextjs";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 type NavigationItem = {
-  title: string
-  url: string
-  icon: React.ComponentType<{ className?: string }>
-  external?: boolean
-}
+  title: string;
+  url: string;
+  icon: React.ComponentType<{ className?: string }>;
+  external?: boolean;
+};
 
 const navigationItems: NavigationItem[] = [
   {
@@ -84,102 +84,94 @@ const navigationItems: NavigationItem[] = [
     icon: BarChart3,
   },
   {
+    title: "Search",
+    url: "/search",
+    icon: Search,
+  },
+  {
     title: "Create",
     url: "/create",
     icon: Plus,
   },
-  
-]
-
-
+];
 
 export default function AppSidebar() {
-  const { user, isLoading: userLoading, refreshUser } = useUser()
-  const { projects, selectedProjectId, selectProject, deleteProject } = useProjectsContext()
-  const { signOut } = useClerk()
-  const pathname = usePathname()
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [projectToDelete, setProjectToDelete] = useState<string | null>(null)
-  const [isSyncing, setIsSyncing] = useState(false)
-  const { setOpenMobile, isMobile } = useSidebar()
+  const { user, isLoading: userLoading, refreshUser } = useUser();
+  const { projects, selectedProjectId, selectProject, deleteProject } =
+    useProjectsContext();
+  const { signOut } = useClerk();
+  const pathname = usePathname();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const { setOpenMobile, isMobile } = useSidebar();
 
   const handleSyncPlan = async (forcePlan?: string) => {
-    setIsSyncing(true)
+    setIsSyncing(true);
     try {
-      const response = await fetch('/api/sync-plan', { 
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: forcePlan ? JSON.stringify({ forcePlan }) : undefined
-      })
-      const data = await response.json()
-      console.log('Sync result:', data)
-      
+      const response = await fetch("/api/sync-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: forcePlan ? JSON.stringify({ forcePlan }) : undefined,
+      });
+      const data = await response.json();
+
       if (data.success) {
-        await refreshUser()
+        await refreshUser();
       }
     } catch (error) {
-      console.error('Error syncing plan:', error)
     } finally {
-      setIsSyncing(false)
+      setIsSyncing(false);
     }
-  }
-  
-  // Handle clicking on Pro badge sync button - try to sync, if still pro after sync, 
-  // show option to force enterprise
+  };
+
   const handleProSyncClick = async () => {
-    // First try normal sync
-    await handleSyncPlan()
-    
-    // If user claims they purchased enterprise but still showing pro,
-    // offer a quick prompt (using browser confirm for simplicity)
+    await handleSyncPlan();
+
     setTimeout(() => {
-      if (user?.plan === 'professional' || user?.plan === 'pro') {
+      if (user?.plan === "professional") {
         const shouldForce = window.confirm(
-          'Still showing Pro? If you just purchased Enterprise, click OK to force update to Enterprise.'
-        )
+          "Still showing Pro? If you just purchased Enterprise, click OK to force update to Enterprise."
+        );
         if (shouldForce) {
-          handleSyncPlan('enterprise')
+          handleSyncPlan("enterprise");
         }
       }
-    }, 1500)
-  }
+    }, 1500);
+  };
 
   const handleDeleteClick = (projectId: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    console.log('Delete button clicked for project:', projectId)
-    setProjectToDelete(projectId)
-    setDeleteDialogOpen(true)
-  }
+    e.stopPropagation();
+    setProjectToDelete(projectId);
+    setDeleteDialogOpen(true);
+  };
 
   const handleDeleteConfirm = async () => {
     if (projectToDelete) {
       try {
-        console.log('Deleting project:', projectToDelete)
-        await deleteProject(projectToDelete)
-        console.log('Project deleted successfully')
+        await deleteProject(projectToDelete);
       } catch (error) {
-        console.error('Failed to delete project:', error)
-        alert('Failed to delete project. Please try again.')
+        alert("Failed to delete project. Please try again.");
       }
     }
-    setDeleteDialogOpen(false)
-    setProjectToDelete(null)
-  }
+    setDeleteDialogOpen(false);
+    setProjectToDelete(null);
+  };
 
   const handleDeleteCancel = () => {
-    setDeleteDialogOpen(false)
-    setProjectToDelete(null)
-  }
+    setDeleteDialogOpen(false);
+    setProjectToDelete(null);
+  };
 
   const handleLogout = () => {
-    signOut()
-  }
+    signOut();
+  };
 
   const handleCloseSidebar = () => {
     if (isMobile) {
-      setOpenMobile(false)
+      setOpenMobile(false);
     }
-  }
+  };
 
   return (
     <Sidebar variant="inset" className="border-white/15 border-r">
@@ -201,7 +193,7 @@ export default function AppSidebar() {
           </button>
         </div>
       </SidebarHeader>
-      
+
       <SidebarContent className="  py-3">
         <SidebarGroup>
           <SidebarGroupLabel className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-2 px-2">
@@ -210,24 +202,27 @@ export default function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {navigationItems.map((item) => {
-                const isActive = pathname === item.url
+                const isActive = pathname === item.url;
                 return (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton 
-                      asChild 
+                    <SidebarMenuButton
+                      asChild
                       className={`h-10 px-3 rounded-lg transition-colors ${
-                        isActive 
-                          ? "bg-white/20 text-white" 
+                        isActive
+                          ? "bg-white/20 text-white"
                           : "hover:bg-white/10 text-gray-300"
                       }`}
                     >
-                      <Link href={item.url} target={item.external ? "_blank" : undefined}>
+                      <Link
+                        href={item.url}
+                        target={item.external ? "_blank" : undefined}
+                      >
                         <item.icon className="w-4 h-4" />
                         <span>{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                )
+                );
               })}
             </SidebarMenu>
           </SidebarGroupContent>
@@ -243,16 +238,14 @@ export default function AppSidebar() {
             <SidebarMenu>
               {projects.length > 0 ? (
                 projects.map((project) => {
-                  const isSelected = selectedProjectId === project.id
+                  const isSelected = selectedProjectId === project.id;
                   return (
                     <SidebarMenuItem key={project.id}>
                       <div className="group relative">
-                        <SidebarMenuButton 
+                        <SidebarMenuButton
                           onClick={() => selectProject(project.id)}
                           className={`h-10 px-3 pr-8 rounded-lg transition-colors relative cursor-pointer ${
-                            isSelected 
-                              ? " text-white " 
-                              : " text-white/40"
+                            isSelected ? " text-white " : " text-white/40"
                           }`}
                         >
                           <Code className="w-4 h-4" />
@@ -268,7 +261,7 @@ export default function AppSidebar() {
                         </button>
                       </div>
                     </SidebarMenuItem>
-                  )
+                  );
                 })
               ) : (
                 <SidebarMenuItem>
@@ -280,8 +273,6 @@ export default function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-        
       </SidebarContent>
 
       <SidebarFooter className=" p-4">
@@ -291,26 +282,33 @@ export default function AppSidebar() {
               <div className="flex items-center justify-between w-full">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <Avatar className="w-8 h-8">
-                    <AvatarImage 
-                      src={user?.imageUrl || undefined} 
-                      alt={user?.firstName || user?.emailAddress || "User"} 
+                    <AvatarImage
+                      src={user?.imageUrl || undefined}
+                      alt={user?.firstName || user?.emailAddress || "User"}
                     />
                     <AvatarFallback className="bg-gray-700 text-white text-sm">
-                      {user?.firstName?.charAt(0) || user?.emailAddress?.charAt(0)?.toUpperCase() || "U"}
+                      {user?.firstName?.charAt(0) ||
+                        user?.emailAddress?.charAt(0)?.toUpperCase() ||
+                        "U"}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col min-w-0 flex-1">
                     <span className="text-white font-medium text-sm truncate">
-                      {userLoading ? "Loading..." : (user?.firstName || user?.emailAddress?.split('@')[0] || "User")}
+                      {userLoading
+                        ? "Loading..."
+                        : user?.firstName ||
+                          user?.emailAddress?.split("@")[0] ||
+                          "User"}
                     </span>
-                    {/* Plan Badge */}
                     {!userLoading && user?.plan && (
                       <div className="flex items-center gap-1.5 mt-1">
-                        {user.plan === 'professional' ? (
+                        {user.plan === "professional" ? (
                           <>
-                            <div className="flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 rounded-full shadow-lg shadow-amber-500/20">
+                            <div className="flex items-center gap-1 px-2 py-0.5 bg-linear-to-r from-amber-500 via-orange-500 to-amber-500 rounded-full shadow-lg shadow-amber-500/20">
                               <Zap className="w-3 h-3 text-white" />
-                              <span className="text-[10px] font-bold text-white tracking-wide uppercase">Pro</span>
+                              <span className="text-[10px] font-bold text-white tracking-wide uppercase">
+                                Pro
+                              </span>
                             </div>
                             <button
                               onClick={handleProSyncClick}
@@ -318,13 +316,17 @@ export default function AppSidebar() {
                               className="p-1 hover:bg-white/10 rounded-full transition-colors"
                               title="Sync plan (click if you upgraded to Enterprise)"
                             >
-                              <RefreshCw className={`w-3 h-3 text-gray-400 hover:text-white ${isSyncing ? 'animate-spin' : ''}`} />
+                              <RefreshCw
+                                className={`w-3 h-3 text-gray-400 hover:text-white ${isSyncing ? "animate-spin" : ""}`}
+                              />
                             </button>
                           </>
-                        ) : user.plan === 'enterprise' ? (
-                          <div className="flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 rounded-full shadow-lg shadow-purple-500/20">
+                        ) : user.plan === "enterprise" ? (
+                          <div className="flex items-center gap-1 px-2 py-0.5 bg-linear-to-r from-violet-500 via-purple-500 to-fuchsia-500 rounded-full shadow-lg shadow-purple-500/20">
                             <Crown className="w-3 h-3 text-white" />
-                            <span className="text-[10px] font-bold text-white tracking-wide uppercase">Enterprise</span>
+                            <span className="text-[10px] font-bold text-white tracking-wide uppercase">
+                              Enterprise
+                            </span>
                           </div>
                         ) : (
                           <button
@@ -333,17 +335,19 @@ export default function AppSidebar() {
                             className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-300 transition-colors"
                             title="Sync plan from Stripe"
                           >
-                            <RefreshCw className={`w-2.5 h-2.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                            {isSyncing ? 'Syncing...' : 'Sync Plan'}
+                            <RefreshCw
+                              className={`w-2.5 h-2.5 ${isSyncing ? "animate-spin" : ""}`}
+                            />
+                            {isSyncing ? "Syncing..." : "Sync Plan"}
                           </button>
                         )}
                       </div>
                     )}
                   </div>
                 </div>
-                <button 
+                <button
                   onClick={handleLogout}
-                  className="p-1 hover:bg-gray-800 rounded transition-colors flex-shrink-0"
+                  className="p-1 hover:bg-gray-800 rounded transition-colors shrink-0"
                   title="Logout"
                 >
                   <LogOut className="w-4 h-4 text-gray-400" />
@@ -359,14 +363,15 @@ export default function AppSidebar() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Project</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this project? This action cannot be undone.
+              Are you sure you want to delete this project? This action cannot
+              be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={handleDeleteCancel}>
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={handleDeleteConfirm}
               className="bg-red-600 hover:bg-red-700 text-white"
             >
@@ -376,5 +381,5 @@ export default function AppSidebar() {
         </AlertDialogContent>
       </AlertDialog>
     </Sidebar>
-  )
+  );
 }

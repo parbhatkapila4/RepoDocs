@@ -1,22 +1,21 @@
-import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import prisma from '@/lib/prisma';
+import { NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
+import prisma from "@/lib/prisma";
 
 export async function GET() {
   try {
     const { userId } = await auth();
-    
+
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get database user ID
     let dbUserId = userId;
     try {
-      const { clerkClient } = await import('@clerk/nextjs/server');
+      const { clerkClient } = await import("@clerk/nextjs/server");
       const client = await clerkClient();
       const clerkUser = await client.users.getUser(userId);
-      
+
       if (clerkUser.emailAddresses[0]?.emailAddress) {
         const dbUser = await prisma.user.findUnique({
           where: { emailAddress: clerkUser.emailAddresses[0].emailAddress },
@@ -27,26 +26,21 @@ export async function GET() {
         }
       }
     } catch (error) {
-      console.error('Error getting DB user:', error);
+      console.error("Error getting DB user:", error);
     }
 
-    // Check if user is admin (you can add admin check logic here)
-    // For now, we'll show analytics for the current user's data
-
-    // User Statistics
     const totalUsers = await prisma.user.count();
     const usersByPlan = await prisma.user.groupBy({
-      by: ['plan'],
+      by: ["plan"],
       _count: true,
     });
 
-    // Project Statistics
     const totalProjects = await prisma.project.count({
       where: { deletedAt: null },
     });
-    
+
     const projectsByUser = await prisma.project.groupBy({
-      by: ['userId'],
+      by: ["userId"],
       where: { deletedAt: null },
       _count: true,
     });
@@ -65,23 +59,22 @@ export async function GET() {
       },
     });
 
-    // Code Embeddings Statistics
     const totalEmbeddings = await prisma.sourceCodeEmbiddings.count();
     const embeddingsByProject = await prisma.sourceCodeEmbiddings.groupBy({
-      by: ['projectId'],
+      by: ["projectId"],
       _count: true,
     });
-    
-    const avgFilesPerProject = embeddingsByProject.length > 0
-      ? embeddingsByProject.reduce((sum, item) => sum + item._count, 0) / embeddingsByProject.length
-      : 0;
 
-    // Q&A Statistics
+    const avgFilesPerProject =
+      embeddingsByProject.length > 0
+        ? embeddingsByProject.reduce((sum, item) => sum + item._count, 0) /
+          embeddingsByProject.length
+        : 0;
+
     const totalReadmeQuestions = await prisma.readmeQna.count();
     const totalDocsQuestions = await prisma.docsQna.count();
     const totalQuestions = totalReadmeQuestions + totalDocsQuestions;
 
-    // Share Statistics
     const totalReadmeShares = await prisma.readmeShare.count({
       where: { isActive: true },
     });
@@ -90,7 +83,6 @@ export async function GET() {
     });
     const totalActiveShares = totalReadmeShares + totalDocsShares;
 
-    // Recent Activity (last 30 days)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -107,23 +99,24 @@ export async function GET() {
       },
     });
 
-    const recentQuestions = await prisma.readmeQna.count({
-      where: {
-        createdAt: { gte: thirtyDaysAgo },
-      },
-    }) + await prisma.docsQna.count({
-      where: {
-        createdAt: { gte: thirtyDaysAgo },
-      },
-    });
+    const recentQuestions =
+      (await prisma.readmeQna.count({
+        where: {
+          createdAt: { gte: thirtyDaysAgo },
+        },
+      })) +
+      (await prisma.docsQna.count({
+        where: {
+          createdAt: { gte: thirtyDaysAgo },
+        },
+      }));
 
-    // Daily activity for the last 30 days
     const dailyActivity = [];
     for (let i = 29; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
       date.setHours(0, 0, 0, 0);
-      
+
       const nextDate = new Date(date);
       nextDate.setDate(nextDate.getDate() + 1);
 
@@ -134,30 +127,31 @@ export async function GET() {
         },
       });
 
-      const questions = await prisma.readmeQna.count({
-        where: {
-          createdAt: { gte: date, lt: nextDate },
-        },
-      }) + await prisma.docsQna.count({
-        where: {
-          createdAt: { gte: date, lt: nextDate },
-        },
-      });
+      const questions =
+        (await prisma.readmeQna.count({
+          where: {
+            createdAt: { gte: date, lt: nextDate },
+          },
+        })) +
+        (await prisma.docsQna.count({
+          where: {
+            createdAt: { gte: date, lt: nextDate },
+          },
+        }));
 
       dailyActivity.push({
-        date: date.toISOString().split('T')[0],
+        date: date.toISOString().split("T")[0],
         projects,
         questions,
       });
     }
 
-    // Top projects by embeddings (most indexed)
     const topProjectsByFiles = await prisma.sourceCodeEmbiddings.groupBy({
-      by: ['projectId'],
+      by: ["projectId"],
       _count: true,
       orderBy: {
         _count: {
-          projectId: 'desc',
+          projectId: "desc",
         },
       },
       take: 10,
@@ -181,40 +175,39 @@ export async function GET() {
       })
     );
 
-    // Language distribution (from file names - approximate)
     const allFiles = await prisma.sourceCodeEmbiddings.findMany({
       select: { fileName: true },
     });
 
     const languageMap: Record<string, number> = {};
     const extensions: Record<string, string> = {
-      '.js': 'JavaScript',
-      '.ts': 'TypeScript',
-      '.tsx': 'TypeScript',
-      '.jsx': 'JavaScript',
-      '.py': 'Python',
-      '.java': 'Java',
-      '.cpp': 'C++',
-      '.c': 'C',
-      '.cs': 'C#',
-      '.go': 'Go',
-      '.rs': 'Rust',
-      '.php': 'PHP',
-      '.rb': 'Ruby',
-      '.swift': 'Swift',
-      '.kt': 'Kotlin',
-      '.html': 'HTML',
-      '.css': 'CSS',
-      '.scss': 'SCSS',
-      '.vue': 'Vue',
-      '.sh': 'Shell',
-      '.sql': 'SQL',
-      '.prisma': 'Prisma',
+      ".js": "JavaScript",
+      ".ts": "TypeScript",
+      ".tsx": "TypeScript",
+      ".jsx": "JavaScript",
+      ".py": "Python",
+      ".java": "Java",
+      ".cpp": "C++",
+      ".c": "C",
+      ".cs": "C#",
+      ".go": "Go",
+      ".rs": "Rust",
+      ".php": "PHP",
+      ".rb": "Ruby",
+      ".swift": "Swift",
+      ".kt": "Kotlin",
+      ".html": "HTML",
+      ".css": "CSS",
+      ".scss": "SCSS",
+      ".vue": "Vue",
+      ".sh": "Shell",
+      ".sql": "SQL",
+      ".prisma": "Prisma",
     };
 
     allFiles.forEach((file) => {
-      const ext = file.fileName.substring(file.fileName.lastIndexOf('.'));
-      const lang = extensions[ext] || 'Other';
+      const ext = file.fileName.substring(file.fileName.lastIndexOf("."));
+      const lang = extensions[ext] || "Other";
       languageMap[lang] = (languageMap[lang] || 0) + 1;
     });
 
@@ -223,7 +216,6 @@ export async function GET() {
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
 
-    // User engagement metrics
     const activeUsers = await prisma.user.count({
       where: {
         projects: {
@@ -235,7 +227,8 @@ export async function GET() {
     });
 
     const avgProjectsPerUser = totalUsers > 0 ? totalProjects / totalUsers : 0;
-    const avgQuestionsPerProject = totalProjects > 0 ? totalQuestions / totalProjects : 0;
+    const avgQuestionsPerProject =
+      totalProjects > 0 ? totalQuestions / totalProjects : 0;
 
     return NextResponse.json({
       overview: {
@@ -284,11 +277,10 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error('Error fetching analytics:', error);
+    console.error("Error fetching analytics:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch analytics' },
+      { error: "Failed to fetch analytics" },
       { status: 500 }
     );
   }
 }
-

@@ -1,6 +1,6 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
-export type UserPlan = 'starter' | 'professional' | 'enterprise';
+export type UserPlan = "starter" | "professional" | "enterprise";
 
 export interface User {
   id: string;
@@ -12,19 +12,18 @@ export interface User {
   plan: UserPlan;
 }
 
-// Plan limits constants
 export const PLAN_LIMITS = {
   starter: {
     maxProjects: 3,
-    name: 'Starter',
+    name: "Starter",
   },
   professional: {
     maxProjects: 10,
-    name: 'Professional',
+    name: "Professional",
   },
   enterprise: {
     maxProjects: Infinity,
-    name: 'Enterprise',
+    name: "Enterprise",
   },
 } as const;
 
@@ -43,7 +42,7 @@ const initialState: UserState = {
 };
 
 export const userSlice = createSlice({
-  name: 'user',
+  name: "user",
   initialState,
   reducers: {
     setUser: (state, action: PayloadAction<User>) => {
