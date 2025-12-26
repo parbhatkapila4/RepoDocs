@@ -174,7 +174,10 @@ export default function AppSidebar() {
   };
 
   return (
-    <Sidebar variant="inset" className="border-white/15 border-r">
+    <Sidebar
+      variant="inset"
+      className="border-white/15 border-r scrollbar-hide"
+    >
       <SidebarHeader className="p-2">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -194,7 +197,7 @@ export default function AppSidebar() {
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="  py-3">
+      <SidebarContent className="py-3 scrollbar-hide">
         <SidebarGroup>
           <SidebarGroupLabel className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-2 px-2">
             Navigation
@@ -244,7 +247,7 @@ export default function AppSidebar() {
                       <div className="group relative">
                         <SidebarMenuButton
                           onClick={() => selectProject(project.id)}
-                          className={`h-10 px-3 pr-8 rounded-lg transition-colors relative cursor-pointer ${
+                          className={`h-10 px-3 pr-8 rounded-lg transition-colors relative cursor-pointer overflow-hidden ${
                             isSelected ? " text-white " : " text-white/40"
                           }`}
                         >

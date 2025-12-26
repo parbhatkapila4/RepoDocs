@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -93,6 +93,20 @@ export default function SearchPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [addingRepoId, setAddingRepoId] = useState<number | null>(null);
+
+  useEffect(() => {
+    const mainElement = document.querySelector(
+      'main[data-slot="sidebar-inset"]'
+    );
+    if (mainElement) {
+      (mainElement as HTMLElement).style.backgroundColor = "#000000";
+    }
+    return () => {
+      if (mainElement) {
+        (mainElement as HTMLElement).style.backgroundColor = "";
+      }
+    };
+  }, []);
 
   const handleSearch = async (page: number = 1, append: boolean = false) => {
     if (!searchQuery.trim()) {
@@ -219,13 +233,7 @@ export default function SearchPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white p-4 sm:p-6 lg:p-8 relative">
-      <div
-        className="fixed inset-0 opacity-[0.12] pointer-events-none z-0"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-        }}
-      />
+    <div className="min-h-screen bg-black text-white p-4 sm:p-6 lg:p-8 relative">
       <div className="max-w-7xl mx-auto relative z-10">
         <div className="mb-8">
           <h1 className="text-3xl sm:text-4xl font-bold mb-2 bg-linear-to-r from-white to-gray-400 bg-clip-text text-transparent">
@@ -349,7 +357,7 @@ export default function SearchPage() {
               <Button
                 onClick={() => handleSearch(1, false)}
                 disabled={isLoading || !searchQuery.trim()}
-                className="flex-1 sm:flex-initial bg-blue-600 hover:bg-blue-700 text-white"
+                className="flex-1 sm:flex-initial bg-white text-black hover:bg-gray-200 font-medium"
               >
                 {isLoading ? (
                   <>
@@ -465,7 +473,7 @@ export default function SearchPage() {
                                 addingRepoId === repo.id ||
                                 addingRepoId !== null
                               }
-                              className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="bg-white text-black hover:bg-gray-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                               size="sm"
                             >
                               {addingRepoId === repo.id ? (

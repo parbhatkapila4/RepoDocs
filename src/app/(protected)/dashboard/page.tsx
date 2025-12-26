@@ -98,6 +98,18 @@ function ReposPage() {
     }
   }, [currentProject?.repoUrl, fetchRepoInfo]);
 
+  useEffect(() => {
+    const mainElement = document.querySelector('main[data-slot="sidebar-inset"]');
+    if (mainElement) {
+      (mainElement as HTMLElement).style.backgroundColor = '#000000';
+    }
+    return () => {
+      if (mainElement) {
+        (mainElement as HTMLElement).style.backgroundColor = '';
+      }
+    };
+  }, []);
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
@@ -191,17 +203,20 @@ function ReposPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] relative">
-      <div
-        className="absolute inset-0 opacity-[0.03] pointer-events-none"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-        }}
-      />
+    <div 
+      className="bg-black relative w-full min-h-screen" 
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        minHeight: "100%",
+      }}
+    >
+      <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-[#333] to-transparent z-10" />
 
-      <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-[#333] to-transparent" />
-
-      <div className="relative max-w-6xl mx-auto px-6 py-12">
+      <div className="relative max-w-6xl mx-auto px-6 py-12 z-10 pb-20">
         <motion.div
           className="mb-12"
           initial={{ opacity: 0, y: -10 }}

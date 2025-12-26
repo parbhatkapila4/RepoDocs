@@ -8,34 +8,34 @@ import { useProjects } from "@/hooks/useProjects";
 import { useProjectsContext } from "@/context/ProjectsContext";
 import { checkProjectLimit } from "@/lib/actions";
 import { motion } from "motion/react";
-import { 
-  Github, 
-  Plus, 
-  Loader2, 
-  CheckCircle2, 
-  Circle, 
-  Code2, 
-  FileText, 
-  Sparkles, 
-  AlertTriangle, 
+import {
+  Github,
+  Plus,
+  Loader2,
+  CheckCircle2,
+  Circle,
+  Code2,
+  FileText,
+  Sparkles,
+  AlertTriangle,
   Crown,
   ArrowLeft,
   Terminal,
-  Zap
+  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 
 // Dracula-inspired colors
 const colors = {
-  green: '#50fa7b',
-  cyan: '#8be9fd',
-  purple: '#bd93f9',
-  pink: '#ff79c6',
-  yellow: '#f1fa8c',
-  orange: '#ffb86c',
-  red: '#ff5555',
-  white: '#f8f8f2',
+  green: "#50fa7b",
+  cyan: "#8be9fd",
+  purple: "#bd93f9",
+  pink: "#ff79c6",
+  yellow: "#f1fa8c",
+  orange: "#ffb86c",
+  red: "#ff5555",
+  white: "#f8f8f2",
 };
 
 // Form validation schema
@@ -71,7 +71,7 @@ type CreateProjectForm = z.infer<typeof createProjectSchema>;
 type LoadingStep = {
   id: number;
   label: string;
-  status: 'pending' | 'loading' | 'completed';
+  status: "pending" | "loading" | "completed";
   icon: React.ComponentType<{ className?: string }>;
 };
 
@@ -89,14 +89,31 @@ function CreatePage() {
   const { loadProjects, selectProject } = useProjectsContext();
   const isSubmittingRef = useRef(false);
   const [loadingSteps, setLoadingSteps] = useState<LoadingStep[]>([
-    { id: 1, label: 'Creating project...', status: 'pending', icon: Plus },
-    { id: 2, label: 'Loading repository files...', status: 'pending', icon: Github },
-    { id: 3, label: 'Analyzing code...', status: 'pending', icon: Code2 },
-    { id: 4, label: 'Generating embeddings...', status: 'pending', icon: Sparkles },
-    { id: 5, label: 'Creating documentation...', status: 'pending', icon: FileText },
+    { id: 1, label: "Creating project...", status: "pending", icon: Plus },
+    {
+      id: 2,
+      label: "Loading repository files...",
+      status: "pending",
+      icon: Github,
+    },
+    { id: 3, label: "Analyzing code...", status: "pending", icon: Code2 },
+    {
+      id: 4,
+      label: "Generating embeddings...",
+      status: "pending",
+      icon: Sparkles,
+    },
+    {
+      id: 5,
+      label: "Creating documentation...",
+      status: "pending",
+      icon: FileText,
+    },
   ]);
   const [progress, setProgress] = useState(0);
-  const [projectLimit, setProjectLimit] = useState<ProjectLimitStatus | null>(null);
+  const [projectLimit, setProjectLimit] = useState<ProjectLimitStatus | null>(
+    null
+  );
   const [isCheckingLimit, setIsCheckingLimit] = useState(true);
 
   useEffect(() => {
@@ -106,12 +123,26 @@ function CreatePage() {
         const limitStatus = await checkProjectLimit();
         setProjectLimit(limitStatus);
       } catch (error) {
-        console.error('Error checking project limit:', error);
+        console.error("Error checking project limit:", error);
       } finally {
         setIsCheckingLimit(false);
       }
     };
     checkLimit();
+  }, []);
+
+  useEffect(() => {
+    const mainElement = document.querySelector(
+      'main[data-slot="sidebar-inset"]'
+    );
+    if (mainElement) {
+      (mainElement as HTMLElement).style.backgroundColor = "#000000";
+    }
+    return () => {
+      if (mainElement) {
+        (mainElement as HTMLElement).style.backgroundColor = "";
+      }
+    };
   }, []);
 
   const form = useForm<CreateProjectForm>({
@@ -123,11 +154,9 @@ function CreatePage() {
     },
   });
 
-  const updateStep = (stepId: number, status: 'loading' | 'completed') => {
-    setLoadingSteps(prev => 
-      prev.map(step => 
-        step.id === stepId ? { ...step, status } : step
-      )
+  const updateStep = (stepId: number, status: "loading" | "completed") => {
+    setLoadingSteps((prev) =>
+      prev.map((step) => (step.id === stepId ? { ...step, status } : step))
     );
   };
 
@@ -135,67 +164,77 @@ function CreatePage() {
     if (isLoading || isSubmittingRef.current) {
       return;
     }
-    
+
     isSubmittingRef.current = true;
-    
+
     try {
-      updateStep(1, 'loading');
+      updateStep(1, "loading");
       setProgress(10);
-      
-      const newProject = await createNewProject(data.name, data.githubUrl, process.env.GITHUB_TOKEN);
-      
-      updateStep(1, 'completed');
+
+      const newProject = await createNewProject(
+        data.name,
+        data.githubUrl,
+        process.env.GITHUB_TOKEN
+      );
+
+      updateStep(1, "completed");
       setProgress(20);
-      
-      updateStep(2, 'loading');
-      await new Promise(resolve => setTimeout(resolve, 800));
-      updateStep(2, 'completed');
+
+      updateStep(2, "loading");
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      updateStep(2, "completed");
       setProgress(40);
-      
-      updateStep(3, 'loading');
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      updateStep(3, 'completed');
+
+      updateStep(3, "loading");
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      updateStep(3, "completed");
       setProgress(60);
-      
-      updateStep(4, 'loading');
-      await new Promise(resolve => setTimeout(resolve, 1200));
-      updateStep(4, 'completed');
+
+      updateStep(4, "loading");
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      updateStep(4, "completed");
       setProgress(80);
-      
-      updateStep(5, 'loading');
-      await new Promise(resolve => setTimeout(resolve, 800));
-      updateStep(5, 'completed');
+
+      updateStep(5, "loading");
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      updateStep(5, "completed");
       setProgress(100);
-      
+
       await loadProjects();
-      
+
       if (newProject?.id) {
         selectProject(newProject.id);
       }
-      
+
       toast.success("Project created successfully!", {
         description: `${data.name} has been indexed and is ready to use!`,
       });
-      
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
       router.push("/dashboard");
     } catch (error) {
       console.error("Error creating project:", error);
-      
-      setLoadingSteps(prev => prev.map(step => ({ ...step, status: 'pending' })));
+
+      setLoadingSteps((prev) =>
+        prev.map((step) => ({ ...step, status: "pending" }))
+      );
       setProgress(0);
-      
-      const errorMessage = error instanceof Error ? error.message : "Please try again or check your connection.";
-      
-      if (errorMessage.includes('PROJECT_LIMIT_REACHED')) {
+
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Please try again or check your connection.";
+
+      if (errorMessage.includes("PROJECT_LIMIT_REACHED")) {
         const limitStatus = await checkProjectLimit();
         setProjectLimit(limitStatus);
-        
-        const upgradeMessage = limitStatus.plan === 'professional'
-          ? "Upgrade to Enterprise for unlimited projects."
-          : "Upgrade to Professional for 10 projects or Enterprise for unlimited.";
-        
+
+        const upgradeMessage =
+          limitStatus.plan === "professional"
+            ? "Upgrade to Enterprise for unlimited projects."
+            : "Upgrade to Professional for 10 projects or Enterprise for unlimited.";
+
         toast.error("Project limit reached", {
           description: upgradeMessage,
         });
@@ -209,18 +248,14 @@ function CreatePage() {
     }
   };
 
-  const isFormDisabled = form.formState.isSubmitting || isLoading || isCheckingLimit || (projectLimit !== null && !projectLimit.canCreate);
+  const isFormDisabled =
+    form.formState.isSubmitting ||
+    isLoading ||
+    isCheckingLimit ||
+    (projectLimit !== null && !projectLimit.canCreate);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] relative">
-      {/* Grain texture */}
-      <div 
-        className="absolute inset-0 opacity-[0.03] pointer-events-none"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-        }}
-      />
-
+    <div className="min-h-screen bg-black relative">
       {/* Top accent line */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#333] to-transparent" />
 
@@ -237,7 +272,7 @@ function CreatePage() {
         </motion.button>
 
         {/* Header */}
-        <motion.div 
+        <motion.div
           className="mb-10"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -246,17 +281,16 @@ function CreatePage() {
           <span className="text-[#666] text-xs font-mono tracking-wide uppercase mb-3 block">
             New Project
           </span>
-          <h1 className="text-4xl font-bold text-white mb-3">
-            Create Project
-          </h1>
+          <h1 className="text-4xl font-bold text-white mb-3">Create Project</h1>
           <p className="text-[#888] text-sm max-w-md">
-            Connect a GitHub repository to start asking questions about your codebase.
+            Connect a GitHub repository to start asking questions about your
+            codebase.
           </p>
         </motion.div>
 
         {/* Project Limit Warning */}
         {!isCheckingLimit && projectLimit && !projectLimit.canCreate && (
-          <motion.div 
+          <motion.div
             className="mb-8 p-5 bg-[#1a1a1a] border border-[#ffb86c]/30 rounded-lg"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -265,14 +299,24 @@ function CreatePage() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <div className="flex items-center gap-3 flex-1">
                 <div className="w-10 h-10 rounded-lg bg-[#ffb86c]/10 border border-[#ffb86c]/20 flex items-center justify-center flex-shrink-0">
-                  <AlertTriangle className="w-5 h-5" style={{ color: colors.orange }} />
+                  <AlertTriangle
+                    className="w-5 h-5"
+                    style={{ color: colors.orange }}
+                  />
                 </div>
                 <div>
                   <h3 className="text-white font-semibold text-sm">
                     Project Limit Reached
                   </h3>
                   <p className="text-[#888] text-xs mt-0.5">
-                    {projectLimit.currentCount} of {projectLimit.maxProjects} projects used on {projectLimit.plan === 'professional' ? 'Professional' : projectLimit.plan === 'enterprise' ? 'Enterprise' : 'Starter'} plan
+                    {projectLimit.currentCount} of {projectLimit.maxProjects}{" "}
+                    projects used on{" "}
+                    {projectLimit.plan === "professional"
+                      ? "Professional"
+                      : projectLimit.plan === "enterprise"
+                        ? "Enterprise"
+                        : "Starter"}{" "}
+                    plan
                   </p>
                 </div>
               </div>
@@ -288,49 +332,60 @@ function CreatePage() {
         )}
 
         {/* Project Usage Indicator */}
-        {!isCheckingLimit && projectLimit && projectLimit.canCreate && (projectLimit.plan === 'starter' || projectLimit.plan === 'professional') && (
-          <motion.div 
-            className="mb-8 p-4 bg-[#1a1a1a] border border-[#333] rounded-lg"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Zap className="w-4 h-4" style={{ color: colors.cyan }} />
-                <span className="text-sm">
-                  <span className="text-white font-medium">{projectLimit.currentCount}</span>
-                  <span className="text-[#666]"> / {projectLimit.maxProjects} projects</span>
-                </span>
+        {!isCheckingLimit &&
+          projectLimit &&
+          projectLimit.canCreate &&
+          (projectLimit.plan === "starter" ||
+            projectLimit.plan === "professional") && (
+            <motion.div
+              className="mb-8 p-4 bg-[#1a1a1a] border border-[#333] rounded-lg"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Zap className="w-4 h-4" style={{ color: colors.cyan }} />
+                  <span className="text-sm">
+                    <span className="text-white font-medium">
+                      {projectLimit.currentCount}
+                    </span>
+                    <span className="text-[#666]">
+                      {" "}
+                      / {projectLimit.maxProjects} projects
+                    </span>
+                  </span>
+                </div>
+                {projectLimit.currentCount !== undefined &&
+                  projectLimit.maxProjects !== undefined &&
+                  ((projectLimit.plan === "starter" &&
+                    projectLimit.currentCount >= 2) ||
+                    (projectLimit.plan === "professional" &&
+                      projectLimit.currentCount >= 8)) && (
+                    <Link
+                      href="/pricing"
+                      className="text-xs text-[#bd93f9] hover:text-white transition-colors flex items-center gap-1"
+                    >
+                      <Crown className="w-3 h-3" />
+                      Upgrade
+                    </Link>
+                  )}
               </div>
-              {projectLimit.currentCount !== undefined && projectLimit.maxProjects !== undefined && (
-                (projectLimit.plan === 'starter' && projectLimit.currentCount >= 2) || 
-                (projectLimit.plan === 'professional' && projectLimit.currentCount >= 8)
-              ) && (
-                <Link
-                  href="/pricing"
-                  className="text-xs text-[#bd93f9] hover:text-white transition-colors flex items-center gap-1"
-                >
-                  <Crown className="w-3 h-3" />
-                  Upgrade
-                </Link>
-              )}
-            </div>
-            {/* Progress bar */}
-            <div className="mt-3 h-1 bg-[#252525] rounded-full overflow-hidden">
-              <div 
-                className="h-full rounded-full transition-all duration-500"
-                style={{ 
-                  width: `${((projectLimit.currentCount || 0) / (projectLimit.maxProjects || 1)) * 100}%`,
-                  backgroundColor: colors.cyan
-                }}
-              />
-            </div>
-          </motion.div>
-        )}
+              {/* Progress bar */}
+              <div className="mt-3 h-1 bg-[#252525] rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${((projectLimit.currentCount || 0) / (projectLimit.maxProjects || 1)) * 100}%`,
+                    backgroundColor: colors.cyan,
+                  }}
+                />
+              </div>
+            </motion.div>
+          )}
 
         {/* Main Form Card */}
-        <motion.div 
+        <motion.div
           className="bg-[#1a1a1a] border border-[#333] rounded-lg overflow-hidden"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -341,7 +396,9 @@ function CreatePage() {
             <div className="w-3 h-3 rounded-full bg-[#ff5f57]" />
             <div className="w-3 h-3 rounded-full bg-[#febc2e]" />
             <div className="w-3 h-3 rounded-full bg-[#28c840]" />
-            <span className="ml-3 text-[#666] text-sm font-mono">new-project</span>
+            <span className="ml-3 text-[#666] text-sm font-mono">
+              new-project
+            </span>
           </div>
 
           <div className="p-6">
@@ -352,7 +409,9 @@ function CreatePage() {
               </div>
               <div>
                 <h2 className="text-white font-semibold">Project Details</h2>
-                <p className="text-[#666] text-xs">Enter repository information</p>
+                <p className="text-[#666] text-xs">
+                  Enter repository information
+                </p>
               </div>
             </div>
 
@@ -398,31 +457,36 @@ function CreatePage() {
 
               {/* Loading Progress */}
               {(form.formState.isSubmitting || isLoading) && (
-                <motion.div 
+                <motion.div
                   className="p-5 bg-[#0a0a0a] border border-[#333] rounded-lg relative overflow-hidden"
                   initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
+                  animate={{ opacity: 1, height: "auto" }}
                 >
                   {/* Grain texture for this box */}
-                  <div 
+                  <div
                     className="absolute inset-0 opacity-[0.03] pointer-events-none"
                     style={{
                       backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
                     }}
                   />
-                  
+
                   <div className="relative z-10">
                     {/* Progress header */}
                     <div className="flex items-center justify-between mb-4">
-                      <span className="text-[#888] text-sm font-mono">Processing...</span>
-                      <span className="text-sm font-mono" style={{ color: colors.cyan }}>
+                      <span className="text-[#888] text-sm font-mono">
+                        Processing...
+                      </span>
+                      <span
+                        className="text-sm font-mono"
+                        style={{ color: colors.cyan }}
+                      >
                         {progress}%
                       </span>
                     </div>
 
                     {/* Progress bar */}
                     <div className="h-1 bg-[#252525] rounded-full overflow-hidden mb-5">
-                      <motion.div 
+                      <motion.div
                         className="h-full rounded-full"
                         style={{ backgroundColor: colors.green }}
                         initial={{ width: 0 }}
@@ -438,31 +502,39 @@ function CreatePage() {
                           key={step.id}
                           className="flex items-center gap-3 text-sm"
                         >
-                          {step.status === 'completed' ? (
-                            <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: colors.green }} />
-                          ) : step.status === 'loading' ? (
-                            <Loader2 className="w-4 h-4 flex-shrink-0 animate-spin" style={{ color: colors.cyan }} />
+                          {step.status === "completed" ? (
+                            <CheckCircle2
+                              className="w-4 h-4 flex-shrink-0"
+                              style={{ color: colors.green }}
+                            />
+                          ) : step.status === "loading" ? (
+                            <Loader2
+                              className="w-4 h-4 flex-shrink-0 animate-spin"
+                              style={{ color: colors.cyan }}
+                            />
                           ) : (
                             <Circle className="w-4 h-4 flex-shrink-0 text-[#444]" />
                           )}
-                          <step.icon 
-                            className="w-4 h-4 flex-shrink-0" 
-                            style={{ 
-                              color: step.status === 'completed' 
-                                ? colors.green 
-                                : step.status === 'loading' 
-                                  ? colors.cyan 
-                                  : '#444' 
-                            }} 
-                          />
-                          <span 
+                          {React.createElement(step.icon, {
+                            className: "w-4 h-4 flex-shrink-0",
+                            style: {
+                              color:
+                                step.status === "completed"
+                                  ? colors.green
+                                  : step.status === "loading"
+                                    ? colors.cyan
+                                    : "#444",
+                            },
+                          } as React.ComponentProps<typeof step.icon> & { style?: React.CSSProperties })}
+                          <span
                             className="font-mono"
-                            style={{ 
-                              color: step.status === 'completed' 
-                                ? colors.green 
-                                : step.status === 'loading' 
-                                  ? colors.cyan 
-                                  : '#555' 
+                            style={{
+                              color:
+                                step.status === "completed"
+                                  ? colors.green
+                                  : step.status === "loading"
+                                    ? colors.cyan
+                                    : "#555",
                             }}
                           >
                             {step.label}
@@ -517,7 +589,7 @@ function CreatePage() {
         </motion.div>
 
         {/* Tips */}
-        <motion.div 
+        <motion.div
           className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -526,10 +598,13 @@ function CreatePage() {
           <div className="p-4 bg-[#1a1a1a] border border-[#333] rounded-lg">
             <div className="flex items-center gap-2 mb-2">
               <Github className="w-4 h-4" style={{ color: colors.purple }} />
-              <span className="text-white text-sm font-medium">Public Repos</span>
+              <span className="text-white text-sm font-medium">
+                Public Repos
+              </span>
             </div>
             <p className="text-[#666] text-xs">
-              Works best with public repositories. Private repos require authentication.
+              Works best with public repositories. Private repos require
+              authentication.
             </p>
           </div>
           <div className="p-4 bg-[#1a1a1a] border border-[#333] rounded-lg">
@@ -538,13 +613,14 @@ function CreatePage() {
               <span className="text-white text-sm font-medium">AI-Powered</span>
             </div>
             <p className="text-[#666] text-xs">
-              We analyze your code structure and create embeddings for accurate answers.
+              We analyze your code structure and create embeddings for accurate
+              answers.
             </p>
           </div>
         </motion.div>
 
         {/* Bottom stats */}
-        <motion.div 
+        <motion.div
           className="mt-12 pt-8 border-t border-[#222]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -552,12 +628,14 @@ function CreatePage() {
         >
           <div className="grid grid-cols-3 gap-8">
             {[
-              { value: '30s', label: 'Average indexing time' },
-              { value: 'RAG', label: 'Retrieval augmented' },
-              { value: '∞', label: 'Questions to ask' },
+              { value: "30s", label: "Average indexing time" },
+              { value: "RAG", label: "Retrieval augmented" },
+              { value: "∞", label: "Questions to ask" },
             ].map((stat) => (
               <div key={stat.label} className="text-center">
-                <div className="text-xl font-bold text-white mb-1 font-mono">{stat.value}</div>
+                <div className="text-xl font-bold text-white mb-1 font-mono">
+                  {stat.value}
+                </div>
                 <div className="text-xs text-[#666]">{stat.label}</div>
               </div>
             ))}

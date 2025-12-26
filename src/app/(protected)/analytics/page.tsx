@@ -115,6 +115,20 @@ export default function AnalyticsPage() {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    const mainElement = document.querySelector(
+      'main[data-slot="sidebar-inset"]'
+    );
+    if (mainElement) {
+      (mainElement as HTMLElement).style.backgroundColor = "#000000";
+    }
+    return () => {
+      if (mainElement) {
+        (mainElement as HTMLElement).style.backgroundColor = "";
+      }
+    };
+  }, []);
+
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
@@ -183,15 +197,8 @@ export default function AnalyticsPage() {
   if (!data) return null;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] relative">
-      <div
-        className="absolute inset-0 opacity-[0.12] pointer-events-none z-0"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-        }}
-      />
-
-      <div className="relative z-10 max-w-7xl mx-auto px-6 py-12">
+    <div className="min-h-screen bg-black relative">
+      <div className="relative z-10 max-w-7xl mx-auto px-6 py-12 pb-20">
         <motion.div
           className="mb-12"
           initial={{ opacity: 0, y: -10 }}
