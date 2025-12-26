@@ -65,6 +65,7 @@ import {
   MoreVertical,
   Crown,
   Lock,
+  Download,
 } from "lucide-react";
 import NextLink from "next/link";
 import {
@@ -152,6 +153,7 @@ function DocsPage() {
   const [hasEmbeddings, setHasEmbeddings] = useState<boolean | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const projectsRef = useRef(projects);
+  const [repositoryInfo, setRepositoryInfo] = useState<any>(null);
 
   useEffect(() => {
     projectsRef.current = projects;
@@ -160,7 +162,7 @@ function DocsPage() {
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
 
   const parseDocsMetadata = useCallback(
-    (content: string, repositoryInfo?: typeof repoInfo): DocsMetadata => {
+    (content: string, repositoryInfo?: any): DocsMetadata => {
       const lines = content.split("\n");
       let title = "Technical Documentation";
       let description = "";
@@ -180,15 +182,47 @@ function DocsPage() {
         }
       }
 
-      const repo = repositoryInfo || repoInfo;
-      const stars = repo?.stars ?? 0;
-      const forks = repo?.forks ?? 0;
-      const language = repo?.language || "Unknown";
-      const license = repo?.license?.name || "Unknown";
+      let stars = repositoryInfo?.stars ?? repositoryInfo?.stargazersCount ?? 0;
+      let forks = repositoryInfo?.forks ?? repositoryInfo?.forksCount ?? 0;
+      let language = repositoryInfo?.language || null;
+      let license =
+        repositoryInfo?.license?.name || repositoryInfo?.license || null;
+
+      const hasValidRepoInfo =
+        repositoryInfo &&
+        (stars > 0 ||
+          forks > 0 ||
+          (language && language !== "Unknown") ||
+          (license && license !== "Unknown" && license !== null));
+
+      if (!hasValidRepoInfo) {
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (line.includes("stars") && line.includes("img.shields.io")) {
+            const match = line.match(/stars\/(\d+)/);
+            if (match) stars = parseInt(match[1]);
+          } else if (
+            line.includes("forks") &&
+            line.includes("img.shields.io")
+          ) {
+            const match = line.match(/forks\/(\d+)/);
+            if (match) forks = parseInt(match[1]);
+          } else if (line.includes("Language-")) {
+            const langMatch = line.match(/Language-([\w\+#]+)/);
+            if (langMatch) language = langMatch[1];
+          } else if (line.includes("License-")) {
+            const licenseMatch = line.match(/License-([\w\-\.]+)/);
+            if (licenseMatch) license = licenseMatch[1];
+          }
+        }
+      }
+
+      if (!language) language = "Unknown";
+      if (!license) license = "Unknown";
 
       return { title, description, stars, forks, language, license };
     },
-    [repoInfo]
+    []
   );
 
   const handleCopyCode = async () => {
@@ -212,6 +246,129 @@ function DocsPage() {
     }
   };
 
+  const fetchRepositoryInfo = useCallback(
+    async (
+      projectId: string,
+      repoUrl: string | null | undefined
+    ): Promise<any> => {
+      if (!repoUrl) return null;
+
+      const strategies = [
+        async () => {
+          try {
+            const { getProjectWithToken } = await import("@/lib/actions");
+            const projectData = await getProjectWithToken(projectId);
+            if (projectData?.githubToken && projectData?.repoUrl) {
+              const { getGitHubRepositoryInfo } = await import("@/lib/github");
+              const info = await getGitHubRepositoryInfo(
+                projectData.repoUrl,
+                projectData.githubToken
+              );
+              if (
+                info &&
+                (info.stars > 0 ||
+                  info.stargazersCount > 0 ||
+                  info.language ||
+                  info.license)
+              ) {
+                return info;
+              }
+            }
+          } catch (e) {
+            console.debug("Strategy 1 failed:", e);
+          }
+          return null;
+        },
+
+        async () => {
+          try {
+            const { getProjectWithToken } = await import("@/lib/actions");
+            const projectData = await getProjectWithToken(projectId);
+            if (projectData?.githubToken) {
+              const { getGitHubRepositoryInfo } = await import("@/lib/github");
+              const info = await getGitHubRepositoryInfo(
+                repoUrl,
+                projectData.githubToken
+              );
+              if (
+                info &&
+                (info.stars > 0 ||
+                  info.stargazersCount > 0 ||
+                  info.language ||
+                  info.license)
+              ) {
+                return info;
+              }
+            }
+          } catch (e) {
+            console.debug("Strategy 2 failed:", e);
+          }
+          return null;
+        },
+
+        async () => {
+          try {
+            const { getGitHubRepositoryInfo } = await import("@/lib/github");
+            const info = await getGitHubRepositoryInfo(repoUrl, undefined);
+            if (
+              info &&
+              (info.stars > 0 ||
+                info.stargazersCount > 0 ||
+                info.language ||
+                info.license)
+            ) {
+              return info;
+            }
+          } catch (e) {
+            console.debug("Strategy 3 failed:", e);
+          }
+          return null;
+        },
+
+        async () => {
+          try {
+            const { fetchRepositoryInfo } = await import("@/lib/actions");
+            const info = await fetchRepositoryInfo(repoUrl);
+            if (
+              info &&
+              (info.stars > 0 ||
+                info.stargazersCount > 0 ||
+                info.language ||
+                info.license)
+            ) {
+              return info;
+            }
+          } catch (e) {
+            console.debug("Strategy 4 failed:", e);
+          }
+          return null;
+        },
+      ];
+
+      for (const strategy of strategies) {
+        try {
+          const result = await strategy();
+          if (result) {
+            console.log("✅ Repository info fetched successfully:", {
+              stars: result.stars || result.stargazersCount,
+              forks: result.forks || result.forksCount,
+              language: result.language,
+              license: result.license?.name,
+            });
+            return result;
+          }
+        } catch (error) {
+          console.debug("Strategy failed:", error);
+          continue;
+        }
+      }
+
+      console.warn("⚠️ All repository info fetch strategies failed");
+      return null;
+    },
+    []
+  );
+
   const fetchDocs = useCallback(async () => {
     if (!selectedProjectId) return;
 
@@ -223,21 +380,23 @@ function DocsPage() {
         (p) => p.id === selectedProjectId
       );
 
-      let fetchedRepoInfo = repoInfo;
-      if (project?.repoUrl) {
-        try {
-          const repoInfoResult = await fetchRepository(project.repoUrl);
-          fetchedRepoInfo = repoInfoResult || repoInfo;
-        } catch (repoError) {
-          console.error("Error fetching repository info:", repoError);
+      const repoUrl = project?.repoUrl;
+
+      let fetchedRepoInfo = null;
+      if (repoUrl) {
+        fetchedRepoInfo = await fetchRepositoryInfo(selectedProjectId, repoUrl);
+
+        if (fetchedRepoInfo) {
+          setRepositoryInfo(fetchedRepoInfo);
         }
       }
 
       const docs = await getProjectDocs(selectedProjectId);
       setDocsData(docs);
 
+      const repoInfoToUse = fetchedRepoInfo || repositoryInfo;
       if (docs?.content) {
-        setMetadata(parseDocsMetadata(docs.content, fetchedRepoInfo));
+        setMetadata(parseDocsMetadata(docs.content, repoInfoToUse));
       }
 
       const embeddingsStatus = await checkEmbeddingsStatus(selectedProjectId);
@@ -250,7 +409,12 @@ function DocsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedProjectId, fetchRepository, parseDocsMetadata]);
+  }, [
+    selectedProjectId,
+    parseDocsMetadata,
+    fetchRepositoryInfo,
+    repositoryInfo,
+  ]);
 
   const handleRegenerateDocs = async () => {
     if (!selectedProjectId) return;
@@ -524,6 +688,165 @@ function DocsPage() {
     }
   };
 
+  const handleDownloadMarkdown = () => {
+    if (!docsData?.content) return;
+
+    const blob = new Blob([docsData.content], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${selectedProject?.name || "documentation"}-docs.md`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast.success("Documentation downloaded as Markdown!");
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!docsData?.content) return;
+
+    try {
+      // Dynamic import to reduce bundle size
+      const html2canvas = (await import("html2canvas")).default;
+      const { jsPDF } = await import("jspdf");
+
+      // Create a temporary div with the markdown content
+      const tempDiv = document.createElement("div");
+      tempDiv.style.width = "210mm"; // A4 width
+      tempDiv.style.padding = "20mm";
+      tempDiv.style.fontFamily = "Arial, sans-serif";
+      tempDiv.style.fontSize = "12pt";
+      tempDiv.style.color = "#000";
+      tempDiv.style.backgroundColor = "#fff";
+      tempDiv.style.lineHeight = "1.6";
+
+      // Convert markdown to HTML using ReactMarkdown's rendering
+      // For simplicity, we'll use a basic markdown-to-HTML conversion
+      const markdownContent = docsData.content;
+      const htmlContent = markdownContent
+        .replace(/^# (.*$)/gim, "<h1>$1</h1>")
+        .replace(/^## (.*$)/gim, "<h2>$1</h2>")
+        .replace(/^### (.*$)/gim, "<h3>$1</h3>")
+        .replace(/^\*\*(.*)\*\*/gim, "<strong>$1</strong>")
+        .replace(/^\*(.*)\*/gim, "<em>$1</em>")
+        .replace(/^`(.*)`/gim, "<code>$1</code>")
+        .replace(/\n/g, "<br>");
+
+      tempDiv.innerHTML = htmlContent;
+      document.body.appendChild(tempDiv);
+
+      const canvas = await html2canvas(tempDiv, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
+
+      document.body.removeChild(tempDiv);
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const imgWidth = 210; // A4 width in mm
+      const pageHeight = 295; // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      pdf.save(`${selectedProject?.name || "documentation"}-docs.pdf`);
+      toast.success("Documentation downloaded as PDF!");
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast.error("Failed to generate PDF", {
+        description: "Please try downloading as Markdown instead.",
+      });
+    }
+  };
+
+  const handleDownloadDOCX = async () => {
+    if (!docsData?.content) return;
+
+    try {
+      // Dynamic import to reduce bundle size
+      const { Document, Packer, Paragraph, TextRun, HeadingLevel } =
+        await import("docx");
+
+      // Convert markdown to plain text with basic formatting
+      const paragraphs: any[] = [];
+      const lines = docsData.content.split("\n");
+
+      for (const line of lines) {
+        if (line.startsWith("# ")) {
+          paragraphs.push(
+            new Paragraph({
+              text: line.replace("# ", ""),
+              heading: HeadingLevel.HEADING_1,
+            })
+          );
+        } else if (line.startsWith("## ")) {
+          paragraphs.push(
+            new Paragraph({
+              text: line.replace("## ", ""),
+              heading: HeadingLevel.HEADING_2,
+            })
+          );
+        } else if (line.startsWith("### ")) {
+          paragraphs.push(
+            new Paragraph({
+              text: line.replace("### ", ""),
+              heading: HeadingLevel.HEADING_3,
+            })
+          );
+        } else if (line.trim() === "") {
+          paragraphs.push(new Paragraph({ text: "" }));
+        } else {
+          paragraphs.push(new Paragraph({ text: line }));
+        }
+      }
+
+      const doc = new Document({
+        sections: [
+          {
+            properties: {},
+            children: paragraphs,
+          },
+        ],
+      });
+
+      const blob = await Packer.toBlob(doc);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${selectedProject?.name || "documentation"}-docs.docx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success("Documentation downloaded as DOCX!");
+    } catch (error) {
+      console.error("Error generating DOCX:", error);
+      toast.error("Failed to generate DOCX", {
+        description: "Please try downloading as Markdown instead.",
+      });
+    }
+  };
+
   const openDeleteDialog = (qnaId: string) => {
     setQnaToDelete(qnaId);
     setShowDeleteDialog(true);
@@ -534,12 +857,16 @@ function DocsPage() {
   };
 
   useEffect(() => {
+    setRepositoryInfo(null);
+  }, [selectedProjectId]);
+
+  useEffect(() => {
     if (selectedProjectId) {
       fetchDocs();
       fetchQnaHistory();
       fetchShareData();
     }
-  }, [selectedProjectId]);
+  }, [selectedProjectId, fetchDocs, fetchQnaHistory, fetchShareData]);
 
   useEffect(() => {
     if (docsData?.content) {
@@ -754,6 +1081,46 @@ function DocsPage() {
               </>
             )}
           </Button>
+
+          {docsData?.content && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  disabled={isLoading}
+                  className="bg-white/10 hover:bg-white/20 text-white border border-white/20 px-3 sm:px-4 md:px-6 py-2 rounded-lg transition-all duration-200 w-full sm:w-auto text-xs sm:text-sm"
+                >
+                  <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
+                  <span className="mobile-no-truncate">Download</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="bg-gray-800 border-white/20"
+              >
+                <DropdownMenuItem
+                  onClick={handleDownloadMarkdown}
+                  className="text-white hover:bg-white/10 focus:bg-white/10"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  <span>Download as Markdown (.md)</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleDownloadPDF}
+                  className="text-white hover:bg-white/10 focus:bg-white/10"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  <span>Download as PDF (.pdf)</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleDownloadDOCX}
+                  className="text-white hover:bg-white/10 focus:bg-white/10"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  <span>Download as DOCX (.docx)</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
 

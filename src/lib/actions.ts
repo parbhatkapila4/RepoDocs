@@ -1076,6 +1076,42 @@ export async function getProjectDocs(projectId: string) {
   }
 }
 
+export async function getProjectWithToken(projectId: string) {
+  try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      throw new Error("Unauthorized");
+    }
+
+    const dbUserId = await getDbUserId(userId);
+    if (!dbUserId) {
+      throw new Error("User not found");
+    }
+
+    const project = await prisma.project.findFirst({
+      where: {
+        id: projectId,
+        userId: dbUserId,
+        deletedAt: null,
+      },
+      select: {
+        repoUrl: true,
+        githubToken: true,
+      },
+    });
+
+    if (!project) {
+      throw new Error("Project not found or unauthorized");
+    }
+
+    return { repoUrl: project.repoUrl, githubToken: project.githubToken };
+  } catch (error) {
+    console.error("Error fetching project with token:", error);
+    return null;
+  }
+}
+
 export async function checkEmbeddingsStatus(projectId: string) {
   try {
     const { userId } = await auth();

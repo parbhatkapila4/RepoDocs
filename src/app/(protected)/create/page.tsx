@@ -26,7 +26,6 @@ import {
 import { toast } from "sonner";
 import Link from "next/link";
 
-// Dracula-inspired colors
 const colors = {
   green: "#50fa7b",
   cyan: "#8be9fd",
@@ -38,7 +37,6 @@ const colors = {
   white: "#f8f8f2",
 };
 
-// Form validation schema
 const createProjectSchema = z.object({
   name: z
     .string()
@@ -256,11 +254,9 @@ function CreatePage() {
 
   return (
     <div className="min-h-screen bg-black relative">
-      {/* Top accent line */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#333] to-transparent" />
 
       <div className="relative max-w-2xl mx-auto px-6 py-12">
-        {/* Back button */}
         <motion.button
           onClick={() => router.back()}
           className="flex items-center gap-2 text-[#666] hover:text-white transition-colors mb-8 group"
@@ -271,7 +267,6 @@ function CreatePage() {
           <span className="text-sm font-medium">Back</span>
         </motion.button>
 
-        {/* Header */}
         <motion.div
           className="mb-10"
           initial={{ opacity: 0, y: -10 }}
@@ -288,7 +283,6 @@ function CreatePage() {
           </p>
         </motion.div>
 
-        {/* Project Limit Warning */}
         {!isCheckingLimit && projectLimit && !projectLimit.canCreate && (
           <motion.div
             className="mb-8 p-5 bg-[#1a1a1a] border border-[#ffb86c]/30 rounded-lg"
@@ -331,7 +325,6 @@ function CreatePage() {
           </motion.div>
         )}
 
-        {/* Project Usage Indicator */}
         {!isCheckingLimit &&
           projectLimit &&
           projectLimit.canCreate &&
@@ -371,7 +364,7 @@ function CreatePage() {
                     </Link>
                   )}
               </div>
-              {/* Progress bar */}
+
               <div className="mt-3 h-1 bg-[#252525] rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-500"
@@ -384,14 +377,12 @@ function CreatePage() {
             </motion.div>
           )}
 
-        {/* Main Form Card */}
         <motion.div
           className="bg-[#1a1a1a] border border-[#333] rounded-lg overflow-hidden"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
-          {/* Terminal header */}
           <div className="flex items-center gap-2 px-4 py-3 bg-[#252525] border-b border-[#333]">
             <div className="w-3 h-3 rounded-full bg-[#ff5f57]" />
             <div className="w-3 h-3 rounded-full bg-[#febc2e]" />
@@ -402,7 +393,6 @@ function CreatePage() {
           </div>
 
           <div className="p-6">
-            {/* Card header */}
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-lg bg-[#252525] border border-[#333] flex items-center justify-center">
                 <Terminal className="w-5 h-5" style={{ color: colors.green }} />
@@ -416,7 +406,6 @@ function CreatePage() {
             </div>
 
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              {/* Project Name */}
               <div className="space-y-2">
                 <label className="text-sm text-[#888] font-medium">
                   Project Name
@@ -435,7 +424,6 @@ function CreatePage() {
                 )}
               </div>
 
-              {/* GitHub URL */}
               <div className="space-y-2">
                 <label className="text-sm text-[#888] font-medium flex items-center gap-2">
                   <Github className="w-4 h-4" />
@@ -455,14 +443,12 @@ function CreatePage() {
                 )}
               </div>
 
-              {/* Loading Progress */}
               {(form.formState.isSubmitting || isLoading) && (
                 <motion.div
                   className="p-5 bg-[#0a0a0a] border border-[#333] rounded-lg relative overflow-hidden"
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                 >
-                  {/* Grain texture for this box */}
                   <div
                     className="absolute inset-0 opacity-[0.03] pointer-events-none"
                     style={{
@@ -471,7 +457,6 @@ function CreatePage() {
                   />
 
                   <div className="relative z-10">
-                    {/* Progress header */}
                     <div className="flex items-center justify-between mb-4">
                       <span className="text-[#888] text-sm font-mono">
                         Processing...
@@ -484,7 +469,6 @@ function CreatePage() {
                       </span>
                     </div>
 
-                    {/* Progress bar */}
                     <div className="h-1 bg-[#252525] rounded-full overflow-hidden mb-5">
                       <motion.div
                         className="h-full rounded-full"
@@ -495,7 +479,6 @@ function CreatePage() {
                       />
                     </div>
 
-                    {/* Steps */}
                     <div className="space-y-3">
                       {loadingSteps.map((step) => (
                         <div
@@ -525,7 +508,9 @@ function CreatePage() {
                                     ? colors.cyan
                                     : "#444",
                             },
-                          } as React.ComponentProps<typeof step.icon> & { style?: React.CSSProperties })}
+                          } as React.ComponentProps<typeof step.icon> & {
+                            style?: React.CSSProperties;
+                          })}
                           <span
                             className="font-mono"
                             style={{
@@ -546,7 +531,6 @@ function CreatePage() {
                 </motion.div>
               )}
 
-              {/* Actions */}
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <button
                   type="submit"
@@ -588,7 +572,6 @@ function CreatePage() {
           </div>
         </motion.div>
 
-        {/* Tips */}
         <motion.div
           className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4"
           initial={{ opacity: 0 }}
@@ -619,7 +602,6 @@ function CreatePage() {
           </div>
         </motion.div>
 
-        {/* Bottom stats */}
         <motion.div
           className="mt-12 pt-8 border-t border-[#222]"
           initial={{ opacity: 0 }}

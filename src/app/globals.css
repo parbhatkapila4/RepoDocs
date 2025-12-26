@@ -444,6 +444,21 @@
   display: none;
 }
 
+
+[data-sonner-toast][data-id="pdf-download"] {
+  background: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #e5e5e5 !important;
+}
+
+[data-sonner-toast][data-id="pdf-download"] [data-title] {
+  color: #000000 !important;
+}
+
+[data-sonner-toast][data-id="pdf-download"] [data-description] {
+  color: #666666 !important;
+}
+
 .scrollbar-thin {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1);

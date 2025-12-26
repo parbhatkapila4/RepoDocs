@@ -128,39 +128,48 @@ function ReadmePage() {
   const [qnaToDelete, setQnaToDelete] = useState<string | null>(null);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
   const [upgradeRequired, setUpgradeRequired] = useState(false);
+  const [repositoryInfo, setRepositoryInfo] = useState<any>(null);
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
 
-  const parseReadmeMetadata = (content: string): ReadmeMetadata => {
+  const parseReadmeMetadata = (
+    content: string,
+    repositoryInfo?: any
+  ): ReadmeMetadata => {
     const lines = content.split("\n");
     let title = "README";
     let description = "";
-    let stars = 0;
-    let forks = 0;
-    let language = "Unknown";
-    let license = "Unknown";
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
+    let stars = repositoryInfo?.stars ?? repositoryInfo?.stargazersCount ?? 0;
+    let forks = repositoryInfo?.forks ?? repositoryInfo?.forksCount ?? 0;
+    let language = repositoryInfo?.language || "Unknown";
+    let license = repositoryInfo?.license?.name || "Unknown";
 
-      if (line.startsWith("# ")) {
-        title = line.substring(2);
-      } else if (line.includes("stars") && line.includes("img.shields.io")) {
-        const match = line.match(/stars\/(\d+)/);
-        if (match) stars = parseInt(match[1]);
-      } else if (line.includes("forks") && line.includes("img.shields.io")) {
-        const match = line.match(/forks\/(\d+)/);
-        if (match) forks = parseInt(match[1]);
-      } else if (line.includes("Language-TypeScript")) {
-        language = "TypeScript";
-      } else if (line.includes("License-MIT")) {
-        license = "MIT";
-      } else if (
-        line.startsWith("## ") &&
-        line.toLowerCase().includes("description")
-      ) {
-        if (i + 1 < lines.length) {
-          description = lines[i + 1].trim();
+    if (!repositoryInfo || stars === 0) {
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+
+        if (line.startsWith("# ")) {
+          title = line.substring(2);
+        } else if (line.includes("stars") && line.includes("img.shields.io")) {
+          const match = line.match(/stars\/(\d+)/);
+          if (match) stars = parseInt(match[1]);
+        } else if (line.includes("forks") && line.includes("img.shields.io")) {
+          const match = line.match(/forks\/(\d+)/);
+          if (match) forks = parseInt(match[1]);
+        } else if (line.includes("Language-")) {
+          const langMatch = line.match(/Language-(\w+)/);
+          if (langMatch) language = langMatch[1];
+        } else if (line.includes("License-")) {
+          const licenseMatch = line.match(/License-(\w+)/);
+          if (licenseMatch) license = licenseMatch[1];
+        } else if (
+          line.startsWith("## ") &&
+          line.toLowerCase().includes("description")
+        ) {
+          if (i + 1 < lines.length) {
+            description = lines[i + 1].trim();
+          }
         }
       }
     }
@@ -189,6 +198,126 @@ function ReadmePage() {
     }
   };
 
+  const fetchRepositoryInfo = async (
+    projectId: string,
+    repoUrl: string | null | undefined
+  ): Promise<any> => {
+    if (!repoUrl) return null;
+
+    const strategies = [
+      async () => {
+        try {
+          const { getProjectWithToken } = await import("@/lib/actions");
+          const projectData = await getProjectWithToken(projectId);
+          if (projectData?.githubToken && projectData?.repoUrl) {
+            const { getGitHubRepositoryInfo } = await import("@/lib/github");
+            const info = await getGitHubRepositoryInfo(
+              projectData.repoUrl,
+              projectData.githubToken
+            );
+            if (
+              info &&
+              (info.stars > 0 ||
+                info.stargazersCount > 0 ||
+                info.language ||
+                info.license)
+            ) {
+              return info;
+            }
+          }
+        } catch (e) {
+          console.debug("Strategy 1 failed:", e);
+        }
+        return null;
+      },
+
+      async () => {
+        try {
+          const { getProjectWithToken } = await import("@/lib/actions");
+          const projectData = await getProjectWithToken(projectId);
+          if (projectData?.githubToken) {
+            const { getGitHubRepositoryInfo } = await import("@/lib/github");
+            const info = await getGitHubRepositoryInfo(
+              repoUrl,
+              projectData.githubToken
+            );
+            if (
+              info &&
+              (info.stars > 0 ||
+                info.stargazersCount > 0 ||
+                info.language ||
+                info.license)
+            ) {
+              return info;
+            }
+          }
+        } catch (e) {
+          console.debug("Strategy 2 failed:", e);
+        }
+        return null;
+      },
+
+      async () => {
+        try {
+          const { getGitHubRepositoryInfo } = await import("@/lib/github");
+          const info = await getGitHubRepositoryInfo(repoUrl, undefined);
+          if (
+            info &&
+            (info.stars > 0 ||
+              info.stargazersCount > 0 ||
+              info.language ||
+              info.license)
+          ) {
+            return info;
+          }
+        } catch (e) {
+          console.debug("Strategy 3 failed:", e);
+        }
+        return null;
+      },
+
+      async () => {
+        try {
+          const { fetchRepositoryInfo } = await import("@/lib/actions");
+          const info = await fetchRepositoryInfo(repoUrl);
+          if (
+            info &&
+            (info.stars > 0 ||
+              info.stargazersCount > 0 ||
+              info.language ||
+              info.license)
+          ) {
+            return info;
+          }
+        } catch (e) {
+          console.debug("Strategy 4 failed:", e);
+        }
+        return null;
+      },
+    ];
+
+    for (const strategy of strategies) {
+      try {
+        const result = await strategy();
+        if (result) {
+          console.log("✅ Repository info fetched successfully:", {
+            stars: result.stars || result.stargazersCount,
+            forks: result.forks || result.forksCount,
+            language: result.language,
+            license: result.license?.name,
+          });
+          return result;
+        }
+      } catch (error) {
+        console.debug("Strategy failed:", error);
+        continue;
+      }
+    }
+
+    console.warn("⚠️ All repository info fetch strategies failed");
+    return null;
+  };
+
   const fetchReadme = async () => {
     if (!selectedProjectId) return;
 
@@ -196,10 +325,24 @@ function ReadmePage() {
     setError(null);
 
     try {
+      const project = projects.find((p) => p.id === selectedProjectId);
+      const repoUrl = project?.repoUrl;
+
+      let fetchedRepoInfo = null;
+      if (repoUrl) {
+        fetchedRepoInfo = await fetchRepositoryInfo(selectedProjectId, repoUrl);
+
+        if (fetchedRepoInfo) {
+          setRepositoryInfo(fetchedRepoInfo);
+        }
+      }
+
       const readme = await getProjectReadme(selectedProjectId);
       setReadmeData(readme);
+
+      const repoInfoToUse = fetchedRepoInfo || repositoryInfo;
       if (readme?.content) {
-        setMetadata(parseReadmeMetadata(readme.content));
+        setMetadata(parseReadmeMetadata(readme.content, repoInfoToUse));
       }
     } catch (err) {
       console.error("Error fetching README:", err);
@@ -462,9 +605,15 @@ function ReadmePage() {
   };
 
   useEffect(() => {
-    fetchReadme();
-    fetchQnaHistory();
-    fetchShareData();
+    setRepositoryInfo(null);
+  }, [selectedProjectId]);
+
+  useEffect(() => {
+    if (selectedProjectId) {
+      fetchReadme();
+      fetchQnaHistory();
+      fetchShareData();
+    }
   }, [selectedProjectId]);
 
   if (!selectedProjectId) {

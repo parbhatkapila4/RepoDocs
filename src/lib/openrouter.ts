@@ -15,6 +15,7 @@ interface ChatCompletionOptions {
   messages: ChatMessage[];
   temperature?: number;
   max_tokens?: number;
+  system?: string;
 }
 
 interface EmbeddingOptions {
@@ -30,10 +31,21 @@ export async function openrouterChatCompletion(
     messages,
     temperature = 0.7,
     max_tokens = 8000,
+    system,
   } = options;
 
   const timeout =
-    max_tokens > 16000 ? 300000 : max_tokens > 8000 ? 240000 : 120000;
+    max_tokens >= 200000
+      ? 1200000
+      : max_tokens >= 100000
+        ? 900000
+        : max_tokens >= 50000
+          ? 600000
+          : max_tokens >= 16000
+            ? 300000
+            : max_tokens >= 8000
+              ? 240000
+              : 120000;
 
   try {
     const controller = new AbortController();
@@ -49,7 +61,9 @@ export async function openrouterChatCompletion(
       },
       body: JSON.stringify({
         model,
-        messages,
+        messages: system
+          ? [{ role: "system", content: system }, ...messages]
+          : messages,
         temperature,
         max_tokens,
       }),
@@ -90,7 +104,8 @@ export async function openrouterChatCompletion(
 export async function openrouterSingleMessage(
   prompt: string,
   model?: string,
-  maxTokens?: number
+  maxTokens?: number,
+  system?: string
 ): Promise<string> {
   return openrouterChatCompletion({
     model,
@@ -101,5 +116,6 @@ export async function openrouterSingleMessage(
       },
     ],
     max_tokens: maxTokens,
+    system,
   });
 }
