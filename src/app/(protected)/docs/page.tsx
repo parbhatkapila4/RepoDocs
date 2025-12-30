@@ -394,9 +394,8 @@ function DocsPage() {
       const docs = await getProjectDocs(selectedProjectId);
       setDocsData(docs);
 
-      const repoInfoToUse = fetchedRepoInfo || repositoryInfo;
       if (docs?.content) {
-        setMetadata(parseDocsMetadata(docs.content, repoInfoToUse));
+        setMetadata(parseDocsMetadata(docs.content, fetchedRepoInfo));
       }
 
       const embeddingsStatus = await checkEmbeddingsStatus(selectedProjectId);
@@ -409,12 +408,7 @@ function DocsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [
-    selectedProjectId,
-    parseDocsMetadata,
-    fetchRepositoryInfo,
-    repositoryInfo,
-  ]);
+  }, [selectedProjectId, parseDocsMetadata, fetchRepositoryInfo]);
 
   const handleRegenerateDocs = async () => {
     if (!selectedProjectId) return;
@@ -870,9 +864,9 @@ function DocsPage() {
 
   useEffect(() => {
     if (docsData?.content) {
-      setMetadata(parseDocsMetadata(docsData.content, repoInfo));
+      setMetadata(parseDocsMetadata(docsData.content, repositoryInfo));
     }
-  }, [repoInfo, docsData?.id, parseDocsMetadata]);
+  }, [repositoryInfo, docsData?.id, parseDocsMetadata]);
 
   useEffect(() => {
     if (!selectedProjectId || !docsData) {
