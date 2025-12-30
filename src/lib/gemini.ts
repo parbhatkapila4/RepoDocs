@@ -441,7 +441,32 @@ Your mission: Generate ONE EXTREMELY COMPREHENSIVE, DETAILED, and LENGTHY techni
 - A senior engineer immediately understands the COMPLETE architecture, ALL technologies used, database structure, API endpoints, security measures, performance considerations, code patterns, file organization, dependencies, strengths, weaknesses, and extension points - explained in DEPTH with technical details.
 - Both can see the business value, technical implementation, scalability, production readiness, and every aspect of this system without reading a single line of code - because the documentation is SO COMPREHENSIVE and DETAILED.
 
-**CRITICAL: Make this documentation EXTREMELY LENGTHY and DETAILED. Each section should be 5-10+ paragraphs long. Explain EVERYTHING in depth. Use multiple examples. Be exhaustive. Length is NOT a concern - detail and comprehensiveness ARE.**
+**🚨🚨🚨 CRITICAL LENGTH REQUIREMENTS - ABSOLUTELY MANDATORY 🚨🚨🚨**
+
+**YOU MUST FOLLOW THESE REQUIREMENTS OR THE DOCUMENTATION WILL BE REJECTED:**
+
+1. **EVERY SECTION (except tables/lists) MUST HAVE MINIMUM 5 FULL PARAGRAPHS**
+2. **EACH PARAGRAPH MUST BE 100-200 WORDS MINIMUM** - not just 2-3 sentences!
+3. **EACH SECTION MUST BE AT LEAST 500-1000 WORDS TOTAL** - sections with less than 50 words are COMPLETELY UNACCEPTABLE
+4. **NO SHORT SECTIONS ALLOWED** - if a section has less than 500 words, you have FAILED
+5. **EVERY PARAGRAPH MUST BE SUBSTANTIAL** - explain concepts in depth, provide examples, give context, explain why things matter
+6. **DO NOT BE CONCISE** - verbosity and detail are REQUIRED, not optional
+7. **EXPAND ON EVERY POINT** - don't just state facts, explain them thoroughly with examples and context
+
+**REJECTION CRITERIA:**
+- Any section with less than 5 paragraphs = REJECTED
+- Any section with less than 500 words = REJECTED  
+- Any paragraph with less than 100 words = REJECTED
+- Any section that can be read in under 2 minutes = REJECTED
+
+**SUCCESS CRITERIA:**
+- Every section has 5-6+ full paragraphs
+- Each paragraph is 100-200+ words
+- Each section is 500-1000+ words total
+- Comprehensive explanations with examples, context, and depth
+- Detailed technical analysis with specific code references
+
+**LENGTH IS NOT A CONCERN - DETAIL AND COMPREHENSIVENESS ARE MANDATORY. BE EXHAUSTIVE. BE VERBOSE. BE DETAILED.**
 
 ${hasCodebaseAnalysis ? "DO NOT summarize file by file. DO NOT rewrite the README. Your job is to infer PRODUCT, ARCHITECTURE, BUSINESS VALUE, and EXTENSIBILITY from the codebase." : "Since detailed codebase analysis is not yet available, focus on what can be inferred from the repository metadata, description, and general project information. Create a professional technical document that sets expectations and provides structure for when full codebase analysis becomes available."}
 
@@ -503,15 +528,17 @@ Detect the actual technologies from the codebase and create appropriate badges.
 ---
 
 ## 1. 📘 Product Understanding
-Provide a comprehensive and detailed explanation in 5-6 paragraphs covering:
-- Paragraph 1: What this project IS - explain the product, its purpose, and core functionality in detail
-- Paragraph 2: What problem it solves - describe the pain points addressed and use cases with specific examples
-- Paragraph 3: Who it serves and the outcome it delivers - explain target users and tangible benefits
-- Paragraph 4: How it works at a high level - explain the main workflows and user journeys
-- Paragraph 5: Key differentiators - what makes this project unique or better than alternatives
-- Paragraph 6 (optional): Real-world impact and use cases - specific scenarios where this project provides value
+**MANDATORY: Write EXACTLY 5-6 FULL PARAGRAPHS, each 100-200 words minimum. Total section must be 500-1000+ words.**
 
-Tone: product pitch, not engineering blog. Be detailed, precise, and based on actual codebase analysis. Write 5-6 paragraphs with substantial detail.
+Provide a comprehensive and detailed explanation covering:
+- **Paragraph 1 (100-200 words):** What this project IS - explain the product, its purpose, and core functionality in EXTENSIVE detail with examples, use cases, and context. Don't just describe it - explain it thoroughly.
+- **Paragraph 2 (100-200 words):** What problem it solves - describe the pain points addressed and use cases with SPECIFIC examples, real-world scenarios, and detailed explanations of why these problems matter.
+- **Paragraph 3 (100-200 words):** Who it serves and the outcome it delivers - explain target users in detail, their needs, pain points, and tangible benefits with specific examples of how users benefit.
+- **Paragraph 4 (100-200 words):** How it works at a high level - explain the main workflows and user journeys in DETAIL, step-by-step processes, and how different components interact.
+- **Paragraph 5 (100-200 words):** Key differentiators - what makes this project unique or better than alternatives, with detailed comparisons, specific advantages, and why these matter.
+- **Paragraph 6 (100-200 words, REQUIRED):** Real-world impact and use cases - specific scenarios where this project provides value, detailed examples, and concrete outcomes.
+
+**Tone: product pitch, not engineering blog. Be EXTREMELY detailed, precise, and based on actual codebase analysis. Each paragraph MUST be 100-200 words. Total section MUST be 500-1000+ words. NO SHORT PARAGRAPHS ALLOWED.**
 
 ## 2. 🧩 Core Value Proposition (Why it matters)
 Translate major modules, components, and features into business value. Document 8-12 key modules/components.
@@ -526,15 +553,17 @@ For EACH module, provide concise explanations:
 - Business impact: 1-2 sentences
 
 ## 3. 🧱 Architecture Intelligence
-Provide a comprehensive architectural analysis in 5-6 paragraphs covering:
-- Paragraph 1: Architecture type (monolith, modular, microservice, event-driven, etc.) and main layers/services with specific details
-- Paragraph 2: Design rationale and trade-offs - why it's designed this way, what problems this solves
-- Paragraph 3: Directory structure and code organization patterns - actual folder structure and how code is organized
-- Paragraph 4: Data flow and component interactions - how different parts communicate
-- Paragraph 5: Technology choices and their roles - why specific technologies were chosen for each layer
-- Paragraph 6 (optional): Scalability considerations and architectural patterns used
+**MANDATORY: Write EXACTLY 5-6 FULL PARAGRAPHS, each 100-200 words minimum. Total section must be 500-1000+ words.**
 
-Be detailed and precise based on actual codebase structure. Write 5-6 paragraphs with substantial detail.
+Provide a comprehensive architectural analysis covering:
+- **Paragraph 1 (100-200 words):** Architecture type (monolith, modular, microservice, event-driven, etc.) and main layers/services with SPECIFIC details, component names, file locations, and how they're organized. Explain the architecture in depth.
+- **Paragraph 2 (100-200 words):** Design rationale and trade-offs - why it's designed this way, what problems this solves, what alternatives were considered, and why this approach was chosen. Be detailed about the reasoning.
+- **Paragraph 3 (100-200 words):** Directory structure and code organization patterns - actual folder structure, how code is organized, naming conventions, and patterns used. Reference specific directories and files.
+- **Paragraph 4 (100-200 words):** Data flow and component interactions - how different parts communicate, request/response patterns, event flows, and integration points. Explain the complete flow in detail.
+- **Paragraph 5 (100-200 words):** Technology choices and their roles - why specific technologies were chosen for each layer, what problems they solve, and how they integrate. Be specific about each technology.
+- **Paragraph 6 (100-200 words, REQUIRED):** Scalability considerations and architectural patterns used - how the architecture scales, what patterns are implemented, and scalability strategies. Explain in detail.
+
+**Be EXTREMELY detailed and precise based on actual codebase structure. Each paragraph MUST be 100-200 words. Total section MUST be 500-1000+ words. NO SHORT PARAGRAPHS ALLOWED.**
 
 Include a Mermaid diagram reflecting real structure, for example:
 \`\`\`mermaid
@@ -546,15 +575,17 @@ graph TD
 \`\`\`
 
 ## 4. ⚙️ Data & AI Flow Explanation
-Provide a comprehensive explanation in 5-6 paragraphs of how data and intelligence flow through the system:
-- Paragraph 1: Step-by-step flow from user input to final output - detailed walkthrough
-- Paragraph 2: Data transformations and key components involved - what happens at each stage
-- Paragraph 3: AI/ML model integration - how AI is used, which models, how they're called
-- Paragraph 4: Data storage and retrieval - database interactions, caching, data persistence
-- Paragraph 5: Error handling and performance considerations - how errors are handled, optimization strategies
-- Paragraph 6 (optional): Real-time vs batch processing, async operations, and concurrency handling
+**MANDATORY: Write EXACTLY 5-6 FULL PARAGRAPHS, each 100-200 words minimum. Total section must be 500-1000+ words.**
 
-Be detailed and precise based on actual codebase. Write 5-6 paragraphs with substantial detail.
+Provide a comprehensive explanation of how data and intelligence flow through the system:
+- **Paragraph 1 (100-200 words):** Step-by-step flow from user input to final output - DETAILED walkthrough with every step explained, component names, function calls, and data transformations. Don't skip any steps.
+- **Paragraph 2 (100-200 words):** Data transformations and key components involved - what happens at each stage, how data is modified, which functions process it, and the complete transformation pipeline. Explain in depth.
+- **Paragraph 3 (100-200 words):** AI/ML model integration - how AI is used, which models, how they're called, API endpoints, request/response formats, and integration patterns. Be specific about the AI implementation.
+- **Paragraph 4 (100-200 words):** Data storage and retrieval - database interactions, caching strategies, data persistence patterns, query optimization, and storage architecture. Explain the complete data layer.
+- **Paragraph 5 (100-200 words):** Error handling and performance considerations - how errors are handled, optimization strategies, performance bottlenecks, and mitigation techniques. Detail the error handling flow.
+- **Paragraph 6 (100-200 words, REQUIRED):** Real-time vs batch processing, async operations, and concurrency handling - explain how the system handles different processing modes, async patterns, and concurrent requests. Be detailed.
+
+**Be EXTREMELY detailed and precise based on actual codebase. Each paragraph MUST be 100-200 words. Total section MUST be 500-1000+ words. NO SHORT PARAGRAPHS ALLOWED.**
 
 Add a sequence diagram like:
 \`\`\`mermaid
@@ -568,15 +599,17 @@ sequenceDiagram
 \`\`\`
 
 ## 5. 🔌 Integration Potential (How startups can plug this in)
-Provide comprehensive practical ways this repo can integrate into a company's stack in 5-6 paragraphs:
-- Paragraph 1: API endpoints and services available for integration - list actual endpoints with methods
-- Paragraph 2: Modules that can be extended and configuration requirements - what can be customized
-- Paragraph 3: Authentication, rate limiting, and SDK availability (if applicable) - security and access control
-- Paragraph 4: Webhook support and event-driven integrations - how external systems can be notified
-- Paragraph 5: Database schema and data model for integration - how to connect external databases
-- Paragraph 6 (optional): Deployment options and infrastructure requirements for integration
+**MANDATORY: Write EXACTLY 5-6 FULL PARAGRAPHS, each 100-200 words minimum. Total section must be 500-1000+ words.**
 
-Keep it business-actionable and detailed. Write 5-6 paragraphs with substantial detail based on actual codebase.
+Provide comprehensive practical ways this repo can integrate into a company's stack:
+- **Paragraph 1 (100-200 words):** API endpoints and services available for integration - list ACTUAL endpoints with methods, request/response formats, authentication requirements, and detailed examples. Explain how to use each endpoint.
+- **Paragraph 2 (100-200 words):** Modules that can be extended and configuration requirements - what can be customized, how to extend functionality, configuration options, and step-by-step integration guide. Be specific about extension points.
+- **Paragraph 3 (100-200 words):** Authentication, rate limiting, and SDK availability (if applicable) - security and access control mechanisms, how authentication works, rate limits, and available SDKs. Explain the complete security model.
+- **Paragraph 4 (100-200 words):** Webhook support and event-driven integrations - how external systems can be notified, webhook configuration, event types, and integration patterns. Detail the event system.
+- **Paragraph 5 (100-200 words):** Database schema and data model for integration - how to connect external databases, schema structure, data relationships, and integration patterns. Explain the data model in depth.
+- **Paragraph 6 (100-200 words, REQUIRED):** Deployment options and infrastructure requirements for integration - deployment strategies, infrastructure needs, scaling considerations, and production setup. Be comprehensive.
+
+**Keep it business-actionable and EXTREMELY detailed. Each paragraph MUST be 100-200 words. Total section MUST be 500-1000+ words. NO SHORT PARAGRAPHS ALLOWED.**
 
 ## 6. 🧠 Technical Edge (What's actually smart here)
 List 5-8 specific technical insights or design advantages that make this codebase stand out. For EACH insight, provide:
@@ -587,32 +620,34 @@ List 5-8 specific technical insights or design advantages that make this codebas
 Be concise and focused. List 5-8 key insights.
 
 ## 7. 📈 Scalability & Production Readiness
-Provide comprehensive analysis in 5-6 paragraphs with detailed explanations:
+**MANDATORY: Write EXACTLY 5-6 FULL PARAGRAPHS, each 100-200 words minimum. Total section must be 500-1000+ words.**
+
+Provide comprehensive analysis with detailed explanations:
 
 **Already production-ready (2-3 paragraphs):** 
-- Paragraph 1: List 5-8 items that are production-ready (concurrency, caching, logging, CI/CD, testing, error handling, security, etc.)
-- For each item: 2-3 sentences explaining what it is, how it's implemented, and why it matters
-- Paragraph 2: Deep dive into the most critical production-ready features with specific examples from codebase
-- Paragraph 3 (optional): Performance optimizations and monitoring capabilities already in place
+- **Paragraph 1 (100-200 words):** List 5-8 items that are production-ready (concurrency, caching, logging, CI/CD, testing, error handling, security, etc.). For EACH item: provide 3-4 sentences explaining what it is, how it's implemented, where it's located in the codebase, and why it matters. Be specific and detailed.
+- **Paragraph 2 (100-200 words):** Deep dive into the most critical production-ready features with SPECIFIC examples from codebase, file paths, function names, and implementation details. Explain how these features work in depth.
+- **Paragraph 3 (100-200 words, REQUIRED):** Performance optimizations and monitoring capabilities already in place - detail what's implemented, how it works, metrics collected, and how it helps. Be comprehensive.
 
 **Needs work (2-3 paragraphs):**
-- Paragraph 4: List 3-5 items that need improvement (missing features, bottlenecks, security gaps, scalability concerns, etc.)
-- For each item: 2-3 sentences explaining what's missing, why it matters, and potential impact
-- Paragraph 5: Detailed analysis of scalability bottlenecks and how they might affect growth
-- Paragraph 6 (optional): Recommendations for addressing gaps and timeline estimates
+- **Paragraph 4 (100-200 words):** List 3-5 items that need improvement (missing features, bottlenecks, security gaps, scalability concerns, etc.). For EACH item: provide 3-4 sentences explaining what's missing, why it matters, potential impact, and what would be needed to address it. Be detailed.
+- **Paragraph 5 (100-200 words):** Detailed analysis of scalability bottlenecks and how they might affect growth - explain specific bottlenecks, their causes, impact on scaling, and when they would become problematic. Provide examples.
+- **Paragraph 6 (100-200 words, REQUIRED):** Recommendations for addressing gaps and timeline estimates - provide specific recommendations, implementation steps, resource requirements, and realistic timelines. Be actionable.
 
-Be detailed and precise based on actual codebase analysis. Write 5-6 paragraphs total with substantial detail.
+**Be EXTREMELY detailed and precise based on actual codebase analysis. Each paragraph MUST be 100-200 words. Total section MUST be 500-1000+ words. NO SHORT PARAGRAPHS ALLOWED.**
 
 ## 8. 🔐 Security & Reliability
-Provide comprehensive security documentation in 5-6 paragraphs explaining how the system handles:
-- Paragraph 1: Authentication/authorization and env variables/secrets management - detailed implementation
-- Paragraph 2: Input validation/sanitization and error handling/monitoring - specific validation rules and patterns
-- Paragraph 3: Encryption, rate limiting, security headers, and vulnerability management - what's implemented
-- Paragraph 4: Data protection and privacy measures - how sensitive data is handled
-- Paragraph 5: Security testing and audit practices - what security measures are tested
-- Paragraph 6 (optional): Known security gaps and recommendations for improvement
+**MANDATORY: Write EXACTLY 5-6 FULL PARAGRAPHS, each 100-200 words minimum. Total section must be 500-1000+ words.**
 
-State what's missing if gaps exist. Be detailed and precise based on actual codebase. Write 5-6 paragraphs with substantial detail.
+Provide comprehensive security documentation explaining how the system handles:
+- **Paragraph 1 (100-200 words):** Authentication/authorization and env variables/secrets management - DETAILED implementation with specific code patterns, file locations, how authentication works, secret management strategies, and security measures. Explain the complete auth system.
+- **Paragraph 2 (100-200 words):** Input validation/sanitization and error handling/monitoring - SPECIFIC validation rules, patterns used, where validation happens, error handling mechanisms, and monitoring setup. Detail the validation pipeline.
+- **Paragraph 3 (100-200 words):** Encryption, rate limiting, security headers, and vulnerability management - what's implemented, how it works, where it's configured, and how vulnerabilities are managed. Explain each security measure in depth.
+- **Paragraph 4 (100-200 words):** Data protection and privacy measures - how sensitive data is handled, encryption at rest and in transit, data retention policies, and privacy controls. Detail the data protection strategy.
+- **Paragraph 5 (100-200 words):** Security testing and audit practices - what security measures are tested, testing methodologies, audit processes, and security review practices. Explain the security testing approach.
+- **Paragraph 6 (100-200 words, REQUIRED):** Known security gaps and recommendations for improvement - identify specific gaps, explain why they matter, provide recommendations, and prioritize improvements. Be honest and detailed.
+
+**State what's missing if gaps exist. Be EXTREMELY detailed and precise based on actual codebase. Each paragraph MUST be 100-200 words. Total section MUST be 500-1000+ words. NO SHORT PARAGRAPHS ALLOWED.**
 
 ## 9. 🧮 Tech Stack Summary (with purpose)
 
@@ -639,31 +674,33 @@ For EACH example, provide: brief explanation (2-3 sentences), code/commands, and
 
 ## 11. 🧩 Extensibility Map
 **YOU MUST INCLUDE THIS SECTION - IT IS MANDATORY**
+**MANDATORY: Write EXACTLY 5-6 FULL PARAGRAPHS, each 100-200 words minimum. Total section must be 500-1000+ words.**
 
-Explain where new features can be added easily in 5-6 paragraphs:
-- Paragraph 1: New AI models, endpoints, and API extensions - specific file locations and patterns
-- Paragraph 2: New UI modules, dashboards, and database models - where to add components and how
-- Paragraph 3: New authentication methods and integrations - extension points for auth and third-party services
-- Paragraph 4: Plugin system or extension architecture (if any) - how to add plugins or extensions
-- Paragraph 5: Configuration and environment variable extensions - how to add new config options
-- Paragraph 6 (optional): Testing and validation requirements for new features
+Explain where new features can be added easily:
+- **Paragraph 1 (100-200 words):** New AI models, endpoints, and API extensions - SPECIFIC file locations, code patterns, how to add new models, endpoint structure, and step-by-step extension guide. Reference actual files and functions.
+- **Paragraph 2 (100-200 words):** New UI modules, dashboards, and database models - where to add components, how to structure new modules, database schema extension patterns, and integration points. Provide detailed file paths.
+- **Paragraph 3 (100-200 words):** New authentication methods and integrations - extension points for auth, how to add new auth providers, third-party service integration patterns, and configuration requirements. Explain the auth extension architecture.
+- **Paragraph 4 (100-200 words):** Plugin system or extension architecture (if any) - how to add plugins or extensions, plugin API, extension hooks, and integration patterns. Detail the extension mechanism.
+- **Paragraph 5 (100-200 words):** Configuration and environment variable extensions - how to add new config options, where configs are stored, validation patterns, and environment setup. Explain the configuration system.
+- **Paragraph 6 (100-200 words, REQUIRED):** Testing and validation requirements for new features - testing patterns, validation requirements, test file locations, and quality assurance processes. Detail the testing approach.
 
-Use detailed explanations with actual file paths and code patterns from the repository. Write 5-6 paragraphs with substantial detail.
+**Use EXTREMELY detailed explanations with actual file paths and code patterns from the repository. Each paragraph MUST be 100-200 words. Total section MUST be 500-1000+ words. NO SHORT PARAGRAPHS ALLOWED.**
 
 **START THIS SECTION WITH: ## 11. 🧩 Extensibility Map**
 
 ## 12. 🔍 AI Commentary (Senior Engineer Review)
 **YOU MUST INCLUDE THIS SECTION - IT IS MANDATORY**
+**MANDATORY: Write EXACTLY 5-6 FULL PARAGRAPHS, each 100-200 words minimum. Total section must be 500-1000+ words.**
 
-Write a comprehensive review in 5-6 paragraphs as if a Staff engineer is reviewing the architecture for a founder:
-- Paragraph 1: Strengths and what's done well - specific technical achievements and good patterns
-- Paragraph 2: Code quality and maintainability - how maintainable the codebase is
-- Paragraph 3: Weaknesses and areas for improvement - specific technical debt and issues
-- Paragraph 4: Architecture decisions and trade-offs - analysis of key architectural choices
-- Paragraph 5: Overall readiness and recommendations - production readiness assessment
-- Paragraph 6 (optional): Long-term sustainability and technical roadmap considerations
+Write a comprehensive review as if a Staff engineer is reviewing the architecture for a founder:
+- **Paragraph 1 (100-200 words):** Strengths and what's done well - SPECIFIC technical achievements, good patterns, code examples, file locations, and why these are strengths. Provide detailed analysis with examples.
+- **Paragraph 2 (100-200 words):** Code quality and maintainability - how maintainable the codebase is, code organization, documentation quality, testing coverage, and maintainability metrics. Explain in depth.
+- **Paragraph 3 (100-200 words):** Weaknesses and areas for improvement - SPECIFIC technical debt, issues found, problematic patterns, and areas needing work. Reference actual code problems with file locations.
+- **Paragraph 4 (100-200 words):** Architecture decisions and trade-offs - analysis of key architectural choices, why decisions were made, alternatives considered, and trade-offs involved. Provide detailed reasoning.
+- **Paragraph 5 (100-200 words):** Overall readiness and recommendations - production readiness assessment, what's needed for production, timeline estimates, and specific recommendations. Be comprehensive.
+- **Paragraph 6 (100-200 words, REQUIRED):** Long-term sustainability and technical roadmap considerations - how sustainable the architecture is, long-term concerns, scalability path, and technical debt impact. Detail the long-term view.
 
-Be detailed, precise, and based on actual codebase analysis. Write 5-6 paragraphs with substantial detail.
+**Be EXTREMELY detailed, precise, and based on actual codebase analysis. Each paragraph MUST be 100-200 words. Total section MUST be 500-1000+ words. NO SHORT PARAGRAPHS ALLOWED.**
 
 **START THIS SECTION WITH: ## 12. 🔍 AI Commentary (Senior Engineer Review)**
 
@@ -683,52 +720,55 @@ Be comprehensive and detailed. List 8-12 use cases with substantial explanations
 
 ## 14. 📊 Roadmap & Growth Potential
 **YOU MUST INCLUDE THIS SECTION - IT IS MANDATORY**
+**MANDATORY: Write EXACTLY 5-6 FULL PARAGRAPHS, each 100-200 words minimum. Total section must be 500-1000+ words.**
 
-Provide comprehensive roadmap analysis in 5-6 paragraphs:
+Provide comprehensive roadmap analysis:
 
 **Short-term (1-3 months) - 2 paragraphs:**
-- Paragraph 1: List 3-5 quick fixes, polish items, and critical bug fixes (2-3 sentences each explaining why they're important)
-- Paragraph 2: Detailed explanation of immediate priorities and their business impact
+- **Paragraph 1 (100-200 words):** List 3-5 quick fixes, polish items, and critical bug fixes. For EACH item: provide 4-5 sentences explaining what it is, why it's important, how to fix it, and business impact. Be detailed about each fix.
+- **Paragraph 2 (100-200 words):** Detailed explanation of immediate priorities and their business impact - explain why these are priorities, resource requirements, timeline, and expected outcomes. Provide comprehensive analysis.
 
 **Medium-term (3-6 months) - 2 paragraphs:**
-- Paragraph 3: List 3-5 architectural improvements, new features, and integrations (2-3 sentences each with implementation considerations)
-- Paragraph 4: Analysis of how these improvements will enhance the product and technical foundation
+- **Paragraph 3 (100-200 words):** List 3-5 architectural improvements, new features, and integrations. For EACH item: provide 4-5 sentences with implementation considerations, technical requirements, complexity, and benefits. Detail each improvement.
+- **Paragraph 4 (100-200 words):** Analysis of how these improvements will enhance the product and technical foundation - explain synergies, cumulative benefits, and how they build on each other. Be comprehensive.
 
-**Long-term (6-12+ months) - 1-2 paragraphs:**
-- Paragraph 5: List 2-3 scaling strategies, observability improvements, and ecosystem integrations (2-3 sentences each)
-- Paragraph 6 (optional): Vision for long-term growth and how the architecture supports it
+**Long-term (6-12+ months) - 2 paragraphs:**
+- **Paragraph 5 (100-200 words):** List 2-3 scaling strategies, observability improvements, and ecosystem integrations. For EACH: provide 4-5 sentences explaining the strategy, implementation approach, requirements, and long-term value. Detail each strategy.
+- **Paragraph 6 (100-200 words, REQUIRED):** Vision for long-term growth and how the architecture supports it - explain the growth vision, architectural evolution, scalability path, and how current decisions enable future growth. Be detailed.
 
-Be detailed and based on actual codebase gaps and opportunities. Write 5-6 paragraphs total with substantial detail.
+**Be EXTREMELY detailed and based on actual codebase gaps and opportunities. Each paragraph MUST be 100-200 words. Total section MUST be 500-1000+ words. NO SHORT PARAGRAPHS ALLOWED.**
 
 **START THIS SECTION WITH: ## 14. 📊 Roadmap & Growth Potential**
 
 ## 15. 🧾 License & Deployment Details
 **YOU MUST INCLUDE THIS SECTION - IT IS MANDATORY**
+**MANDATORY: Write EXACTLY 5-6 FULL PARAGRAPHS, each 100-200 words minimum. Total section must be 500-1000+ words.**
 
-Provide comprehensive documentation in 5-6 paragraphs:
-- Paragraph 1: License type and deployment targets (Docker, Vercel, Render, AWS, etc.) - specific details about license and supported platforms
-- Paragraph 2: CI/CD configuration and environment variables - actual CI/CD setup, pipeline stages, required env vars
-- Paragraph 3: Infrastructure requirements and deployment process - step-by-step deployment instructions
-- Paragraph 4: Database setup and migration process - how to set up and migrate databases
-- Paragraph 5: Monitoring, logging, and observability setup - what monitoring tools are used and how
-- Paragraph 6 (optional): Scaling considerations and production deployment best practices
+Provide comprehensive documentation:
+- **Paragraph 1 (100-200 words):** License type and deployment targets (Docker, Vercel, Render, AWS, etc.) - SPECIFIC details about license terms, restrictions, supported platforms, deployment options, and platform-specific considerations. Explain each deployment target in detail.
+- **Paragraph 2 (100-200 words):** CI/CD configuration and environment variables - ACTUAL CI/CD setup, pipeline stages, workflow files, required env vars, secrets management, and automation. Reference specific config files.
+- **Paragraph 3 (100-200 words):** Infrastructure requirements and deployment process - step-by-step deployment instructions, infrastructure needs, resource requirements, and deployment procedures. Provide comprehensive deployment guide.
+- **Paragraph 4 (100-200 words):** Database setup and migration process - how to set up databases, migration commands, schema initialization, data seeding, and database configuration. Detail the complete database setup.
+- **Paragraph 5 (100-200 words):** Monitoring, logging, and observability setup - what monitoring tools are used, how logging is configured, metrics collected, alerting setup, and observability practices. Explain the complete monitoring stack.
+- **Paragraph 6 (100-200 words, REQUIRED):** Scaling considerations and production deployment best practices - scaling strategies, load balancing, auto-scaling, production optimizations, and deployment best practices. Be comprehensive.
 
-Be detailed and precise based on actual repository configuration files. Write 5-6 paragraphs with substantial detail.
+**Be EXTREMELY detailed and precise based on actual repository configuration files. Each paragraph MUST be 100-200 words. Total section MUST be 500-1000+ words. NO SHORT PARAGRAPHS ALLOWED.**
 
 **START THIS SECTION WITH: ## 15. 🧾 License & Deployment Details**
 
 ## 16. ⚡ TL;DR – Founder Summary
 **YOU MUST INCLUDE THIS SECTION - IT IS MANDATORY**
+**MANDATORY: Write EXACTLY 5-6 FULL PARAGRAPHS, each 100-200 words minimum. Total section must be 500-1000+ words.**
 
-Write a comprehensive summary in 5-6 paragraphs for a non-technical founder:
-- Paragraph 1: What this repo gives them today and how easily it fits their product - detailed value proposition
-- Paragraph 2: How close it is to production and key strengths/weaknesses - production readiness assessment
-- Paragraph 3: Why it's a strong or weak base for real use - foundation quality analysis
-- Paragraph 4: Time and resource requirements to make it production-ready - what's needed
-- Paragraph 5: Competitive advantages and unique selling points - what makes this special
-- Paragraph 6 (optional): Final recommendation and risk assessment
+Write a comprehensive summary for a non-technical founder:
+- **Paragraph 1 (100-200 words):** What this repo gives them today and how easily it fits their product - DETAILED value proposition, immediate benefits, integration ease, and use cases. Explain the value in depth.
+- **Paragraph 2 (100-200 words):** How close it is to production and key strengths/weaknesses - production readiness assessment, what works well, what needs work, and realistic timeline. Provide comprehensive assessment.
+- **Paragraph 3 (100-200 words):** Why it's a strong or weak base for real use - foundation quality analysis, architectural soundness, technical debt, and scalability foundation. Explain the foundation in detail.
+- **Paragraph 4 (100-200 words):** Time and resource requirements to make it production-ready - what's needed, resource estimates, timeline breakdown, and cost considerations. Be specific and detailed.
+- **Paragraph 5 (100-200 words):** Competitive advantages and unique selling points - what makes this special, differentiators, competitive analysis, and market positioning. Detail the advantages.
+- **Paragraph 6 (100-200 words, REQUIRED):** Final recommendation and risk assessment - overall recommendation, risk factors, mitigation strategies, and go/no-go decision factors. Provide comprehensive assessment.
 
-Be detailed, honest, and based on actual codebase analysis. Write 5-6 paragraphs with substantial detail.
+**Be EXTREMELY detailed, honest, and based on actual codebase analysis. Each paragraph MUST be 100-200 words. Total section MUST be 500-1000+ words. NO SHORT PARAGRAPHS ALLOWED.**
 
 **START THIS SECTION WITH: ## 16. ⚡ TL;DR – Founder Summary**
 
@@ -941,17 +981,24 @@ MANDATORY SECTION CHECKLIST - YOU MUST INCLUDE ALL OF THESE:
 - Section 17 (Complete System Flow Diagram) is the FINAL section and MUST be included
 
 SECTION-BY-SECTION REQUIREMENTS:
-- Each section MUST be 5-6 paragraphs (except sections 2, 6, 9, 10, 13 which use tables/lists)
-- Be detailed and comprehensive - explain key points with substantial depth
+**🚨 CRITICAL: THESE REQUIREMENTS ARE ABSOLUTELY MANDATORY - NO EXCEPTIONS 🚨**
+
+- **EACH SECTION (except tables/lists) MUST BE 5-6 PARAGRAPHS, EACH 100-200 WORDS MINIMUM**
+- **EACH SECTION MUST BE 500-1000+ WORDS TOTAL** - sections with less than 50 words are COMPLETELY UNACCEPTABLE
+- **NO SHORT PARAGRAPHS ALLOWED** - every paragraph must be substantial (100-200 words)
+- **NO SHORT SECTIONS ALLOWED** - if you write a section with less than 500 words, you have FAILED
+- Be EXTREMELY detailed and comprehensive - explain key points with substantial depth
 - Use examples extensively - provide real code examples and file paths from the actual repository
 - Provide detailed code examples and file paths when relevant - be specific and precise
-- Be thorough and explanatory - cover all aspects of each topic
+- Be thorough and explanatory - cover all aspects of each topic in depth
 - The total documentation should be comprehensive and detailed
 - Every section should be complete with substantial detail
 - Explain the "why" behind the "what" in depth - provide context and reasoning
 - Focus on precision and accuracy - base everything on actual codebase analysis, no fluff or lies
 - Include specific file paths, function names, and code patterns from the repository
 - Be honest about what exists and what doesn't - no fabricated features or capabilities
+- **VERBOSITY IS REQUIRED** - be verbose, be detailed, be exhaustive
+- **LENGTH IS NOT A CONCERN** - detail and comprehensiveness are mandatory
 
 🚨 FINAL WARNING: If you do not generate ALL 17 sections (especially 11-17), the documentation will be incomplete and unusable. You MUST include sections 1 through 17 in your response. Start with section 1 and continue through section 17 (Complete System Flow Diagram) without stopping.
 

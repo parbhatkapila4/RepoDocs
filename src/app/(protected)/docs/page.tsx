@@ -1751,16 +1751,26 @@ function DocsPage() {
                   <Input
                     value={`${typeof window !== "undefined" ? window.location.origin : ""}/docs/${shareToken}`}
                     readOnly
-                    className="bg-white/5 border-white/20 text-white text-sm"
+                    className="bg-white/5 border-white/20 text-white text-xs font-mono"
+                    style={{
+                      wordBreak: "break-all",
+                      overflowWrap: "break-word",
+                    }}
+                    title={`${typeof window !== "undefined" ? window.location.origin : ""}/docs/${shareToken}`}
                   />
                   <Button
                     onClick={handleCopyShareLink}
                     size="sm"
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    className="bg-blue-600 hover:bg-blue-700 text-white shrink-0"
                   >
                     <Copy className="h-4 w-4" />
                   </Button>
                 </div>
+                <p className="text-xs text-white/50 break-all">
+                  Full URL:{" "}
+                  {typeof window !== "undefined" ? window.location.origin : ""}
+                  /docs/{shareToken}
+                </p>
               </div>
 
               <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">

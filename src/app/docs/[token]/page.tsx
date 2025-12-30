@@ -15,14 +15,20 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 interface PublicDocsPageProps {
-  params: {
+  params: Promise<{
     token: string;
-  };
+  }>;
 }
 
 export default async function PublicDocsPage({ params }: PublicDocsPageProps) {
+  const { token } = await params;
+  const decodedToken = decodeURIComponent(token);
+
+  console.log("Fetching public docs with token:", decodedToken);
+  console.log("Token length:", decodedToken.length);
+
   try {
-    const share = await getPublicDocs(params.token);
+    const share = await getPublicDocs(decodedToken);
 
     if (!share) {
       return (
@@ -238,6 +244,7 @@ export default async function PublicDocsPage({ params }: PublicDocsPageProps) {
     );
   } catch (error) {
     console.error("Error fetching public docs:", error);
+    console.error("Token received:", decodedToken);
 
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
@@ -251,6 +258,11 @@ export default async function PublicDocsPage({ params }: PublicDocsPageProps) {
               <p className="text-white/50">
                 This documentation link is invalid or has expired.
               </p>
+              {process.env.NODE_ENV === "development" && (
+                <p className="text-white/30 text-xs mt-2">
+                  Token: {decodedToken}
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>

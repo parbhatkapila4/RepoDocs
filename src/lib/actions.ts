@@ -1686,6 +1686,9 @@ export async function createDocsShare(projectId: string) {
 
 export async function getPublicDocs(shareToken: string) {
   try {
+    console.log("getPublicDocs called with token:", shareToken);
+    console.log("Token length:", shareToken?.length);
+
     const share = await prisma.docsShare.findUnique({
       where: {
         shareToken: shareToken,
@@ -1706,9 +1709,24 @@ export async function getPublicDocs(shareToken: string) {
     });
 
     if (!share) {
+      console.log("No share found for token:", shareToken);
+      const allShares = await prisma.docsShare.findMany({
+        where: {
+          shareToken: {
+            startsWith: shareToken.substring(0, 10),
+          },
+        },
+        select: {
+          shareToken: true,
+          isActive: true,
+        },
+        take: 5,
+      });
+      console.log("Similar tokens found:", allShares);
       return null;
     }
 
+    console.log("Share found successfully");
     return share;
   } catch (error) {
     console.error("Error fetching public docs:", error);
