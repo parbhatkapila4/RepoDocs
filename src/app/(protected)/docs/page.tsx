@@ -702,42 +702,184 @@ function DocsPage() {
     if (!docsData?.content) return;
 
     try {
-      // Dynamic import to reduce bundle size
       const html2canvas = (await import("html2canvas")).default;
       const { jsPDF } = await import("jspdf");
 
-      // Create a temporary div with the markdown content
-      const tempDiv = document.createElement("div");
-      tempDiv.style.width = "210mm"; // A4 width
-      tempDiv.style.padding = "20mm";
-      tempDiv.style.fontFamily = "Arial, sans-serif";
-      tempDiv.style.fontSize = "12pt";
-      tempDiv.style.color = "#000";
-      tempDiv.style.backgroundColor = "#fff";
-      tempDiv.style.lineHeight = "1.6";
+      const iframe = document.createElement("iframe");
+      iframe.style.position = "absolute";
+      iframe.style.left = "-9999px";
+      iframe.style.width = "794px";
+      iframe.style.height = "1123px";
+      iframe.style.border = "none";
+      document.body.appendChild(iframe);
 
-      // Convert markdown to HTML using ReactMarkdown's rendering
-      // For simplicity, we'll use a basic markdown-to-HTML conversion
-      const markdownContent = docsData.content;
-      const htmlContent = markdownContent
-        .replace(/^# (.*$)/gim, "<h1>$1</h1>")
-        .replace(/^## (.*$)/gim, "<h2>$1</h2>")
-        .replace(/^### (.*$)/gim, "<h3>$1</h3>")
-        .replace(/^\*\*(.*)\*\*/gim, "<strong>$1</strong>")
-        .replace(/^\*(.*)\*/gim, "<em>$1</em>")
-        .replace(/^`(.*)`/gim, "<code>$1</code>")
-        .replace(/\n/g, "<br>");
+      const iframeDoc =
+        iframe.contentDocument || iframe.contentWindow?.document;
+      if (!iframeDoc) {
+        throw new Error("Could not access iframe document");
+      }
 
-      tempDiv.innerHTML = htmlContent;
-      document.body.appendChild(tempDiv);
+      const markdownToHtml = (md: string): string => {
+        let html = md
 
-      const canvas = await html2canvas(tempDiv, {
+          .replace(
+            /^#### (.*$)/gim,
+            '<h4 style="font-size: 14pt; font-weight: bold; margin: 10pt 0 6pt 0; color: rgb(0, 0, 0);">$1</h4>'
+          )
+          .replace(
+            /^### (.*$)/gim,
+            '<h3 style="font-size: 16pt; font-weight: bold; margin: 12pt 0 8pt 0; color: rgb(0, 0, 0);">$1</h3>'
+          )
+          .replace(
+            /^## (.*$)/gim,
+            '<h2 style="font-size: 20pt; font-weight: bold; margin: 14pt 0 10pt 0; color: rgb(0, 0, 0);">$1</h2>'
+          )
+          .replace(
+            /^# (.*$)/gim,
+            '<h1 style="font-size: 24pt; font-weight: bold; margin: 16pt 0 12pt 0; border-bottom: 1px solid rgb(204, 204, 204); padding-bottom: 8pt; color: rgb(0, 0, 0);">$1</h1>'
+          )
+
+          .replace(/```(\w+)?\n([\s\S]*?)```/gim, (match, lang, code) => {
+            return `<pre style="background-color: rgb(245, 245, 245); padding: 12pt; border-radius: 4pt; font-family: monospace; font-size: 10pt; border: 1px solid rgb(221, 221, 221); margin: 8pt 0; overflow-x: auto;"><code style="color: rgb(0, 0, 0);">${code.trim()}</code></pre>`;
+          })
+
+          .replace(
+            /`([^`\n]+)`/gim,
+            '<code style="background-color: rgb(245, 245, 245); padding: 2pt 4pt; border-radius: 3pt; font-family: monospace; font-size: 11pt; color: rgb(0, 0, 0);">$1</code>'
+          )
+
+          .replace(
+            /\*\*(.*?)\*\*/gim,
+            '<strong style="font-weight: bold;">$1</strong>'
+          )
+
+          .replace(
+            /(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/gim,
+            '<em style="font-style: italic;">$1</em>'
+          )
+          // Links
+          .replace(
+            /\[([^\]]+)\]\(([^)]+)\)/gim,
+            '<a href="$2" style="color: rgb(0, 102, 204); text-decoration: underline;">$1</a>'
+          )
+
+          .replace(
+            /^---$/gim,
+            '<hr style="border: none; border-top: 1px solid rgb(204, 204, 204); margin: 16pt 0;">'
+          )
+
+          .replace(
+            /^> (.*$)/gim,
+            '<blockquote style="border-left: 4px solid rgb(204, 204, 204); padding-left: 12pt; margin: 8pt 0; color: rgb(102, 102, 102); font-style: italic;">$1</blockquote>'
+          )
+
+          .replace(
+            /^[\*\-\+] (.+)$/gim,
+            '<li style="margin: 4pt 0; color: rgb(0, 0, 0);">$1</li>'
+          )
+
+          .replace(
+            /^\d+\. (.+)$/gim,
+            '<li style="margin: 4pt 0; color: rgb(0, 0, 0);">$1</li>'
+          )
+
+          .replace(
+            /\n\n+/gim,
+            '</p><p style="margin: 8pt 0; color: rgb(0, 0, 0);">'
+          )
+          .replace(/\n/gim, "<br>");
+
+        html = html.replace(/(<li[^>]*>.*?<\/li>)/gim, (match, content) => {
+          if (!content.includes("<ul") && !content.includes("<ol")) {
+            return `<ul style="margin: 8pt 0; padding-left: 24pt; color: rgb(0, 0, 0);">${content}</ul>`;
+          }
+          return content;
+        });
+
+        if (!html.trim().startsWith("<")) {
+          html = `<p style="margin: 8pt 0; color: rgb(0, 0, 0);">${html}</p>`;
+        }
+
+        return html;
+      };
+
+      const htmlContent = markdownToHtml(docsData.content);
+
+      iframeDoc.open();
+      iframeDoc.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            body {
+              width: 794px;
+              padding: 40px;
+              font-family: Arial, Helvetica, sans-serif;
+              font-size: 12pt;
+              line-height: 1.6;
+              color: rgb(0, 0, 0);
+              background-color: rgb(255, 255, 255);
+            }
+            h1, h2, h3, h4, h5, h6 {
+              color: rgb(0, 0, 0);
+            }
+            p {
+              color: rgb(0, 0, 0);
+              margin: 8pt 0;
+            }
+            code {
+              color: rgb(0, 0, 0);
+            }
+            pre {
+              color: rgb(0, 0, 0);
+            }
+            a {
+              color: rgb(0, 102, 204);
+            }
+            li {
+              color: rgb(0, 0, 0);
+            }
+            table {
+              border-collapse: collapse;
+              width: 100%;
+              margin: 8pt 0;
+            }
+            th, td {
+              border: 1px solid rgb(221, 221, 221);
+              padding: 6pt;
+              color: rgb(0, 0, 0);
+            }
+            th {
+              background-color: rgb(245, 245, 245);
+              font-weight: bold;
+            }
+          </style>
+        </head>
+        <body>
+          ${htmlContent}
+        </body>
+        </html>
+      `);
+      iframeDoc.close();
+
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      const canvas = await html2canvas(iframeDoc.body, {
         scale: 2,
         useCORS: true,
         logging: false,
+        backgroundColor: "#ffffff",
+        width: 794,
+        height: iframeDoc.body.scrollHeight,
       });
 
-      document.body.removeChild(tempDiv);
+      document.body.removeChild(iframe);
 
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF({
@@ -746,8 +888,8 @@ function DocsPage() {
         format: "a4",
       });
 
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 295; // A4 height in mm
+      const imgWidth = 210;
+      const pageHeight = 295;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       let heightLeft = imgHeight;
       let position = 0;
@@ -776,11 +918,9 @@ function DocsPage() {
     if (!docsData?.content) return;
 
     try {
-      // Dynamic import to reduce bundle size
       const { Document, Packer, Paragraph, TextRun, HeadingLevel } =
         await import("docx");
 
-      // Convert markdown to plain text with basic formatting
       const paragraphs: any[] = [];
       const lines = docsData.content.split("\n");
 
