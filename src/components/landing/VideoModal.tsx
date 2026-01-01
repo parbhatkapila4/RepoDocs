@@ -1,5 +1,5 @@
 "use client";
-import  { useRef, useEffect, useState, useCallback } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import { X, Play } from "lucide-react";
 
 interface VideoModalProps {
@@ -32,14 +32,17 @@ export function VideoModal({ videoSrc, isOpen, onClose }: VideoModalProps) {
   useEffect(() => {
     if (isOpen) {
       setIsVideoLoaded(false);
-      
-      
+
       const timer = setTimeout(() => {
         if (videoRef.current) {
           videoRef.current.load();
+
+          videoRef.current.play().catch((error) => {
+            console.log("Auto-play prevented by browser:", error);
+          });
         }
       }, 100);
-      
+
       return () => clearTimeout(timer);
     } else {
       setIsVideoLoaded(false);
@@ -50,26 +53,24 @@ export function VideoModal({ videoSrc, isOpen, onClose }: VideoModalProps) {
     }
   }, [isOpen, videoSrc]);
 
-  
   useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = 'hidden';
-      
-      
+      document.body.style.overflow = "hidden";
+
       const handleEsc = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') {
+        if (e.key === "Escape") {
           closeVideoModal();
         }
       };
-      
-      document.addEventListener('keydown', handleEsc);
-      
+
+      document.addEventListener("keydown", handleEsc);
+
       return () => {
-        document.body.style.overflow = 'unset';
-        document.removeEventListener('keydown', handleEsc);
+        document.body.style.overflow = "unset";
+        document.removeEventListener("keydown", handleEsc);
       };
     } else {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
     }
   }, [isOpen, closeVideoModal]);
 
@@ -78,7 +79,10 @@ export function VideoModal({ videoSrc, isOpen, onClose }: VideoModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-9999 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-sm" onClick={closeVideoModal}>
+    <div
+      className="fixed inset-0 z-9999 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-sm"
+      onClick={closeVideoModal}
+    >
       <div
         className="relative flex w-full max-w-4xl items-center justify-center bg-black/95 rounded-2xl overflow-hidden border border-white/20 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
@@ -92,7 +96,7 @@ export function VideoModal({ videoSrc, isOpen, onClose }: VideoModalProps) {
           >
             <X className="w-5 h-5" />
           </button>
-          
+
           {!isVideoLoaded && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/90 z-20 rounded-2xl">
               <button
@@ -110,6 +114,7 @@ export function VideoModal({ videoSrc, isOpen, onClose }: VideoModalProps) {
             ref={videoRef}
             src={videoSrc}
             controls
+            autoPlay
             preload="metadata"
             playsInline
             className="mx-auto w-full h-auto max-h-[80vh] rounded-2xl bg-black"
@@ -118,9 +123,21 @@ export function VideoModal({ videoSrc, isOpen, onClose }: VideoModalProps) {
             }}
             onCanPlay={() => {
               setIsVideoLoaded(true);
+
+              if (videoRef.current && isOpen) {
+                videoRef.current.play().catch((error) => {
+                  console.log("Auto-play prevented by browser:", error);
+                });
+              }
             }}
             onCanPlayThrough={() => {
               setIsVideoLoaded(true);
+
+              if (videoRef.current && isOpen) {
+                videoRef.current.play().catch((error) => {
+                  console.log("Auto-play prevented by browser:", error);
+                });
+              }
             }}
             onPlay={() => {
               setIsVideoLoaded(true);
@@ -135,7 +152,7 @@ export function VideoModal({ videoSrc, isOpen, onClose }: VideoModalProps) {
                 networkState: target.networkState,
                 readyState: target.readyState,
                 src: target.src,
-                currentSrc: target.currentSrc
+                currentSrc: target.currentSrc,
               });
               setIsVideoLoaded(true);
             }}
@@ -143,7 +160,11 @@ export function VideoModal({ videoSrc, isOpen, onClose }: VideoModalProps) {
               setIsVideoLoaded(false);
             }}
             onLoadedMetadata={() => {
-              
+              if (videoRef.current && isOpen) {
+                videoRef.current.play().catch((error) => {
+                  console.log("Auto-play prevented by browser:", error);
+                });
+              }
             }}
           >
             <source src={videoSrc} type="video/mp4" />

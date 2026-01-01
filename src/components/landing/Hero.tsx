@@ -205,7 +205,7 @@ export default function Hero() {
       </div>
 
       <VideoModal
-        videoSrc="/Repodoc-demo.mp4"
+        videoSrc="/Repodoc-AI-Demo.mp4"
         isOpen={isVideoModalOpen}
         onClose={() => setIsVideoModalOpen(false)}
       />
