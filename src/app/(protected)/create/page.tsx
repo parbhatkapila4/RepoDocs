@@ -205,7 +205,7 @@ function CreatePage() {
       }
 
       toast.success("Project created successfully!", {
-        description: `${data.name} has been indexed and is ready to use!`,
+        description: `${data.name} is being indexed in the background. It will be ready shortly!`,
       });
 
       await new Promise((resolve) => setTimeout(resolve, 500));

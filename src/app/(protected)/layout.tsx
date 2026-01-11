@@ -9,6 +9,7 @@ import {
 import AppSidebar from "@/components/AppSidebar";
 import UserProvider from "@/components/UserProvider";
 import { ProjectsProvider } from "@/context/ProjectsContext";
+import RouteTransitionLoader from "@/components/RouteTransitionLoader";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -24,6 +25,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               {children}
             </SidebarInset>
           </div>
+          <RouteTransitionLoader />
         </SidebarProvider>
       </ProjectsProvider>
     </UserProvider>

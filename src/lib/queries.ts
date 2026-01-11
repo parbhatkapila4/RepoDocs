@@ -144,21 +144,27 @@ export async function createProjectWithAuth(
       },
     });
 
-    try {
-      await indexGithubRepository(project.id, githubUrl, githubToken);
-    } catch (indexingError) {
-      const errorMessage =
-        indexingError instanceof Error
-          ? indexingError.message
-          : String(indexingError);
-      if (
-        errorMessage.includes("authentication") ||
-        errorMessage.includes("rate limit") ||
-        errorMessage.includes("forbidden")
-      ) {
-        console.error("Critical indexing error:", errorMessage);
+    indexGithubRepository(project.id, githubUrl, githubToken).catch(
+      (indexingError) => {
+        const errorMessage =
+          indexingError instanceof Error
+            ? indexingError.message
+            : String(indexingError);
+        if (
+          errorMessage.includes("authentication") ||
+          errorMessage.includes("rate limit") ||
+          errorMessage.includes("forbidden")
+        ) {
+          console.error("Critical indexing error:", errorMessage);
+        } else {
+          console.error(
+            "Indexing error for project:",
+            project.id,
+            errorMessage
+          );
+        }
       }
-    }
+    );
 
     return project;
   } catch (error) {

@@ -11,14 +11,8 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Search as SearchIcon,
@@ -78,13 +72,9 @@ export default function SearchPage() {
   const router = useRouter();
   const { loadProjects } = useProjectsContext();
   const [searchQuery, setSearchQuery] = useState("");
-  const [backendLanguage, setBackendLanguage] = useState<string | undefined>(
-    undefined
-  );
-  const [frontendLanguage, setFrontendLanguage] = useState<string | undefined>(
-    undefined
-  );
-  const [database, setDatabase] = useState<string | undefined>(undefined);
+  const [backendLanguages, setBackendLanguages] = useState<string[]>([]);
+  const [frontendLanguages, setFrontendLanguages] = useState<string[]>([]);
+  const [databases, setDatabases] = useState<string[]>([]);
   const [results, setResults] = useState<GitHubSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -131,9 +121,11 @@ export default function SearchPage() {
         },
         body: JSON.stringify({
           query: searchQuery,
-          backendLanguage: backendLanguage || undefined,
-          frontendLanguage: frontendLanguage || undefined,
-          database: database || undefined,
+          backendLanguages:
+            backendLanguages.length > 0 ? backendLanguages : undefined,
+          frontendLanguages:
+            frontendLanguages.length > 0 ? frontendLanguages : undefined,
+          databases: databases.length > 0 ? databases : undefined,
           page: page,
           perPage: 10,
         }),
@@ -193,9 +185,9 @@ export default function SearchPage() {
 
   const handleReset = () => {
     setSearchQuery("");
-    setBackendLanguage(undefined);
-    setFrontendLanguage(undefined);
-    setDatabase(undefined);
+    setBackendLanguages([]);
+    setFrontendLanguages([]);
+    setDatabases([]);
     setResults([]);
     setHasSearched(false);
     setTotalCount(0);
@@ -279,25 +271,15 @@ export default function SearchPage() {
                   <Server className="w-4 h-4" />
                   Backend Language
                 </label>
-                <Select
-                  value={backendLanguage}
-                  onValueChange={(value) => setBackendLanguage(value)}
-                >
-                  <SelectTrigger className="bg-gray-900/50 border-gray-700 text-white">
-                    <SelectValue placeholder="Any Backend" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-800 border-gray-700">
-                    {BACKEND_LANGUAGES.map((lang) => (
-                      <SelectItem
-                        key={lang.value}
-                        value={lang.value}
-                        className="text-white hover:bg-gray-700 focus:bg-gray-700"
-                      >
-                        {lang.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <MultiSelect
+                  options={BACKEND_LANGUAGES}
+                  selected={backendLanguages}
+                  onChange={setBackendLanguages}
+                  placeholder="Any Backend"
+                  searchPlaceholder="Search or type language..."
+                  emptyMessage="No backend languages found."
+                  allowCustom={true}
+                />
               </div>
 
               <div className="space-y-2">
@@ -305,25 +287,15 @@ export default function SearchPage() {
                   <Globe className="w-4 h-4" />
                   Frontend Language
                 </label>
-                <Select
-                  value={frontendLanguage}
-                  onValueChange={(value) => setFrontendLanguage(value)}
-                >
-                  <SelectTrigger className="bg-gray-900/50 border-gray-700 text-white">
-                    <SelectValue placeholder="Any Frontend" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-800 border-gray-700">
-                    {FRONTEND_LANGUAGES.map((lang) => (
-                      <SelectItem
-                        key={lang.value}
-                        value={lang.value}
-                        className="text-white hover:bg-gray-700 focus:bg-gray-700"
-                      >
-                        {lang.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <MultiSelect
+                  options={FRONTEND_LANGUAGES}
+                  selected={frontendLanguages}
+                  onChange={setFrontendLanguages}
+                  placeholder="Any Frontend"
+                  searchPlaceholder="Search or type language..."
+                  emptyMessage="No frontend languages found."
+                  allowCustom={true}
+                />
               </div>
 
               <div className="space-y-2">
@@ -331,25 +303,15 @@ export default function SearchPage() {
                   <Database className="w-4 h-4" />
                   Database
                 </label>
-                <Select
-                  value={database}
-                  onValueChange={(value) => setDatabase(value)}
-                >
-                  <SelectTrigger className="bg-gray-900/50 border-gray-700 text-white">
-                    <SelectValue placeholder="Any Database" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-800 border-gray-700">
-                    {DATABASES.map((db) => (
-                      <SelectItem
-                        key={db.value}
-                        value={db.value}
-                        className="text-white hover:bg-gray-700 focus:bg-gray-700"
-                      >
-                        {db.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <MultiSelect
+                  options={DATABASES}
+                  selected={databases}
+                  onChange={setDatabases}
+                  placeholder="Any Database"
+                  searchPlaceholder="Search or type database..."
+                  emptyMessage="No databases found."
+                  allowCustom={true}
+                />
               </div>
             </div>
 

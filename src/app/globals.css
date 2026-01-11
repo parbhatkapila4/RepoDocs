@@ -547,3 +547,35 @@
   background: rgba(139, 92, 246, 0.4);
   color: white;
 }
+
+
+.smooth-scroll-docs {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scroll-padding-top: 1rem;
+
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  backface-visibility: hidden;
+
+  contain: layout style paint;
+
+  will-change: scroll-position;
+}
+
+
+.smooth-scroll-docs .prose {
+
+  contain: layout style paint;
+}
+
+
+.smooth-scroll-docs .prose * {
+  will-change: auto;
+}
+
+
+.smooth-scroll-docs img {
+  content-visibility: auto;
+}

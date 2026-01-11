@@ -1399,7 +1399,7 @@ function DocsPage() {
             <div className="h-full">
               <div className="h-full rounded-lg shadow-sm backdrop-blur-sm overflow-hidden">
                 <div className="h-full overflow-hidden">
-                  <ScrollArea className="h-full overflow-x-hidden">
+                  <div className="h-full overflow-y-auto overflow-x-hidden smooth-scroll-docs">
                     <div className="p-2 sm:p-4 md:p-8 mobile-card-content">
                       <div className="prose prose-lg max-w-none text-white mobile-no-truncate mobile-prose">
                         <ReactMarkdown
@@ -1505,7 +1505,7 @@ function DocsPage() {
                         </ReactMarkdown>
                       </div>
                     </div>
-                  </ScrollArea>
+                  </div>
                 </div>
               </div>
 

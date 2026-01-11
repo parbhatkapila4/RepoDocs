@@ -4,9 +4,9 @@ import { Octokit } from "octokit";
 
 export interface SearchFilters {
   query: string;
-  backendLanguage?: string;
-  frontendLanguage?: string;
-  database?: string;
+  backendLanguages?: string[];
+  frontendLanguages?: string[];
+  databases?: string[];
   page?: number;
   perPage?: number;
 }
@@ -39,9 +39,9 @@ export async function POST(request: NextRequest) {
     const body: SearchFilters = await request.json();
     const {
       query,
-      backendLanguage,
-      frontendLanguage,
-      database,
+      backendLanguages = [],
+      frontendLanguages = [],
+      databases = [],
       page = 1,
       perPage = 10,
     } = body;
@@ -57,16 +57,29 @@ export async function POST(request: NextRequest) {
 
     const languageSet = new Set<string>();
 
-    if (backendLanguage) {
-      languageSet.add(backendLanguage);
+    if (backendLanguages && backendLanguages.length > 0) {
+      backendLanguages.forEach((lang) => {
+        if (lang && lang.trim()) {
+          languageSet.add(lang.trim());
+        }
+      });
     }
 
-    if (frontendLanguage) {
-      languageSet.add(frontendLanguage);
+    if (frontendLanguages && frontendLanguages.length > 0) {
+      frontendLanguages.forEach((lang) => {
+        if (lang && lang.trim()) {
+          languageSet.add(lang.trim());
+        }
+      });
     }
 
-    if (database) {
-      searchQuery += ` ${database}`;
+    if (databases && databases.length > 0) {
+      const dbTerms = databases
+        .filter((db) => db && db.trim())
+        .map((db) => db.trim());
+      if (dbTerms.length > 0) {
+        searchQuery += ` ${dbTerms.join(" OR ")}`;
+      }
     }
 
     const frontendTopics: Record<string, string> = {
@@ -81,8 +94,12 @@ export async function POST(request: NextRequest) {
     );
 
     const topicFilters: string[] = [];
-    if (frontendLanguage && frontendTopics[frontendLanguage]) {
-      topicFilters.push(`topic:${frontendTopics[frontendLanguage]}`);
+    if (frontendLanguages && frontendLanguages.length > 0) {
+      frontendLanguages.forEach((lang) => {
+        if (lang && frontendTopics[lang]) {
+          topicFilters.push(`topic:${frontendTopics[lang]}`);
+        }
+      });
     }
 
     if (languageFilters.length > 0 || topicFilters.length > 0) {
