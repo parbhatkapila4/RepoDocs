@@ -30,12 +30,22 @@
   },
   "include": [
     "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
+    "src/**/*.ts",
+    "src/**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    ".next",
+    "**/node_modules/**",
+    "**/.next/**",
+    "src/app/api/auth/**",
+    "src/app/api/auth/**/*",
+    "src/app/login/**",
+    "src/app/login/**/*",
+    "src/app/signup/**",
+    "src/app/signup/**/*",
+    "src/lib/auth.ts"
   ]
 }

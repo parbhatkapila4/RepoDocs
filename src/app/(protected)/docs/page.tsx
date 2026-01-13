@@ -154,12 +154,113 @@ function DocsPage() {
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const projectsRef = useRef(projects);
   const [repositoryInfo, setRepositoryInfo] = useState<any>(null);
+  const headingRef = useRef<HTMLDivElement>(null);
+  const disclaimerRef = useRef<HTMLDivElement>(null);
+  const [showDisclaimer, setShowDisclaimer] = useState(true);
+
+  const selectedProject = projects.find((p) => p.id === selectedProjectId);
 
   useEffect(() => {
     projectsRef.current = projects;
   }, [projects]);
 
-  const selectedProject = projects.find((p) => p.id === selectedProjectId);
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+
+    const checkCollision = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        if (!headingRef.current || !disclaimerRef.current) {
+          setShowDisclaimer(true);
+          return;
+        }
+
+        const headingRect = headingRef.current.getBoundingClientRect();
+        const disclaimerRect = disclaimerRef.current.getBoundingClientRect();
+
+        const horizontalOverlap =
+          disclaimerRect.left < headingRect.right &&
+          disclaimerRect.right > headingRect.left;
+
+        const verticalOverlap =
+          disclaimerRect.top < headingRect.bottom &&
+          disclaimerRect.bottom > headingRect.top;
+
+        const isTooClose =
+          horizontalOverlap &&
+          Math.abs(disclaimerRect.left - headingRect.right) < 30;
+
+        const shouldHide = (horizontalOverlap && verticalOverlap) || isTooClose;
+        setShowDisclaimer(!shouldHide);
+      }, 100);
+    };
+
+    const initialTimeout = setTimeout(checkCollision, 200);
+
+    window.addEventListener("resize", checkCollision, { passive: true });
+    window.addEventListener("scroll", checkCollision, { passive: true });
+
+    const resizeObserver = new ResizeObserver(checkCollision);
+    if (headingRef.current) resizeObserver.observe(headingRef.current);
+    if (disclaimerRef.current) resizeObserver.observe(disclaimerRef.current);
+
+    return () => {
+      clearTimeout(timeoutId);
+      clearTimeout(initialTimeout);
+      window.removeEventListener("resize", checkCollision);
+      window.removeEventListener("scroll", checkCollision);
+      resizeObserver.disconnect();
+    };
+  }, [docsData, selectedProject]);
+
+  const parseDocsHeading = useCallback(
+    (content: string) => {
+      const lines = content.split("\n");
+      let headingText = "";
+      let badges: Array<{ text: string; color: string; icon?: string }> = [];
+      let contentWithoutHeading = content;
+      let firstH1Index = -1;
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (line.startsWith("# ") && firstH1Index === -1) {
+          headingText = line.substring(2).trim();
+          firstH1Index = i;
+          let endIdx = i + 1;
+          for (let j = i + 1; j < Math.min(i + 15, lines.length); j++) {
+            if (
+              lines[j].trim().startsWith("![") &&
+              lines[j].includes("shields.io")
+            ) {
+              const badgeMatch = lines[j].match(/badge\/([^-]+)-([^)]+)\)/);
+              if (badgeMatch) {
+                const badgeText = badgeMatch[1]
+                  .replace(/_/g, " ")
+                  .replace(/🏷️\s*/, "")
+                  .trim();
+                const badgeColor = badgeMatch[2];
+                if (badgeText && badgeColor) {
+                  badges.push({ text: badgeText, color: badgeColor });
+                }
+              }
+              endIdx = j + 1;
+            } else if (lines[j].trim() && !lines[j].trim().startsWith("!")) {
+              break;
+            }
+          }
+          contentWithoutHeading = lines.slice(endIdx).join("\n");
+          break;
+        }
+      }
+
+      if (!headingText && selectedProject) {
+        headingText = `${selectedProject.name} - Comprehensive Technical Documentation`;
+      }
+
+      return { headingText, badges, contentWithoutHeading };
+    },
+    [selectedProject]
+  );
 
   const parseDocsMetadata = useCallback(
     (content: string, repositoryInfo?: any): DocsMetadata => {
@@ -757,7 +858,7 @@ function DocsPage() {
             /(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/gim,
             '<em style="font-style: italic;">$1</em>'
           )
-          // Links
+
           .replace(
             /\[([^\]]+)\]\(([^)]+)\)/gim,
             '<a href="$2" style="color: rgb(0, 102, 204); text-decoration: underline;">$1</a>'
@@ -1130,7 +1231,10 @@ function DocsPage() {
   return (
     <div className="h-full flex flex-col mobile-layout">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 mt-2 sm:mt-4 px-2 sm:px-4 gap-3 sm:gap-4">
-        <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
+        <div
+          ref={headingRef}
+          className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0"
+        >
           <div className="p-2 sm:p-3 bg-white/10 border border-white/20 rounded-xl shrink-0">
             <BookOpen className="h-5 w-5 sm:h-6 sm:w-6 text-white/70" />
           </div>
@@ -1144,7 +1248,12 @@ function DocsPage() {
           </div>
         </div>
 
-        <div className="hidden lg:flex items-center justify-start flex-1 -ml-16">
+        <div
+          ref={disclaimerRef}
+          className={`hidden show-disclaimer items-center justify-start flex-1 -ml-16 ${
+            !showDisclaimer ? "invisible" : ""
+          }`}
+        >
           <p className="text-white/40 text-xs italic text-center animate-pulse">
             ✨ This may take time because we focus on quality documentation
           </p>
@@ -1260,77 +1369,19 @@ function DocsPage() {
 
       {isRegenerating && (
         <div className="mx-2 sm:mx-4 mb-4 sm:mb-6">
-          <div className="bg-white/10 border border-white/20 rounded-lg px-3 sm:px-4 py-2 sm:py-3 flex items-center gap-2 sm:gap-3">
+          <div className="bg-white/10 border border-white/20 rounded-lg px-3 sm:px-4 py-2 sm:py-3 flex items-center gap-2 sm:gap-3 flex-wrap">
             <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 text-white animate-spin shrink-0" />
-            <span className="text-white text-sm sm:text-base mobile-no-truncate">
+            <span className="text-white text-sm sm:text-base font-medium mobile-no-truncate">
               Regenerating documentation...
             </span>
-          </div>
-        </div>
-      )}
-
-      {metadata && (
-        <div className="px-2 sm:px-4 mb-4 sm:mb-6">
-          <div className="flex flex-wrap gap-1 sm:gap-2 md:gap-3">
-            <div className="flex items-center bg-gray-600 rounded-sm overflow-hidden shadow-sm">
-              <div className="flex items-center gap-1 px-1.5 sm:gap-1.5 sm:px-2 py-1 bg-gray-600">
-                <Star className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white shrink-0" />
-                <span className="text-white text-xs font-medium mobile-no-truncate">
-                  Stars
-                </span>
-              </div>
-              <div className="px-1.5 sm:px-2 py-1 bg-gray-500">
-                <span className="text-white text-xs font-medium mobile-no-truncate">
-                  {metadata.stars}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center bg-gray-600 rounded-sm overflow-hidden shadow-sm">
-              <div className="flex items-center gap-1 px-1.5 sm:px-2 py-1 bg-gray-600">
-                <GitFork className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white shrink-0" />
-                <span className="text-white text-xs font-medium mobile-no-truncate">
-                  Forks
-                </span>
-              </div>
-              <div className="px-1.5 sm:px-2 py-1 bg-gray-500">
-                <span className="text-white text-xs font-medium mobile-no-truncate">
-                  {metadata.forks}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center bg-gray-600 rounded-sm overflow-hidden shadow-sm">
-              <div className="px-1.5 sm:px-2 py-1 bg-gray-600">
-                <span className="text-white text-xs font-medium mobile-no-truncate">
-                  Language
-                </span>
-              </div>
-              <div className="px-1.5 sm:px-2 py-1 bg-blue-500">
-                <span className="text-white text-xs font-medium mobile-no-truncate">
-                  {metadata.language}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center bg-gray-600 rounded-sm overflow-hidden shadow-sm">
-              <div className="px-1.5 sm:px-2 py-1 bg-gray-600">
-                <span className="text-white text-xs font-medium mobile-no-truncate">
-                  License
-                </span>
-              </div>
-              <div className="px-1.5 sm:px-2 py-1 bg-green-500">
-                <span className="text-white text-xs font-medium mobile-no-truncate">
-                  {metadata.license}
-                </span>
-              </div>
+            <div className="flex items-center gap-1.5 ml-2 pl-3 border-l border-white/20">
+              <span className="text-orange-400 text-xs">✨</span>
+              <span className="text-white/50 text-xs italic">
+                This may take time because we focus on quality documentation and
+                keep detailing in mind
+              </span>
             </div>
           </div>
-          {metadata.description && (
-            <p className="text-white/60 mt-2 sm:mt-3 text-xs sm:text-sm max-w-3xl mobile-no-truncate">
-              {metadata.description}
-            </p>
-          )}
         </div>
       )}
 
@@ -1402,107 +1453,393 @@ function DocsPage() {
                   <div className="h-full overflow-y-auto overflow-x-hidden smooth-scroll-docs">
                     <div className="p-2 sm:p-4 md:p-8 mobile-card-content">
                       <div className="prose prose-lg max-w-none text-white mobile-no-truncate mobile-prose">
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          components={{
-                            h1: ({ children }) => (
-                              <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-white mb-3 sm:mb-4 md:mb-6 border-b border-white/20 pb-1 sm:pb-2 md:pb-3 mobile-no-truncate">
-                                {children}
-                              </h1>
-                            ),
-                            h2: ({ children }) => (
-                              <h2 className="text-base sm:text-lg md:text-xl lg:text-2xl font-semibold text-white mb-2 sm:mb-3 md:mb-4 mt-4 sm:mt-6 md:mt-8 mobile-no-truncate">
-                                {children}
-                              </h2>
-                            ),
-                            h3: ({ children }) => (
-                              <h3 className="text-sm sm:text-base md:text-lg lg:text-xl font-semibold text-white mb-2 sm:mb-3 md:mb-3 mt-3 sm:mt-4 md:mt-6 mobile-no-truncate">
-                                {children}
-                              </h3>
-                            ),
-                            h4: ({ children }) => (
-                              <h4 className="text-sm sm:text-base md:text-lg font-semibold text-white mb-1 sm:mb-2 mt-2 sm:mt-3 md:mt-4 mobile-no-truncate">
-                                {children}
-                              </h4>
-                            ),
-                            p: ({ children }) => (
-                              <p className="text-white/80 leading-relaxed mb-2 sm:mb-3 md:mb-4 text-xs sm:text-sm md:text-base mobile-no-truncate">
-                                {children}
-                              </p>
-                            ),
-                            ul: ({ children }) => (
-                              <ul className="text-white/80 mb-2 sm:mb-3 md:mb-4 space-y-1 sm:space-y-2 text-xs sm:text-sm md:text-base mobile-no-truncate">
-                                {children}
-                              </ul>
-                            ),
-                            ol: ({ children }) => (
-                              <ol className="text-white/80 mb-2 sm:mb-3 md:mb-4 space-y-1 sm:space-y-2 list-decimal list-inside text-xs sm:text-sm md:text-base mobile-no-truncate">
-                                {children}
-                              </ol>
-                            ),
-                            li: ({ children }) => (
-                              <li className="flex items-baseline gap-1 sm:gap-2 mobile-no-truncate">
-                                <span className="text-white/40 shrink-0 leading-relaxed">
-                                  •
-                                </span>
-                                <span className="mobile-no-truncate leading-relaxed">
-                                  {children}
-                                </span>
-                              </li>
-                            ),
-                            code: ({ children }) => (
-                              <code className="bg-white/10 text-white/90 px-1 sm:px-1.5 md:px-2 py-0.5 sm:py-1 rounded text-xs sm:text-sm font-mono mobile-no-truncate">
-                                {children}
-                              </code>
-                            ),
-                            pre: ({ children }) => (
-                              <div className="relative mb-2 sm:mb-3 md:mb-4">
-                                <div className="overflow-x-auto max-w-full scrollbar-thin">
-                                  <pre className="bg-gray-900/50 text-white/90 border border-white/10 rounded-lg p-2 sm:p-3 md:p-4 text-xs sm:text-sm whitespace-pre min-w-max">
-                                    {children}
-                                  </pre>
+                        {(() => {
+                          const { headingText, badges, contentWithoutHeading } =
+                            parseDocsHeading(docsData.content);
+                          const headingParts = headingText.split(" - ");
+                          const projectName =
+                            headingParts[0] ||
+                            selectedProject?.name ||
+                            "Project";
+                          const description =
+                            headingParts[1]
+                              ?.replace("Comprehensive", "")
+                              .trim() || "";
+                          const hasComprehensive =
+                            headingText.includes("Comprehensive");
+
+                          const techBadges = [];
+
+                          if (selectedProject?.name) {
+                            techBadges.push({
+                              text: selectedProject.name,
+                              color: "#3b82f6",
+                              icon: "pin",
+                            });
+                          }
+
+                          techBadges.push({
+                            text: "AI POWERED",
+                            color: "#f97316",
+                          });
+
+                          if (metadata?.language) {
+                            const langColors: Record<string, string> = {
+                              TypeScript: "#3178c6",
+                              JavaScript: "#f7df1e",
+                              Python: "#3776ab",
+                              Java: "#ed8b00",
+                              Go: "#00add8",
+                              Rust: "#000000",
+                            };
+                            techBadges.push({
+                              text: metadata.language,
+                              color: langColors[metadata.language] || "#3178c6",
+                            });
+                          }
+
+                          if (
+                            repositoryInfo?.description
+                              ?.toLowerCase()
+                              .includes("next.js") ||
+                            selectedProject?.name
+                              ?.toLowerCase()
+                              .includes("next")
+                          ) {
+                            techBadges.push({
+                              text: "Next.js",
+                              color: "#000000",
+                            });
+                          }
+                          if (
+                            repositoryInfo?.description
+                              ?.toLowerCase()
+                              .includes("postgresql") ||
+                            repositoryInfo?.description
+                              ?.toLowerCase()
+                              .includes("postgres")
+                          ) {
+                            techBadges.push({
+                              text: "PostgreSQL",
+                              color: "#22c55e",
+                            });
+                          }
+                          if (
+                            repositoryInfo?.description
+                              ?.toLowerCase()
+                              .includes("clerk")
+                          ) {
+                            techBadges.push({
+                              text: "Clerk",
+                              color: "#a855f7",
+                            });
+                          }
+                          if (
+                            repositoryInfo?.description
+                              ?.toLowerCase()
+                              .includes("langchain")
+                          ) {
+                            techBadges.push({
+                              text: "LangChain",
+                              color: "#f97316",
+                            });
+                          }
+
+                          if (
+                            metadata?.stars !== undefined &&
+                            metadata.stars > 0
+                          ) {
+                            techBadges.push({
+                              text: `STARS ${metadata.stars.toLocaleString()}`,
+                              color: "#fbbf24",
+                              icon: "star",
+                            });
+                          }
+                          if (
+                            metadata?.forks !== undefined &&
+                            metadata.forks > 0
+                          ) {
+                            techBadges.push({
+                              text: `FORKS ${metadata.forks.toLocaleString()}`,
+                              color: "#6b7280",
+                              icon: "fork",
+                            });
+                          }
+
+                          const badgeTexts = new Set(
+                            badges.map((b) => b.text.toLowerCase())
+                          );
+                          const uniqueTechBadges = techBadges.filter(
+                            (b) => !badgeTexts.has(b.text.toLowerCase())
+                          );
+                          const allBadges = [...badges, ...uniqueTechBadges];
+
+                          return (
+                            <>
+                              <div className="mb-6 sm:mb-8">
+                                <div className="flex items-start gap-3 sm:gap-4 mb-4">
+                                  <div className="w-6 h-6 sm:w-8 sm:h-8 bg-cyan-500/20 border border-cyan-500/30 rounded flex items-center justify-center shrink-0 mt-1">
+                                    <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
+                                  </div>
+                                  <div className="flex-1">
+                                    <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white leading-tight mb-2">
+                                      {projectName}
+                                      {description && (
+                                        <>
+                                          {": "}
+                                          <span className="font-normal">
+                                            {description}
+                                          </span>
+                                        </>
+                                      )}
+                                      {hasComprehensive && " - Comprehensive"}
+                                    </h1>
+                                    <h2 className="text-lg sm:text-xl md:text-2xl font-semibold text-white/90">
+                                      Technical Documentation
+                                    </h2>
+                                  </div>
+                                </div>
+
+                                <div className="h-px bg-white/20 mb-4" />
+
+                                <div className="flex flex-wrap gap-2 sm:gap-3">
+                                  {allBadges
+                                    .filter(
+                                      (b) =>
+                                        !b.text.includes("STARS") &&
+                                        !b.text.includes("FORKS") &&
+                                        b.text !== metadata?.language &&
+                                        b.text !== metadata?.license
+                                    )
+                                    .map((badge, idx) => {
+                                      const badgeColors: Record<
+                                        string,
+                                        string
+                                      > = {
+                                        blue: "#3b82f6",
+                                        orange: "#f97316",
+                                        green: "#22c55e",
+                                        purple: "#a855f7",
+                                        yellow: "#fbbf24",
+                                        gray: "#6b7280",
+                                        grey: "#6b7280",
+                                        black: "#000000",
+                                        red: "#ef4444",
+                                        cyan: "#06b6d4",
+                                      };
+
+                                      const bgColor =
+                                        badgeColors[
+                                          badge.color.toLowerCase()
+                                        ] ||
+                                        badge.color ||
+                                        "#3b82f6";
+                                      const isProjectBadge =
+                                        badge.icon === "pin" ||
+                                        badge.text.toLowerCase() ===
+                                          selectedProject?.name?.toLowerCase();
+
+                                      return (
+                                        <div
+                                          key={idx}
+                                          className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded text-xs sm:text-sm font-medium text-white"
+                                          style={{ backgroundColor: bgColor }}
+                                        >
+                                          {isProjectBadge && (
+                                            <span className="text-yellow-400">
+                                              📌
+                                            </span>
+                                          )}
+                                          <span>{badge.text}</span>
+                                        </div>
+                                      );
+                                    })}
+
+                                  <div className="flex items-center bg-gray-600 rounded-sm overflow-hidden shadow-sm">
+                                    <div className="flex items-center gap-1 px-1.5 sm:gap-1.5 sm:px-2 py-1 bg-gray-600">
+                                      <Star className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white shrink-0" />
+                                      <span className="text-white text-xs font-medium mobile-no-truncate">
+                                        Stars
+                                      </span>
+                                    </div>
+                                    <div className="px-1.5 sm:px-2 py-1 bg-gray-500">
+                                      <span className="text-white text-xs font-medium mobile-no-truncate">
+                                        {metadata?.stars ??
+                                          repositoryInfo?.stars ??
+                                          repositoryInfo?.stargazersCount ??
+                                          0}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center bg-gray-600 rounded-sm overflow-hidden shadow-sm">
+                                    <div className="flex items-center gap-1 px-1.5 sm:px-2 py-1 bg-gray-600">
+                                      <GitFork className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white shrink-0" />
+                                      <span className="text-white text-xs font-medium mobile-no-truncate">
+                                        Forks
+                                      </span>
+                                    </div>
+                                    <div className="px-1.5 sm:px-2 py-1 bg-gray-500">
+                                      <span className="text-white text-xs font-medium mobile-no-truncate">
+                                        {metadata?.forks ??
+                                          repositoryInfo?.forks ??
+                                          repositoryInfo?.forksCount ??
+                                          0}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center bg-gray-600 rounded-sm overflow-hidden shadow-sm">
+                                    <div className="px-1.5 sm:px-2 py-1 bg-gray-600">
+                                      <span className="text-white text-xs font-medium mobile-no-truncate">
+                                        Language
+                                      </span>
+                                    </div>
+                                    <div className="px-1.5 sm:px-2 py-1 bg-blue-500">
+                                      <span className="text-white text-xs font-medium mobile-no-truncate">
+                                        {metadata?.language ||
+                                          repositoryInfo?.language ||
+                                          "Unknown"}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center bg-gray-600 rounded-sm overflow-hidden shadow-sm">
+                                    <div className="px-1.5 sm:px-2 py-1 bg-gray-600">
+                                      <span className="text-white text-xs font-medium mobile-no-truncate">
+                                        License
+                                      </span>
+                                    </div>
+                                    <div className="px-1.5 sm:px-2 py-1 bg-green-500">
+                                      <span className="text-white text-xs font-medium mobile-no-truncate">
+                                        {metadata?.license ||
+                                          repositoryInfo?.license?.name ||
+                                          repositoryInfo?.license ||
+                                          "Unknown"}
+                                      </span>
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
-                            ),
-                            img: ({ src, alt, ...props }) => (
-                              <img
-                                src={src}
-                                alt={alt}
-                                {...props}
-                                className="inline-block mr-1 sm:mr-2 mb-1 sm:mb-2 max-w-full h-auto"
-                                style={{
-                                  display: "inline-block",
-                                  marginRight: "4px",
-                                  marginBottom: "4px",
+
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                components={{
+                                  h1: ({ children, ...props }) => {
+                                    const h1Text =
+                                      typeof children === "string"
+                                        ? children
+                                        : Array.isArray(children)
+                                          ? children.join("")
+                                          : "";
+                                    if (
+                                      h1Text === headingText ||
+                                      h1Text.includes(projectName)
+                                    ) {
+                                      return null;
+                                    }
+                                    return (
+                                      <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-white mb-3 sm:mb-4 md:mb-6 border-b border-white/20 pb-1 sm:pb-2 md:pb-3 mobile-no-truncate">
+                                        {children}
+                                      </h1>
+                                    );
+                                  },
+                                  h2: ({ children }) => (
+                                    <h2 className="text-base sm:text-lg md:text-xl lg:text-2xl font-semibold text-white mb-2 sm:mb-3 md:mb-4 mt-4 sm:mt-6 md:mt-8 mobile-no-truncate">
+                                      {children}
+                                    </h2>
+                                  ),
+                                  h3: ({ children }) => (
+                                    <h3 className="text-sm sm:text-base md:text-lg lg:text-xl font-semibold text-white mb-2 sm:mb-3 md:mb-3 mt-3 sm:mt-4 md:mt-6 mobile-no-truncate">
+                                      {children}
+                                    </h3>
+                                  ),
+                                  h4: ({ children }) => (
+                                    <h4 className="text-sm sm:text-base md:text-lg font-semibold text-white mb-1 sm:mb-2 mt-2 sm:mt-3 md:mt-4 mobile-no-truncate">
+                                      {children}
+                                    </h4>
+                                  ),
+                                  p: ({ children }) => (
+                                    <p className="text-white/80 leading-relaxed mb-2 sm:mb-3 md:mb-4 text-xs sm:text-sm md:text-base mobile-no-truncate">
+                                      {children}
+                                    </p>
+                                  ),
+                                  ul: ({ children }) => (
+                                    <ul className="text-white/80 mb-2 sm:mb-3 md:mb-4 space-y-1 sm:space-y-2 text-xs sm:text-sm md:text-base mobile-no-truncate">
+                                      {children}
+                                    </ul>
+                                  ),
+                                  ol: ({ children }) => (
+                                    <ol className="text-white/80 mb-2 sm:mb-3 md:mb-4 space-y-1 sm:space-y-2 list-decimal list-inside text-xs sm:text-sm md:text-base mobile-no-truncate">
+                                      {children}
+                                    </ol>
+                                  ),
+                                  li: ({ children }) => (
+                                    <li className="flex items-baseline gap-1 sm:gap-2 mobile-no-truncate">
+                                      <span className="text-white/40 shrink-0 leading-relaxed">
+                                        •
+                                      </span>
+                                      <span className="mobile-no-truncate leading-relaxed">
+                                        {children}
+                                      </span>
+                                    </li>
+                                  ),
+                                  code: ({ children }) => (
+                                    <code className="bg-white/10 text-white/90 px-1 sm:px-1.5 md:px-2 py-0.5 sm:py-1 rounded text-xs sm:text-sm font-mono mobile-no-truncate">
+                                      {children}
+                                    </code>
+                                  ),
+                                  pre: ({ children }) => (
+                                    <div className="relative mb-2 sm:mb-3 md:mb-4">
+                                      <div className="overflow-x-auto max-w-full scrollbar-thin">
+                                        <pre className="bg-gray-900/50 text-white/90 border border-white/10 rounded-lg p-2 sm:p-3 md:p-4 text-xs sm:text-sm whitespace-pre min-w-max">
+                                          {children}
+                                        </pre>
+                                      </div>
+                                    </div>
+                                  ),
+                                  img: ({ src, alt, ...props }) => (
+                                    <img
+                                      src={src}
+                                      alt={alt}
+                                      {...props}
+                                      className="inline-block mr-1 sm:mr-2 mb-1 sm:mb-2 max-w-full h-auto"
+                                      style={{
+                                        display: "inline-block",
+                                        marginRight: "4px",
+                                        marginBottom: "4px",
+                                      }}
+                                    />
+                                  ),
+                                  blockquote: ({ children }) => (
+                                    <blockquote className="border-l-4 border-white/20 pl-2 sm:pl-3 md:pl-4 italic text-white/70 mb-2 sm:mb-3 md:mb-4 text-xs sm:text-sm md:text-base mobile-no-truncate">
+                                      {children}
+                                    </blockquote>
+                                  ),
+                                  table: ({ children }) => (
+                                    <div className="overflow-x-auto mb-2 sm:mb-3 md:mb-4">
+                                      <table className="w-full border-collapse border border-white/20 text-xs sm:text-sm mobile-no-truncate">
+                                        {children}
+                                      </table>
+                                    </div>
+                                  ),
+                                  th: ({ children }) => (
+                                    <th className="border border-white/20 px-1 sm:px-2 md:px-4 py-1 sm:py-1.5 md:py-2 bg-white/10 text-white font-semibold text-left text-xs sm:text-sm mobile-no-truncate">
+                                      {children}
+                                    </th>
+                                  ),
+                                  td: ({ children }) => (
+                                    <td className="border border-white/20 px-1 sm:px-2 md:px-4 py-1 sm:py-1.5 md:py-2 text-white/80 text-xs sm:text-sm mobile-no-truncate">
+                                      {children}
+                                    </td>
+                                  ),
                                 }}
-                              />
-                            ),
-                            blockquote: ({ children }) => (
-                              <blockquote className="border-l-4 border-white/20 pl-2 sm:pl-3 md:pl-4 italic text-white/70 mb-2 sm:mb-3 md:mb-4 text-xs sm:text-sm md:text-base mobile-no-truncate">
-                                {children}
-                              </blockquote>
-                            ),
-                            table: ({ children }) => (
-                              <div className="overflow-x-auto mb-2 sm:mb-3 md:mb-4">
-                                <table className="w-full border-collapse border border-white/20 text-xs sm:text-sm mobile-no-truncate">
-                                  {children}
-                                </table>
-                              </div>
-                            ),
-                            th: ({ children }) => (
-                              <th className="border border-white/20 px-1 sm:px-2 md:px-4 py-1 sm:py-1.5 md:py-2 bg-white/10 text-white font-semibold text-left text-xs sm:text-sm mobile-no-truncate">
-                                {children}
-                              </th>
-                            ),
-                            td: ({ children }) => (
-                              <td className="border border-white/20 px-1 sm:px-2 md:px-4 py-1 sm:py-1.5 md:py-2 text-white/80 text-xs sm:text-sm mobile-no-truncate">
-                                {children}
-                              </td>
-                            ),
-                          }}
-                        >
-                          {docsData.content}
-                        </ReactMarkdown>
+                              >
+                                {contentWithoutHeading}
+                              </ReactMarkdown>
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>

@@ -100,14 +100,18 @@ const GlowingEffect = memo(
     useEffect(() => {
       if (disabled) return;
 
-      // Use RAF-based throttling for smooth 60-100hz performance
+      // Use RAF-based throttling for smooth 60fps performance
       let scrollRafId: number | null = null;
       let isScrolling = false;
+      let lastScrollTime = 0;
+      const scrollThrottle = 16; // ~60fps
 
       const handleScroll = () => {
-        // Only queue one update per frame
-        if (!isScrolling) {
+        const now = performance.now();
+        // Only queue one update per frame, with additional throttling
+        if (!isScrolling && (now - lastScrollTime) >= scrollThrottle) {
           isScrolling = true;
+          lastScrollTime = now;
           scrollRafId = requestAnimationFrame(() => {
             handleMove();
             isScrolling = false;

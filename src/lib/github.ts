@@ -67,7 +67,7 @@ export async function indexGithubRepository(
       throw new Error("No files found in repository");
     }
 
-    const BATCH_SIZE = 10;
+    const BATCH_SIZE = 25;
     const summaries: string[] = [];
     let successCount = 0;
     let failCount = 0;
@@ -80,7 +80,7 @@ export async function indexGithubRepository(
           try {
             const summary = await retryAsync(() => getSummariseCode(doc), {
               maxRetries: 2,
-              initialDelay: 1000,
+              initialDelay: 500,
             });
 
             if (!summary) {
@@ -89,7 +89,7 @@ export async function indexGithubRepository(
 
             const embedding = await retryAsync(
               () => getGenerateEmbeddings(summary),
-              { maxRetries: 2, initialDelay: 1000 }
+              { maxRetries: 2, initialDelay: 500 }
             );
 
             return {
@@ -108,9 +108,10 @@ export async function indexGithubRepository(
         })
       );
 
-      for (const result of batchEmbeddings) {
-        if (result.status === "fulfilled" && result.value) {
-          const embedding = result.value;
+      const dbOperations = batchEmbeddings
+        .filter((result) => result.status === "fulfilled" && result.value)
+        .map(async (result) => {
+          const embedding = (result as PromiseFulfilledResult<any>).value;
           summaries.push(embedding.summary);
 
           try {
@@ -125,26 +126,33 @@ export async function indexGithubRepository(
               });
 
             await prisma.$executeRaw`
-                            UPDATE "SourceCodeEmbiddings"
-                            SET "summaryEmbedding" = ${embedding.embedding}::vector
-                            WHERE "id" = ${sourceCodeEmbiddings.id}
-                        `;
+              UPDATE "SourceCodeEmbiddings"
+              SET "summaryEmbedding" = ${embedding.embedding}::vector
+              WHERE "id" = ${sourceCodeEmbiddings.id}
+            `;
 
             successCount++;
+            return true;
           } catch (dbError) {
             logError(dbError, {
               fileName: embedding.fileName,
               projectId,
             });
             failCount++;
+            return false;
           }
-        } else {
+        });
+
+      await Promise.allSettled(dbOperations);
+
+      for (const result of batchEmbeddings) {
+        if (result.status === "rejected" || !result.value) {
           failCount++;
         }
       }
 
       if (i + BATCH_SIZE < docs.length) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 200));
       }
     }
 

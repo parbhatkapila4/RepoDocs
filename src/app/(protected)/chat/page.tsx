@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useProjectsContext } from "@/context/ProjectsContext";
 import { useUser } from "@/hooks/useUser";
+import { checkEmbeddingsStatus } from "@/lib/actions";
 import { Button } from "@/components/ui/button";
 import {
   Send,
@@ -15,11 +16,13 @@ import {
   Check,
   Plus,
   Github,
+  AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -67,6 +70,8 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [selectedModel, setSelectedModel] = useState(models[0]);
+  const [hasEmbeddings, setHasEmbeddings] = useState<boolean | null>(null);
+  const [isCheckingIndexing, setIsCheckingIndexing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -79,7 +84,10 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (messages.length > prevMessagesLengthRef.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      // Use requestAnimationFrame for smoother scrolling
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      });
     }
     prevMessagesLengthRef.current = messages.length;
   }, [messages]);
@@ -87,6 +95,37 @@ export default function ChatPage() {
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    const checkIndexingStatus = async () => {
+      if (!selectedProjectId) {
+        setHasEmbeddings(null);
+        return;
+      }
+
+      setIsCheckingIndexing(true);
+      try {
+        const status = await checkEmbeddingsStatus(selectedProjectId);
+        setHasEmbeddings(status.hasEmbeddings);
+      } catch (error) {
+        console.error("Error checking indexing status:", error);
+        setHasEmbeddings(false);
+      } finally {
+        setIsCheckingIndexing(false);
+      }
+    };
+
+    checkIndexingStatus();
+
+    let intervalId: NodeJS.Timeout | null = null;
+    if (hasEmbeddings === false) {
+      intervalId = setInterval(checkIndexingStatus, 10000);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [selectedProjectId, hasEmbeddings]);
 
   useEffect(() => {
     if (inputRef.current) {
@@ -101,6 +140,41 @@ export default function ChatPage() {
 
     if (!input.trim() || !currentProject || isLoading) {
       return;
+    }
+
+    if (hasEmbeddings === false) {
+      toast.error(
+        "This project has not been indexed yet. Please wait for the indexing to complete.",
+        {
+          duration: 5000,
+        }
+      );
+      return;
+    }
+
+    if (hasEmbeddings === null && !isCheckingIndexing) {
+      setIsCheckingIndexing(true);
+      try {
+        const status = await checkEmbeddingsStatus(currentProject.id);
+        setHasEmbeddings(status.hasEmbeddings);
+        if (!status.hasEmbeddings) {
+          toast.error(
+            "This project has not been indexed yet. Please wait for the indexing to complete.",
+            {
+              duration: 5000,
+            }
+          );
+          setIsCheckingIndexing(false);
+          return;
+        }
+      } catch (error) {
+        console.error("Error checking indexing status:", error);
+        toast.error("Failed to check indexing status. Please try again.");
+        setIsCheckingIndexing(false);
+        return;
+      } finally {
+        setIsCheckingIndexing(false);
+      }
     }
 
     const question = input.trim();
@@ -388,7 +462,22 @@ export default function ChatPage() {
               </p>
             </div>
 
-            <div className="w-full max-w-3xl mx-auto px-2 sm:px-4">
+            <div className="w-full max-w-3xl mx-auto px-2 sm:px-4 space-y-4">
+              {hasEmbeddings === false && (
+                <Alert className="bg-yellow-500/10 border-yellow-500/50 text-yellow-200">
+                  <AlertCircle className="h-4 w-4 text-yellow-400" />
+                  <AlertDescription>
+                    This project has not been indexed yet. Please wait for the
+                    indexing to complete before asking questions. Indexing
+                    typically takes 5-15 minutes.
+                    {isCheckingIndexing && (
+                      <span className="ml-2 text-yellow-300/70">
+                        (Checking status...)
+                      </span>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
               <form onSubmit={handleSubmit} className="relative">
                 <div className="relative bg-white/5 backdrop-blur-xl rounded-xl sm:rounded-2xl shadow-2xl shadow-black/20 border border-white/10 overflow-hidden">
                   <div className="flex items-start p-2 sm:p-3">
@@ -400,16 +489,29 @@ export default function ChatPage() {
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       onKeyDown={handleKeyDown}
-                      placeholder="Ask about your codebase..."
-                      disabled={isLoading}
+                      placeholder={
+                        hasEmbeddings === false
+                          ? "Waiting for indexing to complete..."
+                          : "Ask about your codebase..."
+                      }
+                      disabled={
+                        isLoading ||
+                        hasEmbeddings === false ||
+                        isCheckingIndexing
+                      }
                       rows={1}
-                      className="flex-1 bg-transparent border-none outline-none resize-none py-2.5 sm:py-3 px-1 sm:px-2 text-white placeholder:text-gray-500 text-sm sm:text-base min-h-[44px] sm:min-h-[52px] max-h-[120px] sm:max-h-[140px]"
+                      className="flex-1 bg-transparent border-none outline-none resize-none py-2.5 sm:py-3 px-1 sm:px-2 text-white placeholder:text-gray-500 text-sm sm:text-base min-h-[44px] sm:min-h-[52px] max-h-[120px] sm:max-h-[140px] disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                     <Button
                       type="submit"
                       size="sm"
-                      disabled={isLoading || !input.trim()}
-                      className="shrink-0 m-1.5 sm:m-2 bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-lg sm:rounded-xl h-9 w-9 sm:h-10 sm:w-10 p-0 shadow-lg shadow-indigo-500/25"
+                      disabled={
+                        isLoading ||
+                        !input.trim() ||
+                        hasEmbeddings === false ||
+                        isCheckingIndexing
+                      }
+                      className="shrink-0 m-1.5 sm:m-2 bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-lg sm:rounded-xl h-9 w-9 sm:h-10 sm:w-10 p-0 shadow-lg shadow-indigo-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isLoading ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
