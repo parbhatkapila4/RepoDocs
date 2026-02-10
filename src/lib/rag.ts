@@ -12,6 +12,18 @@ export interface RAGQueryResult {
     similarity: number;
   }[];
   tokensUsed?: number;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+  model?: string;
+
+  promptTokens?: number;
+  completionTokens?: number;
+  totalTokens?: number;
+  modelUsed?: string;
+  memoryHitCount?: number;
 }
 
 
@@ -94,10 +106,12 @@ export async function queryCodebase(
     }
 
     let memoryContext = "";
+    let memoryHitCount = 0;
     try {
       const queryEmbedding = await getGenerateEmbeddings(question);
       if (queryEmbedding?.length) {
         const memories = await searchRepoMemory(projectId, queryEmbedding, 3);
+        memoryHitCount = memories.length;
         if (memories.length > 0) {
           memoryContext =
             "\n\n## Repository memory (use to inform answers; code overrides when in conflict):\n" +
@@ -242,15 +256,23 @@ Remember: Your goal is to make the codebase as understandable as possible. Be de
       content: question,
     });
 
-    const answer = await openrouterChatCompletion({
+    const chatResult = await openrouterChatCompletion({
       model: "google/gemini-2.5-flash",
       messages,
       temperature: 0.3,
     });
 
+    const usage = chatResult.usage;
     return {
-      answer,
+      answer: chatResult.content,
       sources: relevantCode,
+      usage: chatResult.usage,
+      model: chatResult.model,
+      promptTokens: usage?.prompt_tokens,
+      completionTokens: usage?.completion_tokens,
+      totalTokens: usage?.total_tokens,
+      modelUsed: chatResult.model,
+      memoryHitCount,
     };
   } catch (error) {
     console.error("Error in RAG query:", error);

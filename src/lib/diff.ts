@@ -25,7 +25,25 @@ export interface DiffAnalysisResult {
   riskLevel: "low" | "medium" | "high";
   testsToUpdate?: string[];
   possibleRegressions?: string[];
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+  model?: string;
 }
+
+
+export interface DiffAnalysisMetrics {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  modelUsed: string;
+  retrievalCount: number;
+  memoryHitCount: number;
+}
+
+export type AnalyzeDiffReturn = DiffAnalysisResult & { _metrics?: DiffAnalysisMetrics };
 
 
 
@@ -150,7 +168,7 @@ function truncateHunk(hunk: string, maxLen: number): string {
 export async function analyzeDiff(
   projectId: string,
   rawDiff: string
-): Promise<DiffAnalysisResult> {
+): Promise<AnalyzeDiffReturn> {
   const parsed = parseDiff(rawDiff);
 
   if (parsed.files.length === 0) {
@@ -160,7 +178,6 @@ export async function analyzeDiff(
       impactedFiles: [],
       riskLevel: "low",
     };
-
   }
 
   const summaryForRetrieval = buildSummaryForRetrieval(parsed);
@@ -242,7 +259,7 @@ ${memorySection}
 
 Return the analysis as a single JSON object with keys: summary, whatChanged, impactedFiles, impactedModules (optional), architecturalImpact (optional), riskLevel, testsToUpdate (optional), possibleRegressions (optional).`;
 
-  const response = await openrouterChatCompletion({
+  const chatResult = await openrouterChatCompletion({
     model: "google/gemini-2.5-flash",
     messages: [
       { role: "system", content: systemPrompt },
@@ -251,7 +268,7 @@ Return the analysis as a single JSON object with keys: summary, whatChanged, imp
     temperature: 0.3,
   });
 
-  const trimmed = response.trim();
+  const trimmed = chatResult.content.trim();
   let jsonStr = trimmed;
   const codeBlock = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (codeBlock) {
@@ -261,16 +278,29 @@ Return the analysis as a single JSON object with keys: summary, whatChanged, imp
     if (objMatch) jsonStr = objMatch[0];
   }
 
+  const retrievalCount = relevantCode.length;
+  const memoryHitCount = memories.length;
+  const usage = chatResult.usage;
+  const _metrics: DiffAnalysisMetrics = {
+    promptTokens: usage?.prompt_tokens ?? 0,
+    completionTokens: usage?.completion_tokens ?? 0,
+    totalTokens: usage?.total_tokens ?? 0,
+    modelUsed: chatResult.model ?? "",
+    retrievalCount,
+    memoryHitCount,
+  };
+
   let parsedResult: unknown;
   try {
     parsedResult = JSON.parse(jsonStr);
   } catch (e) {
     console.error("[analyzeDiff] JSON parse failed:", e);
     return {
-      summary: "Analysis could not be structured. Raw response: " + response.slice(0, 500),
+      summary: "Analysis could not be structured. Raw response: " + chatResult.content.slice(0, 500),
       whatChanged: [],
       impactedFiles: parsed.files.map((f) => f.path),
       riskLevel: "medium",
+      _metrics,
     };
   }
 
@@ -288,5 +318,8 @@ Return the analysis as a single JSON object with keys: summary, whatChanged, imp
     riskLevel,
     testsToUpdate: Array.isArray(obj.testsToUpdate) ? obj.testsToUpdate.map(String) : undefined,
     possibleRegressions: Array.isArray(obj.possibleRegressions) ? obj.possibleRegressions.map(String) : undefined,
+    usage: chatResult.usage,
+    model: chatResult.model,
+    _metrics,
   };
 }

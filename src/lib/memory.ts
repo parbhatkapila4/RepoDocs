@@ -4,10 +4,6 @@ import { openrouterChatCompletion } from "./openrouter";
 
 const VALID_TYPES = ["concept", "decision", "relationship"] as const;
 
-/**
- * Extracts durable, long-term knowledge from a Q&A exchange.
- * Uses LLM to identify facts, decisions, and relationships worth remembering.
- */
 export async function extractMemoriesFromConversation(
   question: string,
   answer: string
@@ -28,7 +24,7 @@ RULES:
 
   const userMessage = `Question: ${question}\n\nAnswer:\n${answer}`;
 
-  const response = await openrouterChatCompletion({
+  const chatResult = await openrouterChatCompletion({
     model: "google/gemini-2.5-flash",
     messages: [
       { role: "system", content: systemMessage },
@@ -37,9 +33,9 @@ RULES:
     temperature: 0.2,
   });
 
-  const trimmed = response.trim();
+  const trimmed = chatResult.content.trim();
 
-  // Extract JSON from markdown code block if present
+
   let jsonStr = trimmed;
   const codeBlockMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (codeBlockMatch) {
@@ -74,10 +70,7 @@ RULES:
     .map((item) => ({ type: item.type, content: item.content }));
 }
 
-/**
- * Stores extracted memories with embeddings for semantic search.
- * Uses create + raw UPDATE for embedding (Prisma doesn't support vector in create).
- */
+
 export async function storeMemories(
   projectId: string,
   items: { type: string; content: string }[]
@@ -114,14 +107,7 @@ export async function storeMemories(
   }
 }
 
-/**
- * Searches repo memory by semantic similarity.
- * Returns top memories for the query embedding.
- *
- * Memory aging: In the future, we could decay relevanceScore when memories
- * are not retrieved and boost when they are. When returning results, we could
- * update lastRetrievedAt and adjust relevanceScore for those ids.
- */
+
 export async function searchRepoMemory(
   projectId: string,
   queryEmbedding: number[],

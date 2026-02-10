@@ -78,10 +78,11 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await analyzeDiff(projectId, diff.trim());
+    const { _metrics, ...analysis } = result;
 
     return NextResponse.json({
       success: true,
-      analysis: result,
+      analysis,
     });
   } catch (error) {
     console.error("Error in analyze-diff endpoint:", error);

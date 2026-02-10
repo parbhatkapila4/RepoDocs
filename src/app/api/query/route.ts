@@ -6,6 +6,8 @@ import {
   extractMemoriesFromConversation,
   storeMemories,
 } from "@/lib/memory";
+import { estimateCostUsd } from "@/lib/cost";
+import { recordQueryMetrics } from "@/lib/query-metrics";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -37,6 +39,8 @@ async function getDbUserId(clerkUserId: string): Promise<string | null> {
 }
 
 export async function POST(request: NextRequest) {
+  const startMs = Date.now();
+  let projectIdForMetrics: string | undefined;
   try {
     const { userId } = await auth();
 
@@ -61,6 +65,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    projectIdForMetrics = projectId;
 
     if (typeof question !== "string" || question.trim().length === 0) {
       return NextResponse.json(
@@ -108,6 +113,33 @@ export async function POST(request: NextRequest) {
       { mode }
     );
 
+    const latencyMs = Date.now() - startMs;
+    const promptTokens = result.promptTokens ?? 0;
+    const completionTokens = result.completionTokens ?? 0;
+    const totalTokens = result.totalTokens ?? 0;
+    const modelUsed = result.modelUsed ?? "unknown";
+    const retrievalCount = result.sources.length;
+    const memoryHitCount = result.memoryHitCount ?? 0;
+    const estimatedCostUsd = estimateCostUsd(
+      promptTokens,
+      completionTokens,
+      modelUsed
+    );
+
+    void recordQueryMetrics(prisma, {
+      projectId,
+      routeType: "query",
+      modelUsed,
+      promptTokens,
+      completionTokens,
+      totalTokens,
+      retrievalCount,
+      memoryHitCount,
+      latencyMs,
+      estimatedCostUsd,
+      success: true,
+    }).catch((err) => console.error("[QueryMetrics]", err));
+
     try {
       await prisma.$executeRaw`
         INSERT INTO "CodebaseQueries" ("projectId", "question", "answer", "sourcesCount", "createdAt")
@@ -134,6 +166,26 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error in query endpoint:", error);
+
+    if (projectIdForMetrics) {
+      const latencyMs = Date.now() - startMs;
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      void recordQueryMetrics(prisma, {
+        projectId: projectIdForMetrics,
+        routeType: "query",
+        modelUsed: "unknown",
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
+        retrievalCount: 0,
+        memoryHitCount: 0,
+        latencyMs,
+        estimatedCostUsd: 0,
+        success: false,
+        errorMessage,
+      }).catch((err) => console.error("[QueryMetrics]", err));
+    }
 
     return NextResponse.json(
       {

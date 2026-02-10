@@ -23,11 +23,21 @@ interface EmbeddingOptions {
   input: string;
 }
 
+export interface OpenRouterChatResult {
+  content: string;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+  model?: string;
+}
+
 export async function openrouterChatCompletion(
   options: ChatCompletionOptions
-): Promise<string> {
+): Promise<OpenRouterChatResult> {
   const {
-    model = "google/gemini-2.5-flash-lite",
+    model: modelOption = "google/gemini-2.5-flash-lite",
     messages,
     temperature = 0.7,
     max_tokens = 8000,
@@ -51,7 +61,7 @@ export async function openrouterChatCompletion(
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-    const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+    const response: Response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -60,7 +70,7 @@ export async function openrouterChatCompletion(
         "X-Title": "RepoDocs",
       },
       body: JSON.stringify({
-        model,
+        model: modelOption,
         messages: system
           ? [{ role: "system", content: system }, ...messages]
           : messages,
@@ -79,13 +89,36 @@ export async function openrouterChatCompletion(
       );
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as {
+      choices?: { message?: { content?: string } }[];
+      usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+      model?: string;
+    };
 
     if (!data.choices || !data.choices[0] || !data.choices[0].message) {
       throw new Error("Invalid response format from OpenRouter API");
     }
 
-    return data.choices[0].message.content;
+    const content = data.choices[0].message.content ?? "";
+    const usage =
+      data.usage &&
+        typeof data.usage.prompt_tokens === "number" &&
+        typeof data.usage.completion_tokens === "number"
+        ? {
+          prompt_tokens: data.usage.prompt_tokens,
+          completion_tokens: data.usage.completion_tokens,
+          total_tokens:
+            typeof data.usage.total_tokens === "number"
+              ? data.usage.total_tokens
+              : data.usage.prompt_tokens + data.usage.completion_tokens,
+        }
+        : undefined;
+    const modelFromResponse =
+      typeof data.model === "string" && data.model.length > 0
+        ? data.model
+        : undefined;
+
+    return { content, usage, model: modelFromResponse };
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
       const timeoutMinutes = Math.round(timeout / 60000);
@@ -106,7 +139,7 @@ export async function openrouterSingleMessage(
   model?: string,
   maxTokens?: number,
   system?: string
-): Promise<string> {
+): Promise<OpenRouterChatResult> {
   return openrouterChatCompletion({
     model,
     messages: [

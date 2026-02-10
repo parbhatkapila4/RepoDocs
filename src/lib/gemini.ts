@@ -26,7 +26,8 @@ ${code}
 ---
 Give a summary no more than 100 words of the code above.`;
 
-    return openrouterSingleMessage(prompt);
+    const result = await openrouterSingleMessage(prompt);
+    return result.content;
   } catch (error) {
     console.error("Error summarising code for ", doc.metadata.source, error);
     return "";
@@ -44,7 +45,7 @@ export async function getGenerateEmbeddings(
       if (cached) {
         return cached;
       }
-    } catch {}
+    } catch { }
   }
 
   if (!geminiApiKey) {
@@ -76,7 +77,7 @@ export async function getGenerateEmbeddings(
       try {
         const { cache } = await import("./cache");
         await cache.cacheEmbedding(summary, embeddingValues);
-      } catch (cacheError) {}
+      } catch (cacheError) { }
     }
 
     return embeddingValues;
@@ -119,13 +120,12 @@ PROJECT INFORMATION:
 - Stars: ${repoInfo?.stars || 0}
 - Forks: ${repoInfo?.forks || 0}
 
-${
-  hasCodebaseAnalysis
-    ? `CODEBASE ANALYSIS:
+${hasCodebaseAnalysis
+        ? `CODEBASE ANALYSIS:
 ${codebaseContext}`
-    : `⚠️ IMPORTANT NOTE FOR USER:
+        : `⚠️ IMPORTANT NOTE FOR USER:
 This is a DEMO/PREVIEW README generated from repository metadata only. The codebase indexing is currently in progress and typically takes 5-15 minutes to complete (depending on repository size). Once indexing is complete, please regenerate the README to get comprehensive, codebase-aware documentation with full technical analysis. This preview gives you a quick overview, but the full README will be much more detailed and accurate.`
-}
+      }
 
 ---
 
@@ -300,11 +300,11 @@ End with a single paragraph written for an investor or founder:
 
 Generate the complete, elite-level README.md now:`;
 
-    const readmeContent = await openrouterSingleMessage(
+    const result = await openrouterSingleMessage(
       prompt,
       "google/gemini-2.5-flash"
     );
-    return readmeContent;
+    return result.content;
   } catch (error) {
     console.error("Error generating README:", error);
     return `# ${projectName}
@@ -397,11 +397,11 @@ IMPORTANT:
 
 Generate the modified README.md content:`;
 
-    const modifiedReadme = await openrouterSingleMessage(
+    const result = await openrouterSingleMessage(
       prompt,
       "google/gemini-2.5-flash"
     );
-    return modifiedReadme;
+    return result.content;
   } catch (error) {
     console.error("Error modifying README:", error);
     throw new Error("Failed to modify README with AI");
@@ -478,17 +478,16 @@ PROJECT INFORMATION:
 - Stars: ${repoInfo?.stars || 0}
 - Forks: ${repoInfo?.forks || 0}
 
-${
-  hasCodebaseAnalysis
-    ? `DETAILED CODEBASE ANALYSIS:
+${hasCodebaseAnalysis
+        ? `DETAILED CODEBASE ANALYSIS:
 ${codebaseContext}`
-    : `⚠️ IMPORTANT NOTE FOR USER:
+        : `⚠️ IMPORTANT NOTE FOR USER:
 Indexing is in progress! We're currently indexing your codebase, which typically takes 5-15 minutes to complete (depending on repository size).
 
 This is a DEMO/PREVIEW documentation generated from repository metadata only. We're giving you this demo docs so you can see a preview while indexing completes. Once indexing is ready, please try again (regenerate the documentation) to get comprehensive, codebase-aware documentation with full technical analysis. 
 
 Thank you for your patience!`
-}
+      }
 
 ---
 
@@ -1099,38 +1098,37 @@ ABSOLUTE REQUIREMENTS - NO EXCEPTIONS:
 
 REMEMBER: Incomplete documentation (missing ANY sections 1-17) is WORSE than shorter but complete documentation. Every section must be detailed and based on actual codebase analysis. Section 17 is the FINAL section and must include a complete ASCII art system flow diagram.`;
 
-    let docsContent = await openrouterSingleMessage(
+    const docsResult = await openrouterSingleMessage(
       prompt,
       "anthropic/claude-3-haiku",
       maxOutputTokens,
       systemInstruction
     );
+    let docsContent = docsResult.content;
 
     const trimmedContent = docsContent?.trim() || "";
-    
-    // Extract all section numbers to check for gaps
+
     const sectionMatches = trimmedContent.match(/^##\s+(\d+)\./gm) || [];
     const foundSectionNumbers = sectionMatches.map(m => {
       const match = m.match(/^##\s+(\d+)\./);
       return match ? parseInt(match[1]) : 0;
     }).sort((a, b) => a - b);
-    
-    // Check for ALL 17 sections (1 through 17)
+
     const expectedSections = Array.from({ length: 17 }, (_, i) => i + 1);
     const missingSections = expectedSections.filter(num => !foundSectionNumbers.includes(num));
     const hasGaps = missingSections.length > 0;
     const sectionCount = foundSectionNumbers.length;
-    
+
     console.log(
       `📊 Generated docs validation: Found ${sectionCount}/17 sections. Sections found: ${foundSectionNumbers.join(', ')}`
     );
-    
+
     if (hasGaps) {
       console.error(
         `❌ CRITICAL: Missing sections detected! Missing: ${missingSections.join(', ')}. Expected all sections 1-17, but got: ${foundSectionNumbers.join(', ')}`
       );
     }
-    
+
     const endsWithIncompleteTable =
       trimmedContent.endsWith("|") ||
       trimmedContent.endsWith("||") ||
@@ -1161,16 +1159,15 @@ REMEMBER: Incomplete documentation (missing ANY sections 1-17) is WORSE than sho
       endsWithIncompleteSection ||
       missingKeySections ||
       hasInsufficientSections ||
-      hasGaps; // Add gap detection to truncation check
+      hasGaps;
 
     if (isTruncated && docsContent && docsContent.length > 500) {
-      // Check for ALL missing sections (1-17), not just specific ones
       if (hasGaps && missingSections.length > 0) {
         console.error(
           `❌ CRITICAL: Missing sections detected during generation: ${missingSections.join(', ')}. Expected all 17 sections (1-17), but got: ${foundSectionNumbers.join(', ')}`
         );
       }
-      
+
       const requiredSections = [
         {
           num: "1",
@@ -1264,7 +1261,7 @@ REMEMBER: Incomplete documentation (missing ANY sections 1-17) is WORSE than sho
         },
       ];
 
-      const missingSections: string[] = [];
+      const missingSectionTitles: string[] = [];
       for (const section of requiredSections) {
         const hasSection =
           section.keywords.some((keyword) =>
@@ -1274,15 +1271,14 @@ REMEMBER: Incomplete documentation (missing ANY sections 1-17) is WORSE than sho
           trimmedContent.includes(`## ${section.num} `);
 
         if (!hasSection) {
-          missingSections.push(`${section.num}. ${section.title}`);
+          missingSectionTitles.push(`${section.num}. ${section.title}`);
         }
       }
 
       console.log(
-        `⚠️ Detected ${missingSections.length} missing sections: ${missingSections.map((s) => s.match(/\d+/)?.[0]).join(", ")}`
+        `⚠️ Detected ${missingSectionTitles.length} missing sections: ${missingSectionTitles.map((s) => s.match(/\d+/)?.[0]).join(", ")}`
       );
 
-      // Build comprehensive list of ALL missing sections with their details
       const allSectionDetails: Record<string, string> = {
         "1": "## 1. 📘 Product Understanding - What it does, who it serves (5-6 paragraphs)",
         "2": "## 2. 🧩 Core Value Proposition - Business value table with modules",
@@ -1303,8 +1299,8 @@ REMEMBER: Incomplete documentation (missing ANY sections 1-17) is WORSE than sho
         "17": "## 17. 🗺️ Complete System Flow Diagram - Comprehensive ASCII art diagram + 2-3 paragraphs",
       };
 
-      const missingSectionDetailsList = missingSections.map(num => {
-        const sectionNum = num.toString();
+      const missingSectionDetailsList = missingSectionTitles.map((s: string) => {
+        const sectionNum = s.match(/^\d+/)?.[0] ?? s;
         return allSectionDetails[sectionNum] || `Section ${sectionNum}`;
       }).join('\n');
 
@@ -1313,21 +1309,21 @@ REMEMBER: Incomplete documentation (missing ANY sections 1-17) is WORSE than sho
 🚨🚨🚨 CRITICAL: The previous response was INCOMPLETE and MISSING REQUIRED SECTIONS 🚨🚨🚨
 
 YOUR PREVIOUS RESPONSE HAD THESE CRITICAL ISSUES:
-- Missing sections: ${missingSections.join(', ')}
+- Missing sections: ${missingSectionTitles.join(', ')}
 - Expected ALL 17 sections (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17)
 - Got only sections: ${foundSectionNumbers.join(', ')}
 - Section numbering has GAPS - this is unacceptable
 
 YOU MUST GENERATE THE COMPLETE DOCUMENTATION INCLUDING:
 - ALL 17 sections in SEQUENTIAL ORDER: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17
-${missingSections.length > 0 ? `\n🚨 MISSING SECTIONS THAT MUST BE GENERATED (THESE ARE MANDATORY):\n${missingSectionDetailsList}\n` : ""}
+${missingSectionTitles.length > 0 ? `\n🚨 MISSING SECTIONS THAT MUST BE GENERATED (THESE ARE MANDATORY):\n${missingSectionDetailsList}\n` : ""}
 - Section numbering MUST be sequential with NO gaps
 - ALL Mermaid diagrams for architecture and data flow
 - ALL tables for Core Value Proposition and Tech Stack Summary
 - Proper closing for all tables, code blocks, and sections
 - Complete all sentences and paragraphs - do not leave tables, sections, or content incomplete
 
-⚠️ CRITICAL: You MUST include sections ${missingSections.join(', ')}. These sections were completely missing from your previous response.
+⚠️ CRITICAL: You MUST include sections ${missingSectionTitles.join(', ')}. These sections were completely missing from your previous response.
 ⚠️ Do NOT skip any sections - generate sections 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 in order.
 
 Do NOT truncate the response. Generate the FULL, COMPLETE 17-section Founder Edition documentation from start to finish with proper endings. ALL 17 SECTIONS MUST BE PRESENT WITH NO GAPS IN NUMBERING.`;
@@ -1343,7 +1339,7 @@ Do NOT truncate the response. Generate the FULL, COMPLETE 17-section Founder Edi
           Math.min(150000, 200000 - retryReservedTokens)
         );
 
-        const missingSectionNumbers = missingSections.join(", ");
+        const missingSectionNumbers = missingSectionTitles.join(", ");
         const retrySystemInstruction = `🚨🚨🚨 CRITICAL RETRY: YOU MUST COMPLETE ALL MISSING SECTIONS 🚨🚨🚨
 
 ABSOLUTE REQUIREMENTS:
@@ -1357,35 +1353,35 @@ ABSOLUTE REQUIREMENTS:
 8. Your response MUST include ALL 17 sections (1-17) with NO gaps
 9. If you have ${maxRetryOutputTokens} tokens, you have MORE than enough for all 17 sections`;
 
-        const retryContent = await openrouterSingleMessage(
+        const retryResult = await openrouterSingleMessage(
           retryPrompt,
           "anthropic/claude-3-haiku",
           maxRetryOutputTokens,
           retrySystemInstruction
         );
+        const retryContent = retryResult.content;
 
         const retryTrimmed = retryContent?.trim() || "";
-        
-        // Validate retry response has all sections
+
         const retrySectionMatches = retryTrimmed.match(/^##\s+(\d+)\./gm) || [];
         const retrySectionNumbers = retrySectionMatches.map(m => {
           const match = m.match(/^##\s+(\d+)\./);
           return match ? parseInt(match[1]) : 0;
         }).sort((a, b) => a - b);
-        
+
         const retryMissingSections = expectedSections.filter(num => !retrySectionNumbers.includes(num));
         const retryHasGaps = retryMissingSections.length > 0;
-        
+
         console.log(
           `📊 Retry validation: Found ${retrySectionNumbers.length}/17 sections: ${retrySectionNumbers.join(', ')}`
         );
-        
+
         if (retryHasGaps) {
           console.error(
             `❌ Retry still has missing sections: ${retryMissingSections.join(', ')}`
           );
         }
-        
+
         const retryEndsWithTable =
           retryTrimmed.endsWith("|") ||
           retryTrimmed.endsWith("||") ||
@@ -1441,7 +1437,6 @@ ABSOLUTE REQUIREMENTS:
       );
     }
 
-    // Check for ALL 17 sections, not just 11-17
     const allRequiredSections = Array.from({ length: 17 }, (_, i) => ({
       num: String(i + 1),
       keywords: [
@@ -1451,7 +1446,6 @@ ABSOLUTE REQUIREMENTS:
       ],
     }));
 
-    // Add specific keywords for known sections
     const sectionTitles: Record<string, string[]> = {
       "1": ["Product Understanding"],
       "2": ["Core Value Proposition"],
@@ -1490,7 +1484,6 @@ ABSOLUTE REQUIREMENTS:
       }
     }
 
-    // Keep backward compatibility with missingFinalSections for sections 11-17
     const missingFinalSections = missingSectionsList.filter(num => parseInt(num) >= 11);
 
     if (missingSectionsList.length > 0) {
@@ -1504,32 +1497,33 @@ ABSOLUTE REQUIREMENTS:
 
 ALL MISSING SECTIONS:
 ${missingSectionsList.map(num => {
-  const titles: Record<string, string> = {
-    "1": "Product Understanding",
-    "2": "Core Value Proposition", 
-    "3": "Architecture Intelligence",
-    "4": "Data & AI Flow",
-    "5": "Integration Potential",
-    "6": "Technical Edge",
-    "7": "Scalability & Production Readiness",
-    "8": "Security & Reliability",
-    "9": "Performance & Optimization",
-    "10": "Testing & Quality Assurance",
-    "11": "Extensibility Map",
-    "12": "AI Commentary (Senior Engineer Review)",
-    "13": "Business Applications",
-    "14": "Roadmap & Growth Potential",
-    "15": "License & Deployment Details",
-    "16": "TL;DR – Founder Summary",
-    "17": "Complete System Flow Diagram",
-  };
-  return `- Section ${num}: ${titles[num] || `Section ${num}`}`;
-}).join('\n')}
+        const titles: Record<string, string> = {
+          "1": "Product Understanding",
+          "2": "Core Value Proposition",
+          "3": "Architecture Intelligence",
+          "4": "Data & AI Flow",
+          "5": "Integration Potential",
+          "6": "Technical Edge",
+          "7": "Scalability & Production Readiness",
+          "8": "Security & Reliability",
+          "9": "Performance & Optimization",
+          "10": "Testing & Quality Assurance",
+          "11": "Extensibility Map",
+          "12": "AI Commentary (Senior Engineer Review)",
+          "13": "Business Applications",
+          "14": "Roadmap & Growth Potential",
+          "15": "License & Deployment Details",
+          "16": "TL;DR – Founder Summary",
+          "17": "Complete System Flow Diagram",
+        };
+        return `- Section ${num}: ${titles[num] || `Section ${num}`}`;
+      }).join('\n')}
 
 You MUST complete ALL 17 sections in sequential order (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17). 
 Do NOT skip any sections. Do NOT stop until sections ${missingSectionsList.join(", ")} are fully generated.
 CRITICAL: Section numbering MUST be sequential with NO gaps.`;
 
+      let stillMissing: string[] = [];
       try {
         const finalRetryPromptLength = finalRetryPrompt.length;
         const finalRetryCodebaseLength = codebaseContext?.length || 0;
@@ -1560,25 +1554,25 @@ Generate ALL missing sections completely with their exact headers.
 Do NOT stop until ALL 17 sections (1-17) are present with NO gaps in numbering.
 Your response MUST include sections ${missingSectionsList.join(", ")} or it will be considered a failure.`;
 
-        const finalRetryContent = await openrouterSingleMessage(
+        const finalRetryResult = await openrouterSingleMessage(
           finalRetryPrompt,
           "anthropic/claude-3-haiku",
           maxFinalRetryOutputTokens,
           finalRetrySystemInstruction
         );
+        const finalRetryContent = finalRetryResult.content;
 
         const finalRetryTrimmed = finalRetryContent?.trim() || "";
-        
-        // Check for ALL missing sections, not just 11-17
+
         const retrySectionMatches = finalRetryTrimmed.match(/^##\s+(\d+)\./gm) || [];
         const retrySectionNumbers = retrySectionMatches.map(m => {
           const match = m.match(/^##\s+(\d+)\./);
           return match ? parseInt(match[1]) : 0;
         }).sort((a, b) => a - b);
-        
-        const stillMissing = missingSectionsList.filter(num => !retrySectionNumbers.includes(parseInt(num)));
+
+        stillMissing = missingSectionsList.filter((num: string) => !retrySectionNumbers.includes(parseInt(num)));
         const allSectionsPresent = stillMissing.length === 0;
-        
+
         console.log(
           `📊 Final retry validation: Found sections ${retrySectionNumbers.join(', ')}, Still missing: ${stillMissing.length > 0 ? stillMissing.join(', ') : 'none'}`
         );
@@ -1600,14 +1594,13 @@ Your response MUST include sections ${missingSectionsList.join(", ")} or it will
           console.error(
             `❌ Final retry failed - still missing sections: ${stillMissing.join(", ")}. Expected all 17 sections (1-17).`
           );
-          
-          // If critical sections are still missing, throw error
+
           if (stillMissing.length > 0) {
             throw new Error(
               `Documentation generation incomplete. Missing sections: ${stillMissing.join(", ")}. Expected all 17 sections (1-17) but only got sections: ${retrySectionNumbers.join(", ")}. Please try regenerating the documentation.`
             );
           }
-          
+
           console.log(
             `⚠️ Final retry didn't add all missing sections. Attempting to generate sections ${stillMissing.join(", ")} separately...`
           );
@@ -1625,19 +1618,19 @@ ${codebaseContext.substring(0, 50000)}
 Generate ONLY these missing sections with their exact headers. Section numbering MUST be sequential with NO gaps:
 
 ${stillMissing.map(num => {
-  const sectionTemplates: Record<string, string> = {
-    "9": `## 9. ⚡ Performance & Optimization\nExplain performance characteristics and optimization strategies in 5-6 paragraphs based on the codebase.\n\n`,
-    "10": `## 10. 🧪 Testing & Quality Assurance\nDescribe testing strategies, test coverage, and quality assurance measures in 5-6 paragraphs based on the codebase.\n\n`,
-    "11": `## 11. 🧩 Extensibility Map\nExplain where new features can be added easily in exactly 3 paragraphs:\n- Paragraph 1: New AI models, endpoints, and API extensions\n- Paragraph 2: New UI modules, dashboards, and database models\n- Paragraph 3: New authentication methods and integrations\n\n`,
-    "12": `## 12. 🔍 AI Commentary (Senior Engineer Review)\nWrite a review in exactly 3 paragraphs as if a Staff engineer is reviewing the architecture for a founder:\n- Paragraph 1: Strengths and what's done well\n- Paragraph 2: Weaknesses and areas for improvement\n- Paragraph 3: Overall readiness and recommendations\n\n`,
-    "13": `## 13. 💡 Business Applications\nList 5-8 realistic startup use cases. For EACH use case, provide:\n- What it is (1-2 sentences)\n- How this repo enables it (1-2 sentences)\n- Required modifications (1 sentence)\n\n`,
-    "14": `## 14. 📊 Roadmap & Growth Potential\nProvide roadmap analysis in exactly 3 paragraphs:\n\n**Short-term (1-3 months):**\n- List 3-5 quick fixes, polish items, and critical bug fixes (1 sentence each)\n\n**Medium-term (3-6 months):**\n- List 3-5 architectural improvements, new features, and integrations (1 sentence each)\n\n**Long-term (6-12+ months):**\n- List 2-3 scaling strategies, observability improvements, and ecosystem integrations (1 sentence each)\n\n`,
-    "15": `## 15. 🧾 License & Deployment Details\nProvide documentation in exactly 3 paragraphs:\n- Paragraph 1: License type and deployment targets (Docker, Vercel, Render, AWS, etc.)\n- Paragraph 2: CI/CD configuration and environment variables\n- Paragraph 3: Infrastructure requirements and deployment process\n\n`,
-    "16": `## 16. ⚡ TL;DR – Founder Summary\nWrite a comprehensive summary in 5-6 paragraphs for a non-technical founder:\n- Paragraph 1: What this repo gives them today and how easily it fits their product\n- Paragraph 2: How close it is to production and key strengths/weaknesses\n- Paragraph 3: Why it's a strong or weak base for real use\n- Paragraph 4: Time and resource requirements to make it production-ready\n- Paragraph 5: Competitive advantages and unique selling points\n- Paragraph 6 (optional): Final recommendation and risk assessment\n\n`,
-    "17": `## 17. 🗺️ Complete System Flow Diagram\nCreate a comprehensive ASCII art diagram showing the COMPLETE flow of how the entire repository works from start to end.\nCRITICAL: START IMMEDIATELY with the actual ASCII art diagram using box-drawing characters (┌ ┐ └ ┘ │ ─ ├ ┤ ┬ ┴ ┼) and arrows (→ ← ↑ ↓).\nDO NOT write text descriptions first - the diagram must be the first thing after the section header.\nInclude ALL major components, services, databases, APIs, and external services.\nAfter the diagram, provide 2-3 paragraphs explaining the flow.\n\n`,
-  };
-  return sectionTemplates[num] || `## ${num}. [Section ${num}]\nGenerate this section with 5-6 paragraphs based on the codebase.\n\n`;
-}).join('')}
+              const sectionTemplates: Record<string, string> = {
+                "9": `## 9. ⚡ Performance & Optimization\nExplain performance characteristics and optimization strategies in 5-6 paragraphs based on the codebase.\n\n`,
+                "10": `## 10. 🧪 Testing & Quality Assurance\nDescribe testing strategies, test coverage, and quality assurance measures in 5-6 paragraphs based on the codebase.\n\n`,
+                "11": `## 11. 🧩 Extensibility Map\nExplain where new features can be added easily in exactly 3 paragraphs:\n- Paragraph 1: New AI models, endpoints, and API extensions\n- Paragraph 2: New UI modules, dashboards, and database models\n- Paragraph 3: New authentication methods and integrations\n\n`,
+                "12": `## 12. 🔍 AI Commentary (Senior Engineer Review)\nWrite a review in exactly 3 paragraphs as if a Staff engineer is reviewing the architecture for a founder:\n- Paragraph 1: Strengths and what's done well\n- Paragraph 2: Weaknesses and areas for improvement\n- Paragraph 3: Overall readiness and recommendations\n\n`,
+                "13": `## 13. 💡 Business Applications\nList 5-8 realistic startup use cases. For EACH use case, provide:\n- What it is (1-2 sentences)\n- How this repo enables it (1-2 sentences)\n- Required modifications (1 sentence)\n\n`,
+                "14": `## 14. 📊 Roadmap & Growth Potential\nProvide roadmap analysis in exactly 3 paragraphs:\n\n**Short-term (1-3 months):**\n- List 3-5 quick fixes, polish items, and critical bug fixes (1 sentence each)\n\n**Medium-term (3-6 months):**\n- List 3-5 architectural improvements, new features, and integrations (1 sentence each)\n\n**Long-term (6-12+ months):**\n- List 2-3 scaling strategies, observability improvements, and ecosystem integrations (1 sentence each)\n\n`,
+                "15": `## 15. 🧾 License & Deployment Details\nProvide documentation in exactly 3 paragraphs:\n- Paragraph 1: License type and deployment targets (Docker, Vercel, Render, AWS, etc.)\n- Paragraph 2: CI/CD configuration and environment variables\n- Paragraph 3: Infrastructure requirements and deployment process\n\n`,
+                "16": `## 16. ⚡ TL;DR – Founder Summary\nWrite a comprehensive summary in 5-6 paragraphs for a non-technical founder:\n- Paragraph 1: What this repo gives them today and how easily it fits their product\n- Paragraph 2: How close it is to production and key strengths/weaknesses\n- Paragraph 3: Why it's a strong or weak base for real use\n- Paragraph 4: Time and resource requirements to make it production-ready\n- Paragraph 5: Competitive advantages and unique selling points\n- Paragraph 6 (optional): Final recommendation and risk assessment\n\n`,
+                "17": `## 17. 🗺️ Complete System Flow Diagram\nCreate a comprehensive ASCII art diagram showing the COMPLETE flow of how the entire repository works from start to end.\nCRITICAL: START IMMEDIATELY with the actual ASCII art diagram using box-drawing characters (┌ ┐ └ ┘ │ ─ ├ ┤ ┬ ┴ ┼) and arrows (→ ← ↑ ↓).\nDO NOT write text descriptions first - the diagram must be the first thing after the section header.\nInclude ALL major components, services, databases, APIs, and external services.\nAfter the diagram, provide 2-3 paragraphs explaining the flow.\n\n`,
+              };
+              return sectionTemplates[num] || `## ${num}. [Section ${num}]\nGenerate this section with 5-6 paragraphs based on the codebase.\n\n`;
+            }).join('')}
 
 Generate ONLY these sections. Do not include any other content. Start directly with the first missing section header.`;
 
@@ -1658,12 +1651,13 @@ Generate ONLY these sections. Do not include any other content. Start directly w
               Math.min(120000, 200000 - sectionsOnlyReservedTokens)
             );
 
-            const sectionsOnlyContent = await openrouterSingleMessage(
+            const sectionsOnlyResult = await openrouterSingleMessage(
               sectionsOnlyPrompt,
               "anthropic/claude-3-haiku",
               maxSectionsOnlyOutputTokens,
               `CRITICAL: Generate ONLY sections ${stillMissing.join(", ")}. These are missing and must be added. You have ${maxSectionsOnlyOutputTokens} tokens - use them to generate complete sections. Section numbering must be sequential with NO gaps.`
             );
+            const sectionsOnlyContent = sectionsOnlyResult.content;
 
             if (
               sectionsOnlyContent &&
@@ -1702,19 +1696,20 @@ Generate ONLY these sections. Do not include any other content. Start directly w
               "16": `## 16. ⚡ TL;DR – Founder Summary (5-6 paragraphs)\n`,
               "17": `## 17. 🗺️ Complete System Flow Diagram (comprehensive ASCII art diagram + 2-3 paragraphs)\n`,
             };
-            
+
             const emergencyPrompt = `Generate ONLY sections ${stillMissing.join(", ")} for ${projectName}:
 
 ${stillMissing.map(num => emergencySectionTemplates[num] || `## ${num}. [Section ${num}]\n`).join('')}
 
 Generate these sections now. Section numbering MUST be sequential with NO gaps.`;
 
-            const emergencyContent = await openrouterSingleMessage(
+            const emergencyResult = await openrouterSingleMessage(
               emergencyPrompt,
               "anthropic/claude-3-haiku",
               100000,
               `Generate ONLY sections ${stillMissing.join(", ")}. These are required. Section numbering must be sequential.`
             );
+            const emergencyContent = emergencyResult.content;
 
             if (emergencyContent && emergencyContent.trim().length > 100) {
               docsContent =
@@ -1734,22 +1729,22 @@ Generate these sections now. Section numbering MUST be sequential with NO gaps.`
     }
 
     const finalCheckTrimmed = docsContent?.trim() || "";
-    
-    // Final validation: Check for ALL 17 sections (1-17)
+
+
     const finalSectionMatches = finalCheckTrimmed.match(/^##\s+(\d+)\./gm) || [];
     const finalSectionNumbers = finalSectionMatches.map(m => {
       const match = m.match(/^##\s+(\d+)\./);
       return match ? parseInt(match[1]) : 0;
     }).sort((a, b) => a - b);
-    
+
     const expectedAllSections = Array.from({ length: 17 }, (_, i) => i + 1);
     const finalMissingSections = expectedAllSections.filter(num => !finalSectionNumbers.includes(num));
     const finalHasGaps = finalMissingSections.length > 0;
-    
+
     console.log(
       `📊 Final validation: Found ${finalSectionNumbers.length}/17 sections: ${finalSectionNumbers.join(', ')}`
     );
-    
+
     if (finalHasGaps) {
       console.error(
         `❌ CRITICAL ERROR: Final documentation is missing sections: ${finalMissingSections.join(', ')}. Expected all 17 sections (1-17), but got: ${finalSectionNumbers.join(', ')}`
@@ -1759,8 +1754,7 @@ Generate these sections now. Section numbering MUST be sequential with NO gaps.`
       );
     }
 
-    // If we reach here, all 17 sections are validated and present
-    // The error above will throw if any sections are missing
+
 
     return docsContent;
   } catch (error) {
@@ -1811,12 +1805,12 @@ Use markdown format with clear sections, tables, and Mermaid diagrams.`;
         Math.min(180000, 200000 - fallbackReservedTokens)
       );
 
-      const fallbackDocs = await openrouterSingleMessage(
+      const fallbackResult = await openrouterSingleMessage(
         fallbackPrompt,
         "anthropic/claude-3-haiku",
         maxFallbackOutputTokens
       );
-      return fallbackDocs;
+      return fallbackResult.content;
     } catch (fallbackError) {
       console.error("Fallback docs generation also failed:", fallbackError);
     }
@@ -1958,17 +1952,14 @@ export async function modifyDocsWithQuery(
   projectName: string
 ) {
   try {
-    // Extract all section headers to track what should be preserved
     const sectionMatches = currentDocs.match(/^##\s+\d+\.\s+[^\n]+/gm) || [];
     const sectionHeaders = sectionMatches.map(match => match.trim());
     const sectionCount = sectionHeaders.length;
     const originalLength = currentDocs.length;
 
-    // Detect if user wants to remove a section
     const removeSectionMatch = userQuery.match(/remove\s+(?:the\s+)?(?:first|1st|section\s+)?(\d+|one|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth)/i);
     const isRemovalRequest = /remove|delete|drop/i.test(userQuery) && /section/i.test(userQuery);
 
-    // Build section preservation list
     const sectionsList = sectionHeaders.map((header, idx) => `${idx + 1}. ${header}`).join('\n');
 
     const prompt = `You are an expert technical writer. You need to modify existing technical documentation based on a user's specific request.
@@ -1995,8 +1986,8 @@ ABSOLUTE REQUIREMENTS FOR MODIFICATIONS:
 5. **DO NOT truncate**: Return the COMPLETE documentation with all sections (except the one being removed if requested)
 
 SPECIFIC INSTRUCTIONS:
-${isRemovalRequest 
-  ? `⚠️ REMOVAL REQUEST DETECTED:
+${isRemovalRequest
+        ? `⚠️ REMOVAL REQUEST DETECTED:
 - Remove ONLY the section(s) explicitly mentioned in the user request
 - Keep ALL other sections (${sectionCount - 1} sections) with their EXACT original content
 - Do NOT modify, rewrite, or regenerate any other sections
@@ -2007,7 +1998,7 @@ EXAMPLE: If user says "remove the first section":
 - Keep sections 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 EXACTLY as they are
 - Do NOT remove any other sections
 - Do NOT regenerate any content`
-  : `⚠️ MODIFICATION REQUEST:
+        : `⚠️ MODIFICATION REQUEST:
 - Modify ONLY the section(s) mentioned in the user request
 - Keep ALL other sections (${sectionCount} sections) with their EXACT original content
 - Do NOT modify, rewrite, or regenerate sections not mentioned in the request
@@ -2029,7 +2020,6 @@ OUTPUT REQUIREMENTS:
 Generate the COMPLETE modified documentation (preserving all unchanged sections exactly as they are):`;
 
     const estimatedModifyInputTokens = Math.ceil(prompt.length / 4);
-    // Reserve more tokens for output to ensure completeness
     const maxModifyOutputTokens = Math.max(
       150000,
       Math.min(200000, 200000 - estimatedModifyInputTokens - 5000)
@@ -2039,7 +2029,6 @@ Generate the COMPLETE modified documentation (preserving all unchanged sections 
       `📝 Modifying docs: Original length: ${originalLength} chars (~${sectionCount} sections), Estimated input tokens: ~${estimatedModifyInputTokens}, Max output tokens: ${maxModifyOutputTokens}`
     );
 
-    // Create a system instruction that emphasizes preservation
     const systemInstruction = `🚨 CRITICAL SYSTEM INSTRUCTION 🚨
 
 You are modifying existing documentation. Your job is to:
@@ -2051,20 +2040,18 @@ You are modifying existing documentation. Your job is to:
 
 The user wants you to PRESERVE existing content, not regenerate it.`;
 
-    // Use a more capable model for modifications to ensure completeness
-    let modifiedDocs = await openrouterSingleMessage(
+    const modifiedResult = await openrouterSingleMessage(
       prompt,
-      "anthropic/claude-3.5-sonnet", // Using sonnet instead of haiku for better completeness
+      "anthropic/claude-3.5-sonnet",
       maxModifyOutputTokens,
       systemInstruction
     );
+    let modifiedDocs = modifiedResult.content;
 
-    // Check for missing sections (gaps in numbering)
-    const expectedSections = isRemovalRequest 
-      ? Array.from({ length: sectionCount - 1 }, (_, i) => i + 2) // Sections 2, 3, 4... (removed section 1)
-      : Array.from({ length: sectionCount }, (_, i) => i + 1); // Sections 1, 2, 3...
+    const expectedSections = isRemovalRequest
+      ? Array.from({ length: sectionCount - 1 }, (_, i) => i + 2)
+      : Array.from({ length: sectionCount }, (_, i) => i + 1);
 
-    // Validate that the response is complete
     let modifiedLength = modifiedDocs.length;
     const lengthRatio = modifiedLength / originalLength;
     const modifiedSectionMatches = modifiedDocs.match(/^##\s+(\d+)\./gm) || [];
@@ -2073,27 +2060,26 @@ The user wants you to PRESERVE existing content, not regenerate it.`;
       const match = m.match(/^##\s+(\d+)\./);
       return match ? parseInt(match[1]) : 0;
     }).sort((a, b) => a - b);
-    
+
     let missingSections = expectedSections.filter(num => !modifiedSectionNumbers.includes(num));
     let hasGaps = missingSections.length > 0;
 
     console.log(
       `📊 Modification result: Original ${originalLength} chars (${sectionCount} sections) → Modified ${modifiedLength} chars (${modifiedSectionCount} sections), Ratio: ${(lengthRatio * 100).toFixed(1)}%`
     );
-    
+
     if (hasGaps) {
       console.error(
         `❌ CRITICAL: Missing sections detected! Expected sections: ${expectedSections.join(', ')}, Got: ${modifiedSectionNumbers.join(', ')}, Missing: ${missingSections.join(', ')}`
       );
     }
 
-    // If the response seems significantly truncated OR has missing sections, retry
     if (lengthRatio < 0.6 || modifiedSectionCount < sectionCount * 0.8 || hasGaps) {
       console.warn(
         `⚠️ Modified docs may be incomplete or has missing sections. Attempting retry with stronger instructions...`
       );
 
-      const missingSectionsList = hasGaps 
+      const missingSectionsList = hasGaps
         ? `\n\n🚨 MISSING SECTIONS DETECTED: ${missingSections.join(', ')} - You MUST include these sections!`
         : '';
 
@@ -2108,9 +2094,9 @@ ${lengthRatio < 0.6 ? `- Response too short: Only ${(lengthRatio * 100).toFixed(
 
 ABSOLUTE REQUIREMENTS:
 - The original documentation had ${sectionCount} sections numbered 1 through ${sectionCount}
-${isRemovalRequest 
-  ? `- After removal, you MUST have sections: ${expectedSections.join(', ')} (${sectionCount - 1} sections total)`
-  : `- You MUST have ALL sections: ${expectedSections.join(', ')} (${sectionCount} sections total)`}
+${isRemovalRequest
+          ? `- After removal, you MUST have sections: ${expectedSections.join(', ')} (${sectionCount - 1} sections total)`
+          : `- You MUST have ALL sections: ${expectedSections.join(', ')} (${sectionCount} sections total)`}
 - Section numbering MUST be sequential with NO gaps
 - For sections you're NOT modifying: Copy them EXACTLY word-for-word as they appear in the original documentation
 - Do NOT regenerate, rewrite, or summarize sections - use the EXACT original text
@@ -2120,12 +2106,13 @@ ${missingSectionsList}
 GENERATE THE COMPLETE DOCUMENTATION NOW WITH ALL ${isRemovalRequest ? sectionCount - 1 : sectionCount} SECTIONS IN SEQUENTIAL ORDER:`;
 
       try {
-        const retryDocs = await openrouterSingleMessage(
+        const retryResult = await openrouterSingleMessage(
           retryPrompt,
           "anthropic/claude-3.5-sonnet",
           maxModifyOutputTokens,
           systemInstruction
         );
+        const retryDocs = retryResult.content;
         const retryLength = retryDocs.length;
         const retrySectionMatches = retryDocs.match(/^##\s+(\d+)\./gm) || [];
         const retrySectionCount = retrySectionMatches.length;
@@ -2141,7 +2128,6 @@ GENERATE THE COMPLETE DOCUMENTATION NOW WITH ALL ${isRemovalRequest ? sectionCou
             `✅ Retry successful: ${retryLength} chars (${retrySectionCount} sections: ${retrySectionNumbers.join(', ')})`
           );
           modifiedDocs = retryDocs;
-          // Update validation variables
           modifiedLength = retryLength;
           modifiedSectionCount = retrySectionCount;
           modifiedSectionNumbers = retrySectionNumbers;
@@ -2157,12 +2143,10 @@ GENERATE THE COMPLETE DOCUMENTATION NOW WITH ALL ${isRemovalRequest ? sectionCou
       }
     }
 
-    // Final validation - check for missing sections
     if (hasGaps) {
       console.error(
         `❌ ERROR: Final response has missing sections! Expected: ${expectedSections.join(', ')}, Got: ${modifiedSectionNumbers.join(', ')}, Missing: ${missingSections.join(', ')}`
       );
-      // If we still have gaps after retry, throw an error to prevent saving incomplete docs
       throw new Error(
         `Documentation modification resulted in missing sections: ${missingSections.join(', ')}. Expected ${isRemovalRequest ? sectionCount - 1 : sectionCount} sections but got ${modifiedSectionCount}. Please try again or regenerate the documentation.`
       );

@@ -37,6 +37,7 @@ model Project {
   sourceCodeEmbiddings SourceCodeEmbiddings[]
   repoMemories         RepoMemory[]
   indexingJob          IndexingJob?
+  queryMetrics         QueryMetrics[]
 
   @@index([userId, deletedAt])
   @@index([userId, createdAt(sort: Desc)])
@@ -157,4 +158,26 @@ enum IndexingJobStatus {
   processing
   completed
   failed
+}
+
+model QueryMetrics {
+  id               String   @id @default(uuid())
+  projectId        String
+  project          Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  routeType        String
+  modelUsed        String
+  promptTokens     Int      @default(0)
+  completionTokens Int      @default(0)
+  totalTokens      Int      @default(0)
+  retrievalCount   Int      @default(0)
+  memoryHitCount   Int      @default(0)
+  latencyMs        Int
+  estimatedCostUsd Float
+  success          Boolean
+  errorMessage     String?  @db.Text
+  createdAt        DateTime @default(now())
+
+  @@index([projectId])
+  @@index([projectId, createdAt(sort: Desc)])
+  @@index([projectId, success, createdAt(sort: Desc)])
 }
