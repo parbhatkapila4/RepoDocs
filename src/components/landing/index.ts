@@ -1,0 +1,10 @@
+export { default as Navigation } from "./Navigation";
+export { default as Hero } from "./Hero";
+export { default as Features } from "./Features";
+export { default as HowItWorks } from "./HowItWorks";
+export { default as Demo } from "./Demo";
+export { default as DashboardPreview } from "./DashboardPreview";
+export { default as SocialProof } from "./SocialProof";
+export { default as FinalCTA } from "./FinalCTA";
+export { default as Footer } from "./Footer";
+export { VideoModal } from "./VideoModal";
