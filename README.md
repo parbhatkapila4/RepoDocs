@@ -26,11 +26,24 @@ Onboarding to new codebases takes weeks. Finding where specific logic lives mean
 
 RepoDoc indexes your entire codebase into a vector database, then lets you query it conversationally with AI.
 
-- Ask *"How does authentication work?"* → Get the answer with links to `src/lib/auth.ts:45-89`
-- Ask *"Where are API rate limits configured?"* → Instantly see the relevant files
+- Ask _"How does authentication work?"_ → Get the answer with links to `src/lib/auth.ts:45-89`
+- Ask _"Where are API rate limits configured?"_ → Instantly see the relevant files
 - Generate production-ready READMEs and technical docs in one click
 
 **No more digging through files. No more outdated wikis. Just ask.**
+
+---
+
+## Design Philosophy
+
+RepoDoc is engineering infrastructure for understanding code, not just an AI chatbot. A few principles shape how it works:
+
+- **Retrieval before generation** — Relevant code is retrieved first; the LLM answers from that context to reduce hallucination.
+- **Structured semantic memory** — Repo memory stores durable knowledge (concepts, decisions, relationships) with embeddings, instead of relying only on raw chat history.
+- **Operational observability** — Every AI request is recorded (route, model, tokens, retrieval/memory counts, latency, cost, success/failure) so the system is auditable and debuggable.
+- **Explicit cost awareness** — Token usage and estimated cost are tracked per request; optional per-project budget limits and threshold alerts keep cost predictable.
+- **Deterministic model fallback** — A clear strategy for which model is used (e.g. primary vs fallback) so behavior is predictable under rate limits or outages.
+- **Layered separation** — Indexing (ingestion, summarization, embedding), retrieval (vector search, memory search), and reasoning (LLM) are separate; each layer can be understood and evolved independently.
 
 ---
 
@@ -62,74 +75,71 @@ RepoDoc indexes your entire codebase into a vector database, then lets you query
 
 ## Features
 
-### 💬 Conversational Code Search
+### Intelligence Layer
 
-Chat with your codebase like you'd chat with a senior engineer who knows every line. Ask follow-up questions. Get code snippets with syntax highlighting. See exactly which files informed each answer.
+**💬 Conversational Code Search** — Chat with your codebase like you'd chat with a senior engineer who knows every line. Ask follow-up questions. Get code snippets with syntax highlighting. See exactly which files informed each answer.
 
-### 📄 One-Click Documentation
+**📄 One-Click Documentation** — Generate comprehensive technical documentation from your codebase automatically. The AI analyzes your code structure, patterns, and architecture to produce docs that actually reflect your implementation.
 
-Generate comprehensive technical documentation from your codebase automatically. The AI analyzes your code structure, patterns, and architecture to produce docs that actually reflect your implementation.
+**📝 README Generation** — Get professional README files generated from your code. Includes proper sections for installation, usage, API references, and more — all inferred from your actual implementation.
 
-### 📝 README Generation
+**📊 Repository Analytics** — Visualize your codebase at a glance:
 
-Get professional README files generated from your code. Includes proper sections for installation, usage, API references, and more — all inferred from your actual implementation.
-
-### 📊 Repository Analytics
-
-Visualize your codebase at a glance:
 - Language distribution with percentages
 - File counts and project metrics
 - Stars, forks, and activity from GitHub
 - Dependency insights
 
-### 🔗 Shareable Documentation
+**🔗 Shareable Documentation** — Generate public links to share your documentation with teammates, contributors, or the world. Each link is tokenized and can be revoked anytime.
 
-Generate public links to share your documentation with teammates, contributors, or the world. Each link is tokenized and can be revoked anytime.
+**🔄 Iterative Refinement** — Don't like something in the generated docs? Ask the AI to modify it. _"Add a troubleshooting section"_ or _"Update the API examples"_ — the docs evolve through conversation.
 
-### 🔄 Iterative Refinement
+**🏗️ Architecture View** — Explore your codebase as a high-level architecture map. The AI analyzes your repo structure and surfaces modules, dependencies, and entry points so you can understand how the system is organized at a glance.
 
-Don't like something in the generated docs? Ask the AI to modify it. *"Add a troubleshooting section"* or *"Update the API examples"* — the docs evolve through conversation.
+**📋 Diff Analysis** — Paste or upload a diff and get AI-powered analysis: what changed, impact, and suggestions. Supports query, diff, and architecture route types with token and cost tracking.
 
-### 🏗️ Architecture View
+**🧠 Repo Memory** — RAG can use stored repo memories (semantic chunks with embeddings) for better context. Memory hit counts and retrieval counts are tracked for observability.
 
-Explore your codebase as a high-level architecture map. The AI analyzes your repo structure and surfaces modules, dependencies, and entry points so you can understand how the system is organized at a glance.
+### Operational Layer
 
-### 📋 Diff Analysis
+**📊 Query Metrics (Observability)** — AI query observability is stored per request: route type (query / diff / architecture), model used, token counts, retrieval and memory hits, latency, estimated cost, and success/error. Indexed by project and time for analytics.
 
-Paste or upload a diff and get AI-powered analysis: what changed, impact, and suggestions. Supports query, diff, and architecture route types with token and cost tracking.
+**Cost tracking** — Token usage and estimated cost per request; 7-day cost breakdown by route type and 30-day rolling view.
 
-### ⚙️ Background Indexing
+**Budget guardrails** — Optional per-project budget limits and threshold alerts (warning / limit exceeded).
 
-Indexing runs as a serverless job queue (Vercel cron + Postgres leasing). No blocking on project create or regenerate — jobs are queued, processed by a worker, and report progress. Retry and cancel from the UI.
+**Health status** — Per-project status (healthy / warning / critical) for monitoring.
 
-### 🧠 Repo Memory
+**Cold start detection** — First query or long idle gap is flagged so latency spikes are explainable.
 
-RAG can use stored repo memories (semantic chunks with embeddings) for better context. Memory hit counts and retrieval counts are tracked for observability.
+**Cache metrics** — Cache-hit detection when a cached answer is served; visibility into cache effectiveness.
 
-### 📊 Query Metrics (Observability)
+### Infrastructure Layer
 
-AI query observability is stored per request: route type (query / diff / architecture), model used, token counts, retrieval and memory hits, latency, estimated cost, and success/error. Indexed by project and time for analytics.
+**⚙️ Background Indexing** — Indexing runs as a serverless job queue (Vercel cron + Postgres leasing). No blocking on project create or regenerate — jobs are queued, processed by a worker, and report progress. Retry and cancel from the UI.
+
+**Model fallback** — Primary model (e.g. Gemini) with deterministic fallback (e.g. OpenRouter) under rate limits or outages so behavior is predictable.
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| **Framework** | Next.js 16 (App Router, React 18) |
-| **Language** | TypeScript 5 |
-| **Styling** | Tailwind CSS 4.1, Radix UI |
-| **State** | Redux Toolkit |
-| **Database** | PostgreSQL + pgvector |
-| **ORM** | Prisma 6 |
-| **AI/LLM** | Google Gemini 2.5 Flash, OpenRouter |
+| Layer          | Technology                          |
+| -------------- | ----------------------------------- |
+| **Framework**  | Next.js 16 (App Router, React 18)   |
+| **Language**   | TypeScript 5                        |
+| **Styling**    | Tailwind CSS 4.1, Radix UI          |
+| **State**      | Redux Toolkit                       |
+| **Database**   | PostgreSQL + pgvector               |
+| **ORM**        | Prisma 6                            |
+| **AI/LLM**     | Google Gemini 2.5 Flash, OpenRouter |
 | **Embeddings** | text-embedding-004 (768 dimensions) |
-| **Auth** | Clerk |
-| **Payments** | Stripe |
-| **Forms** | React Hook Form + Zod |
-| **Animation** | Motion (Framer Motion) |
-| **Testing** | Jest, React Testing Library |
-| **Deployment** | Vercel |
+| **Auth**       | Clerk                               |
+| **Payments**   | Stripe                              |
+| **Forms**      | React Hook Form + Zod               |
+| **Animation**  | Motion (Framer Motion)              |
+| **Testing**    | Jest, React Testing Library         |
+| **Deployment** | Vercel                              |
 
 ---
 
@@ -181,6 +191,14 @@ AI query observability is stored per request: route type (query / diff / archite
 
 ---
 
+## Operational Model
+
+AI is treated as a production system. Each AI request is recorded with: route type (query / diff / architecture), model used, prompt and completion tokens, retrieval count and memory hit count, latency, estimated cost, success or failure, cold-start detection (first query or long idle gap), and cache-hit detection when a cached answer is served.
+
+Per-project observability (via the observability API and UI) includes: 7-day cost breakdown by route type, 30-day rolling cost and budget tracking, budget threshold alerts (warning / limit exceeded), error-rate monitoring, health status (healthy / warning / critical), and memory quality metrics (e.g. hit rate, average similarity). This is how the system is run and debugged, not a sales pitch.
+
+---
+
 ## Database Schema
 
 ```prisma
@@ -221,7 +239,7 @@ model Docs {
 
 model Readme {
   id          String       @id @default(uuid())
-  content     String  
+  content     String
   projectId   String       @unique
   qnaHistory  ReadmeQna[]
   publicShare ReadmeShare?
@@ -230,6 +248,26 @@ model Readme {
 // Additional models: RepoMemory (RAG memory + embeddings), IndexingJob (queue + status),
 // QueryMetrics (per-request observability: routeType, tokens, latency, cost, success).
 ```
+
+---
+
+## Tradeoffs & Constraints
+
+Embedding similarity has limitations: semantic match is not perfect, and very similar phrasing can rank higher than conceptually relevant but differently worded code. Context window and retrieval depth are limited — we send a bounded number of chunks. There is a latency vs retrieval-depth tradeoff: more chunks improve coverage but increase latency and cost. Repo memory can drift after major refactors (stale facts until re-indexing or new Q&A). Cost vs model quality is a tradeoff (e.g. cheaper vs more capable models). Architecture inference is best-effort (e.g. static import analysis; dynamic or runtime behavior may be missed).
+
+Mitigations in place: top-k retrieval caps, similarity-based ranking, explicit labeling of memory vs code context in prompts, in-memory query cache for repeated questions, and budget guardrails.
+
+---
+
+## Known Failure Modes
+
+Stale or misleading memory after large refactors. Architecture view missing dynamically loaded or generated imports. Diff analysis is advisory — impact and risk are suggestions, not authoritative. Cold starts after indexing or long idle periods cause higher latency. Model rate limiting can lead to fallback or errors. Heavy indexing of large repos can increase latency or load. Observability (query metrics, error rate, health status, cold-start and cache metrics) is in place to surface these conditions.
+
+---
+
+## Scaling Strategy
+
+Evolution path at higher scale: async embedding pipelines so indexing does not block requests; batched embedding jobs for efficiency; sharded or dedicated vector storage if one database becomes a bottleneck; horizontal scaling of indexing workers; background memory compaction or pruning; more aggressive or distributed caching; model tiering (e.g. cheaper models for simple queries, premium for complex ones). This is an evolution path; not all of it is implemented today.
 
 ---
 
@@ -255,11 +293,15 @@ const results = await prisma.$queryRaw`
 `;
 
 // 3. Build context from retrieved chunks
-const codeContext = results.map((code, idx) => `
+const codeContext = results
+  .map(
+    (code, idx) => `
   [Source ${idx + 1}: ${code.fileName}] (Relevance: ${(code.similarity * 100).toFixed(1)}%)
   Summary: ${code.summary}
   Code: ${code.sourceCode.slice(0, 1000)}
-`).join('\n\n');
+`,
+  )
+  .join("\n\n");
 
 // 4. Generate answer with Gemini
 const answer = await openrouterChatCompletion({
@@ -267,9 +309,9 @@ const answer = await openrouterChatCompletion({
   messages: [
     { role: "system", content: systemPrompt + codeContext },
     ...conversationHistory,
-    { role: "user", content: question }
+    { role: "user", content: question },
   ],
-  temperature: 0.3
+  temperature: 0.3,
 });
 ```
 
@@ -409,11 +451,11 @@ repodoc/
 
 ## Pricing
 
-| Plan | Price | Projects | Features |
-|------|-------|----------|----------|
-| **Starter** | $10/mo | 3 | AI chat, README generation, docs generation, basic analytics |
-| **Professional** | $20/mo | 10 | Everything in Starter + public sharing, priority processing, email support |
-| **Enterprise** | $49/mo | Unlimited | Everything in Professional + team features, SLA, custom integrations |
+| Plan             | Price  | Projects  | Features                                                                   |
+| ---------------- | ------ | --------- | -------------------------------------------------------------------------- |
+| **Starter**      | $10/mo | 3         | AI chat, README generation, docs generation, basic analytics               |
+| **Professional** | $20/mo | 10        | Everything in Starter + public sharing, priority processing, email support |
+| **Enterprise**   | $49/mo | Unlimited | Everything in Professional + team features, SLA, custom integrations       |
 
 ---
 
@@ -508,7 +550,6 @@ git push origin feature/your-feature
 - [ ] GitHub App for automatic syncing
 - [ ] Custom embedding models
 - [ ] Streaming responses
-
 
 ---
 
