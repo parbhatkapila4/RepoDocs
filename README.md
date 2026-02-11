@@ -38,12 +38,12 @@ RepoDoc indexes your entire codebase into a vector database, then lets you query
 
 RepoDoc is engineering infrastructure for understanding code, not just an AI chatbot. A few principles shape how it works:
 
-- **Retrieval before generation** — Relevant code is retrieved first; the LLM answers from that context to reduce hallucination.
-- **Structured semantic memory** — Repo memory stores durable knowledge (concepts, decisions, relationships) with embeddings, instead of relying only on raw chat history.
-- **Operational observability** — Every AI request is recorded (route, model, tokens, retrieval/memory counts, latency, cost, success/failure) so the system is auditable and debuggable.
-- **Explicit cost awareness** — Token usage and estimated cost are tracked per request; optional per-project budget limits and threshold alerts keep cost predictable.
-- **Deterministic model fallback** — A clear strategy for which model is used (e.g. primary vs fallback) so behavior is predictable under rate limits or outages.
-- **Layered separation** — Indexing (ingestion, summarization, embedding), retrieval (vector search, memory search), and reasoning (LLM) are separate; each layer can be understood and evolved independently.
+- **Retrieval before generation**: Relevant code is retrieved first; the LLM answers from that context to reduce hallucination.
+- **Structured semantic memory**: Repo memory stores durable knowledge (concepts, decisions, relationships) with embeddings, instead of relying only on raw chat history.
+- **Operational observability**: Every AI request is recorded (route, model, tokens, retrieval/memory counts, latency, cost, success/failure) so the system is auditable and debuggable.
+- **Explicit cost awareness**: Token usage and estimated cost are tracked per request; optional per-project budget limits and threshold alerts keep cost predictable.
+- **Deterministic model fallback**: A clear strategy for which model is used (e.g. primary vs fallback) so behavior is predictable under rate limits or outages.
+- **Layered separation**: Indexing (ingestion, summarization, embedding), retrieval (vector search, memory search), and reasoning (LLM) are separate; each layer can be understood and evolved independently.
 
 ---
 
@@ -77,48 +77,48 @@ RepoDoc is engineering infrastructure for understanding code, not just an AI cha
 
 ### Intelligence Layer
 
-**💬 Conversational Code Search** — Chat with your codebase like you'd chat with a senior engineer who knows every line. Ask follow-up questions. Get code snippets with syntax highlighting. See exactly which files informed each answer.
+**💬 Conversational Code Search**: Chat with your codebase like you'd chat with a senior engineer who knows every line. Ask follow-up questions. Get code snippets with syntax highlighting. See exactly which files informed each answer.
 
-**📄 One-Click Documentation** — Generate comprehensive technical documentation from your codebase automatically. The AI analyzes your code structure, patterns, and architecture to produce docs that actually reflect your implementation.
+**📄 One-Click Documentation**: Generate comprehensive technical documentation from your codebase automatically. The AI analyzes your code structure, patterns, and architecture to produce docs that actually reflect your implementation.
 
-**📝 README Generation** — Get professional README files generated from your code. Includes proper sections for installation, usage, API references, and more — all inferred from your actual implementation.
+**📝 README Generation**: Get professional README files generated from your code. Includes proper sections for installation, usage, API references, and more, all inferred from your actual implementation.
 
-**📊 Repository Analytics** — Visualize your codebase at a glance:
+**📊 Repository Analytics**: Visualize your codebase at a glance:
 
 - Language distribution with percentages
 - File counts and project metrics
 - Stars, forks, and activity from GitHub
 - Dependency insights
 
-**🔗 Shareable Documentation** — Generate public links to share your documentation with teammates, contributors, or the world. Each link is tokenized and can be revoked anytime.
+**🔗 Shareable Documentation**: Generate public links to share your documentation with teammates, contributors, or the world. Each link is tokenized and can be revoked anytime.
 
-**🔄 Iterative Refinement** — Don't like something in the generated docs? Ask the AI to modify it. _"Add a troubleshooting section"_ or _"Update the API examples"_ — the docs evolve through conversation.
+**🔄 Iterative Refinement**: Don't like something in the generated docs? Ask the AI to modify it. _"Add a troubleshooting section"_ or _"Update the API examples"_ , the docs evolve through conversation.
 
-**🏗️ Architecture View** — Explore your codebase as a high-level architecture map. The AI analyzes your repo structure and surfaces modules, dependencies, and entry points so you can understand how the system is organized at a glance.
+**🏗️ Architecture View**: Explore your codebase as a high-level architecture map. The AI analyzes your repo structure and surfaces modules, dependencies, and entry points so you can understand how the system is organized at a glance.
 
-**📋 Diff Analysis** — Paste or upload a diff and get AI-powered analysis: what changed, impact, and suggestions. Supports query, diff, and architecture route types with token and cost tracking.
+**📋 Diff Analysis**: Paste or upload a diff and get AI-powered analysis: what changed, impact, and suggestions. Supports query, diff, and architecture route types with token and cost tracking.
 
-**🧠 Repo Memory** — RAG can use stored repo memories (semantic chunks with embeddings) for better context. Memory hit counts and retrieval counts are tracked for observability.
+**🧠 Repo Memory**: RAG can use stored repo memories (semantic chunks with embeddings) for better context. Memory hit counts and retrieval counts are tracked for observability.
 
 ### Operational Layer
 
-**📊 Query Metrics (Observability)** — AI query observability is stored per request: route type (query / diff / architecture), model used, token counts, retrieval and memory hits, latency, estimated cost, and success/error. Indexed by project and time for analytics.
+**📊 Query Metrics (Observability)**: AI query observability is stored per request: route type (query / diff / architecture), model used, token counts, retrieval and memory hits, latency, estimated cost, and success/error. Indexed by project and time for analytics.
 
-**Cost tracking** — Token usage and estimated cost per request; 7-day cost breakdown by route type and 30-day rolling view.
+**Cost tracking**: Token usage and estimated cost per request; 7-day cost breakdown by route type and 30-day rolling view.
 
-**Budget guardrails** — Optional per-project budget limits and threshold alerts (warning / limit exceeded).
+**Budget guardrails**: Optional per-project budget limits and threshold alerts (warning / limit exceeded).
 
-**Health status** — Per-project status (healthy / warning / critical) for monitoring.
+**Health status**: Per-project status (healthy / warning / critical) for monitoring.
 
-**Cold start detection** — First query or long idle gap is flagged so latency spikes are explainable.
+**Cold start detection**: First query or long idle gap is flagged so latency spikes are explainable.
 
-**Cache metrics** — Cache-hit detection when a cached answer is served; visibility into cache effectiveness.
+**Cache metrics**: Cache-hit detection when a cached answer is served; visibility into cache effectiveness.
 
 ### Infrastructure Layer
 
-**⚙️ Background Indexing** — Indexing runs as a serverless job queue (Vercel cron + Postgres leasing). No blocking on project create or regenerate — jobs are queued, processed by a worker, and report progress. Retry and cancel from the UI.
+**⚙️ Background Indexing**: Indexing runs as a serverless job queue (Vercel cron + Postgres leasing). No blocking on project create or regenerate — jobs are queued, processed by a worker, and report progress. Retry and cancel from the UI.
 
-**Model fallback** — Primary model (e.g. Gemini) with deterministic fallback (e.g. OpenRouter) under rate limits or outages so behavior is predictable.
+**Model fallback**: Primary model (e.g. Gemini) with deterministic fallback (e.g. OpenRouter) under rate limits or outages so behavior is predictable.
 
 ---
 
@@ -159,16 +159,16 @@ RepoDoc is engineering infrastructure for understanding code, not just an AI cha
 │  └──────┬──────┘  └──────┬──────┘                                            │
 │         └────────────────┴───────────────────────────────────────────────────┘
 │                                    │                                         │
-│                           ┌────────▼────────┐                                │
-│                           │   API Routes    │                                │
-│                           │                 │                                │
-│                           │  /api/query     │ ← RAG Pipeline                 │
-│                           │  /api/search    │ ← Vector Search                │
-│                           │  /api/analytics │ ← Metrics Aggregation          │
-│                           │  /api/architecture │ ← Architecture extraction  │
-│                           │  /api/analyze-diff  │ ← Diff analysis            │
+│                           ┌────────▼──────────────┐                          │
+│                           │   API Routes          │                          │
+│                           │                       │                          │
+│                           │  /api/query           │ ← RAG Pipeline           │
+│                           │  /api/search          │ ← Vector Search          │
+│                           │  /api/analytics       │ ← Metrics Aggregation    │
+│                           │  /api/architecture    │ ← Architecture extraction│
+│                           │  /api/analyze-diff    │ ← Diff analysis          │
 │                           │  /api/indexing-worker │ ← Cron job (indexing)    │
-│                           └────────┬────────┘                                │
+│                           └────────┬──────────────┘                          │
 └────────────────────────────────────┼─────────────────────────────────────────┘
                                      │
           ┌──────────────────────────┼──────────────────────────┐
@@ -253,7 +253,7 @@ model Readme {
 
 ## Tradeoffs & Constraints
 
-Embedding similarity has limitations: semantic match is not perfect, and very similar phrasing can rank higher than conceptually relevant but differently worded code. Context window and retrieval depth are limited — we send a bounded number of chunks. There is a latency vs retrieval-depth tradeoff: more chunks improve coverage but increase latency and cost. Repo memory can drift after major refactors (stale facts until re-indexing or new Q&A). Cost vs model quality is a tradeoff (e.g. cheaper vs more capable models). Architecture inference is best-effort (e.g. static import analysis; dynamic or runtime behavior may be missed).
+Embedding similarity has limitations: semantic match is not perfect, and very similar phrasing can rank higher than conceptually relevant but differently worded code. Context window and retrieval depth are limited, we send a bounded number of chunks. There is a latency vs retrieval-depth tradeoff: more chunks improve coverage but increase latency and cost. Repo memory can drift after major refactors (stale facts until re-indexing or new Q&A). Cost vs model quality is a tradeoff (e.g. cheaper vs more capable models). Architecture inference is best-effort (e.g. static import analysis; dynamic or runtime behavior may be missed).
 
 Mitigations in place: top-k retrieval caps, similarity-based ranking, explicit labeling of memory vs code context in prompts, in-memory query cache for repeated questions, and budget guardrails.
 
@@ -261,7 +261,7 @@ Mitigations in place: top-k retrieval caps, similarity-based ranking, explicit l
 
 ## Known Failure Modes
 
-Stale or misleading memory after large refactors. Architecture view missing dynamically loaded or generated imports. Diff analysis is advisory — impact and risk are suggestions, not authoritative. Cold starts after indexing or long idle periods cause higher latency. Model rate limiting can lead to fallback or errors. Heavy indexing of large repos can increase latency or load. Observability (query metrics, error rate, health status, cold-start and cache metrics) is in place to surface these conditions.
+Stale or misleading memory after large refactors. Architecture view missing dynamically loaded or generated imports. Diff analysis is advisory, impact and risk are suggestions, not authoritative. Cold starts after indexing or long idle periods cause higher latency. Model rate limiting can lead to fallback or errors. Heavy indexing of large repos can increase latency or load. Observability (query metrics, error rate, health status, cold-start and cache metrics) is in place to surface these conditions.
 
 ---
 
@@ -538,18 +538,6 @@ git commit -m "Add your feature"
 git push origin feature/your-feature
 # Open a PR
 ```
-
----
-
-## Roadmap
-
-- [ ] Support for GitLab and Bitbucket
-- [ ] Self-hosted deployment option
-- [ ] Team workspaces with shared projects
-- [ ] VS Code extension
-- [ ] GitHub App for automatic syncing
-- [ ] Custom embedding models
-- [ ] Streaming responses
 
 ---
 

@@ -24,6 +24,7 @@ export interface RAGQueryResult {
   totalTokens?: number;
   modelUsed?: string;
   memoryHitCount?: number;
+  avgMemorySimilarity?: number | null;
 }
 
 
@@ -102,16 +103,22 @@ export async function queryCodebase(
         answer:
           "I couldn't find any relevant code for your question. The repository might not be fully indexed yet, or your question might be too specific.",
         sources: [],
+        avgMemorySimilarity: null,
       };
     }
 
     let memoryContext = "";
     let memoryHitCount = 0;
+    let avgMemorySimilarity: number | null = null;
     try {
       const queryEmbedding = await getGenerateEmbeddings(question);
       if (queryEmbedding?.length) {
         const memories = await searchRepoMemory(projectId, queryEmbedding, 3);
         memoryHitCount = memories.length;
+        avgMemorySimilarity =
+          memories.length > 0
+            ? memories.reduce((s, m) => s + m.similarity, 0) / memories.length
+            : null;
         if (memories.length > 0) {
           memoryContext =
             "\n\n## Repository memory (use to inform answers; code overrides when in conflict):\n" +
@@ -273,6 +280,7 @@ Remember: Your goal is to make the codebase as understandable as possible. Be de
       totalTokens: usage?.total_tokens,
       modelUsed: chatResult.model,
       memoryHitCount,
+      avgMemorySimilarity,
     };
   } catch (error) {
     console.error("Error in RAG query:", error);

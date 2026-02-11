@@ -32,6 +32,19 @@ async function getDbUserId(clerkUserId: string): Promise<string | null> {
   return dbUser?.id || null;
 }
 
+/**
+ * Architecture route: intentionally not instrumented with QueryMetrics for now.
+ * This route only calls buildDependencyGraph(projectId) and does not use an LLM,
+ * so there is nothing to record.
+ *
+ * When you add an AI-driven step (e.g. LLM call for summaries or analysis):
+ * - Set const startMs = Date.now() before the AI call.
+ * - After the AI call, get token usage and model from the provider.
+ * - Fire-and-forget: void recordQueryMetrics(prisma, { projectId, routeType: "architecture",
+ *   modelUsed, promptTokens, completionTokens, totalTokens, retrievalCount, memoryHitCount,
+ *   latencyMs, estimatedCostUsd, success }).catch(...) — use 0 for retrievalCount/memoryHitCount
+ *   if not applicable. Do not await; do not change response shape or status codes.
+ */
 export async function GET(request: NextRequest) {
   try {
     const { userId } = await auth();

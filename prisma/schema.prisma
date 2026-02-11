@@ -23,21 +23,23 @@ model User {
 }
 
 model Project {
-  id                   String                 @id @default(uuid())
-  createdAt            DateTime               @default(now())
-  updatedAt            DateTime               @updatedAt
-  name                 String
-  repoUrl              String
-  githubToken          String?
-  deletedAt            DateTime?
-  userId               String
-  docs                 Docs?
-  user                 User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  readme               Readme?
-  sourceCodeEmbiddings SourceCodeEmbiddings[]
-  repoMemories         RepoMemory[]
-  indexingJob          IndexingJob?
-  queryMetrics         QueryMetrics[]
+  id                    String                 @id @default(uuid())
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  name                  String
+  repoUrl               String
+  githubToken           String?
+  deletedAt             DateTime?
+  userId                String
+  monthlyCostLimitUsd   Float?
+  alertThresholdPercent Float                  @default(80)
+  docs                  Docs?
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readme                Readme?
+  sourceCodeEmbiddings  SourceCodeEmbiddings[]
+  repoMemories          RepoMemory[]
+  indexingJob           IndexingJob?
+  queryMetrics          QueryMetrics[]
 
   @@index([userId, deletedAt])
   @@index([userId, createdAt(sort: Desc)])
@@ -161,21 +163,24 @@ enum IndexingJobStatus {
 }
 
 model QueryMetrics {
-  id               String   @id @default(uuid())
-  projectId        String
-  project          Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  routeType        String
-  modelUsed        String
-  promptTokens     Int      @default(0)
-  completionTokens Int      @default(0)
-  totalTokens      Int      @default(0)
-  retrievalCount   Int      @default(0)
-  memoryHitCount   Int      @default(0)
-  latencyMs        Int
-  estimatedCostUsd Float
-  success          Boolean
-  errorMessage     String?  @db.Text
-  createdAt        DateTime @default(now())
+  id                  String   @id @default(uuid())
+  projectId           String
+  project             Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  routeType           String
+  modelUsed           String
+  promptTokens        Int      @default(0)
+  completionTokens    Int      @default(0)
+  totalTokens         Int      @default(0)
+  retrievalCount      Int      @default(0)
+  memoryHitCount      Int      @default(0)
+  latencyMs           Int
+  estimatedCostUsd    Float
+  success             Boolean
+  errorMessage        String?  @db.Text
+  wasColdStart        Boolean  @default(false)
+  cacheHit            Boolean  @default(false)
+  avgMemorySimilarity Float?
+  createdAt           DateTime @default(now())
 
   @@index([projectId])
   @@index([projectId, createdAt(sort: Desc)])

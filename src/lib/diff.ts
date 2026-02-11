@@ -41,6 +41,7 @@ export interface DiffAnalysisMetrics {
   modelUsed: string;
   retrievalCount: number;
   memoryHitCount: number;
+  avgMemorySimilarity: number | null;
 }
 
 export type AnalyzeDiffReturn = DiffAnalysisResult & { _metrics?: DiffAnalysisMetrics };
@@ -280,6 +281,10 @@ Return the analysis as a single JSON object with keys: summary, whatChanged, imp
 
   const retrievalCount = relevantCode.length;
   const memoryHitCount = memories.length;
+  const avgMemorySimilarity =
+    memories.length > 0
+      ? memories.reduce((s, m) => s + (m.similarity ?? 0), 0) / memories.length
+      : null;
   const usage = chatResult.usage;
   const _metrics: DiffAnalysisMetrics = {
     promptTokens: usage?.prompt_tokens ?? 0,
@@ -288,6 +293,7 @@ Return the analysis as a single JSON object with keys: summary, whatChanged, imp
     modelUsed: chatResult.model ?? "",
     retrievalCount,
     memoryHitCount,
+    avgMemorySimilarity,
   };
 
   let parsedResult: unknown;

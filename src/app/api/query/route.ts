@@ -8,6 +8,7 @@ import {
 } from "@/lib/memory";
 import { estimateCostUsd } from "@/lib/cost";
 import { recordQueryMetrics } from "@/lib/query-metrics";
+import * as queryCache from "@/lib/query-cache";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -106,12 +107,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const cached = queryCache.get(projectId, question);
+    if (cached) {
+      const latencyMs = Date.now() - startMs;
+
+      console.log("[QueryMetrics] Recording success (cache hit)", { projectId, routeType: "query", latencyMs });
+      void recordQueryMetrics(prisma, {
+        projectId,
+        routeType: "query",
+        modelUsed: "unknown",
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
+        retrievalCount: cached.sources.length,
+        memoryHitCount: 0,
+        latencyMs,
+        estimatedCostUsd: 0,
+        success: true,
+        cacheHit: true,
+      }).catch((err) => console.error("[QueryMetrics]", err));
+      return NextResponse.json({
+        success: true,
+        answer: cached.answer,
+        sources: cached.sources,
+        metadata: {
+          sourcesCount: cached.sources.length,
+          projectName: project.name,
+        },
+      });
+    }
+
     const result = await queryCodebase(
       projectId,
       question,
       conversationHistory,
       { mode }
     );
+
+    queryCache.set(projectId, question, result.answer, result.sources);
 
     const latencyMs = Date.now() - startMs;
     const promptTokens = result.promptTokens ?? 0;
@@ -126,6 +159,8 @@ export async function POST(request: NextRequest) {
       modelUsed
     );
 
+
+    console.log("[QueryMetrics] Recording success", { projectId, routeType: "query", latencyMs });
     void recordQueryMetrics(prisma, {
       projectId,
       routeType: "query",
@@ -138,6 +173,8 @@ export async function POST(request: NextRequest) {
       latencyMs,
       estimatedCostUsd,
       success: true,
+      cacheHit: false,
+      avgMemorySimilarity: result.avgMemorySimilarity ?? undefined,
     }).catch((err) => console.error("[QueryMetrics]", err));
 
     try {
@@ -171,6 +208,8 @@ export async function POST(request: NextRequest) {
       const latencyMs = Date.now() - startMs;
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
+
+      console.log("[QueryMetrics] Recording failure", { projectId: projectIdForMetrics, routeType: "query", latencyMs, success: false });
       void recordQueryMetrics(prisma, {
         projectId: projectIdForMetrics,
         routeType: "query",

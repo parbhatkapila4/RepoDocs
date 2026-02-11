@@ -45,6 +45,7 @@ import {
   Search,
   FileDiff,
   Network,
+  Activity,
 } from "lucide-react";
 import { RepoDocLogo } from "@/components/ui/repodoc-logo";
 import { useUser } from "@/hooks/useUser";
@@ -89,6 +90,11 @@ const navigationItems: NavigationItem[] = [
     title: "Analyze Diff",
     url: "/diff",
     icon: FileDiff,
+  },
+  {
+    title: "Observability",
+    url: "/observability",
+    icon: Activity,
   },
   {
     title: "Generated Docs",

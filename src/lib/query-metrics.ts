@@ -13,6 +13,9 @@ export interface QueryMetricsPayload {
   estimatedCostUsd: number;
   success: boolean;
   errorMessage?: string | null;
+  wasColdStart?: boolean;
+  cacheHit?: boolean;
+  avgMemorySimilarity?: number | null;
 }
 
 
@@ -41,7 +44,27 @@ export function recordQueryMetrics(
         estimatedCostUsd: payload.estimatedCostUsd,
         success: payload.success,
         errorMessage: payload.errorMessage ?? undefined,
+        wasColdStart: payload.wasColdStart ?? false,
+        cacheHit: payload.cacheHit ?? false,
+        avgMemorySimilarity: payload.avgMemorySimilarity ?? undefined,
       },
     })
     .then(() => { });
+}
+
+export const COLD_START_THRESHOLD_MS = 10 * 60 * 1000;
+
+
+export async function getWasColdStart(
+  prisma: PrismaClient,
+  projectId: string
+): Promise<boolean> {
+  const last = await prisma.queryMetrics.findFirst({
+    where: { projectId },
+    orderBy: { createdAt: "desc" },
+    take: 1,
+    select: { createdAt: true },
+  });
+  if (!last) return true;
+  return Date.now() - last.createdAt.getTime() > COLD_START_THRESHOLD_MS;
 }
