@@ -455,7 +455,6 @@ export default function AboutPage() {
               </Card>
             </section>
 
-            {/* Performance Section */}
             <section id="performance">
               <Card className="glass-card border-subtle">
                 <CardHeader>
@@ -531,7 +530,6 @@ export default function AboutPage() {
               </Card>
             </section>
 
-            {/* Developer Needs Section */}
             <section id="developer-needs">
               <Card className="glass-card border-subtle">
                 <CardHeader>
@@ -635,7 +633,6 @@ export default function AboutPage() {
               </Card>
             </section>
 
-            {/* Getting Started Section */}
             <section id="getting-started">
               <Card className="glass-card border-subtle">
                 <CardHeader>

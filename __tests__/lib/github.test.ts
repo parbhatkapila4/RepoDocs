@@ -1,4 +1,7 @@
-import { getGitHubRepositoryInfo, loadGithubRepository } from "@/lib/github";
+import {
+  getGitHubRepositoryInfo,
+  loadGithubRepository,
+} from "../../src/lib/github";
 
 jest.mock("octokit", () => ({
   Octokit: jest.fn().mockImplementation(() => ({

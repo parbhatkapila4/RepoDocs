@@ -2,7 +2,6 @@ import React from "react";
 import { getPublicDocs } from "@/lib/actions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   BookOpen,
   Star,
@@ -95,7 +94,7 @@ export default async function PublicDocsPage({ params }: PublicDocsPageProps) {
         <div className="max-w-6xl mx-auto px-4 py-8">
           <Card className="border border-white/20 shadow-xl bg-gray-800/50">
             <CardContent className="p-0">
-              <ScrollArea className="h-[calc(100vh-200px)]">
+              <div className="h-[calc(100vh-200px)] overflow-y-auto overflow-x-hidden">
                 <div className="p-8">
                   <div className="max-w-4xl mx-auto">
                     <div className="prose prose-invert prose-lg max-w-none">
@@ -216,7 +215,7 @@ export default async function PublicDocsPage({ params }: PublicDocsPageProps) {
                     </div>
                   </div>
                 </div>
-              </ScrollArea>
+              </div>
             </CardContent>
           </Card>
         </div>

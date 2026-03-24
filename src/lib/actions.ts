@@ -4,6 +4,11 @@ import { createProjectWithAuth } from "./queries";
 import { auth } from "@clerk/nextjs/server";
 import prisma from "./prisma";
 import { getGitHubRepositoryInfo, type GitHubRepoInfo } from "./github";
+import type { Project } from "@prisma/client";
+
+export type CreateProjectResult =
+  | { project: Project; error?: undefined }
+  | { project: null; error: string };
 
 const PLAN_LIMITS = {
   starter: { maxProjects: 3 },
@@ -52,8 +57,15 @@ export async function createProject(
   name: string,
   githubUrl: string,
   githubToken?: string
-) {
-  return await createProjectWithAuth(name, githubUrl, githubToken);
+): Promise<CreateProjectResult> {
+  try {
+    const project = await createProjectWithAuth(name, githubUrl, githubToken);
+    return { project };
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Failed to create project";
+    return { project: null, error: message };
+  }
 }
 
 export async function getCurrentUser() {
@@ -570,7 +582,6 @@ export async function regenerateProjectReadme(projectId: string) {
     });
 
     if (sourceCodeEmbeddings.length === 0) {
-      // Queue indexing job instead of fire-and-forget
       await prisma.indexingJob.upsert({
         where: { projectId },
         create: {
@@ -587,7 +598,6 @@ export async function regenerateProjectReadme(projectId: string) {
         },
       });
 
-      // Log safely - never log token value (FIX 3: GitHub Token Security)
       console.log(`[Indexing] Queued job for project ${projectId}`);
       console.log(`[Indexing] Repo: ${project.repoUrl}, Has token: ${!!project.githubToken}`);
 
@@ -1188,8 +1198,6 @@ export async function retryIndexing(projectId: string) {
       throw new Error("Project not found or unauthorized");
     }
 
-    // Queue indexing job instead of fire-and-forget
-    // Note: When picked up, indexing will restart from the beginning (no resume capability)
     await prisma.indexingJob.upsert({
       where: { projectId },
       create: {
@@ -1206,7 +1214,6 @@ export async function retryIndexing(projectId: string) {
       },
     });
 
-    // Log safely - never log token value (FIX 3: GitHub Token Security)
     console.log(`[Indexing] Queued retry job for project ${projectId}`);
     console.log(`[Indexing] Repo: ${project.repoUrl}, Has token: ${!!project.githubToken}`);
 
@@ -1322,7 +1329,6 @@ export async function regenerateProjectDocs(projectId: string) {
     });
 
     if (sourceCodeEmbeddings.length === 0) {
-      // Queue indexing job instead of fire-and-forget
       await prisma.indexingJob.upsert({
         where: { projectId },
         create: {
@@ -1339,7 +1345,6 @@ export async function regenerateProjectDocs(projectId: string) {
         },
       });
 
-      // Log safely - never log token value (FIX 3: GitHub Token Security)
       console.log(`[Indexing] Queued job for project ${projectId}`);
       console.log(`[Indexing] Repo: ${project.repoUrl}, Has token: ${!!project.githubToken}`);
 
@@ -1527,7 +1532,31 @@ export async function modifyDocsWithQna(projectId: string, question: string) {
     };
   } catch (error) {
     console.error("Error modifying docs with Q&A:", error);
-    throw new Error("Failed to modify docs");
+
+    if (error instanceof Error) {
+      const msg = error.message;
+      if (
+        msg === "Unauthorized" ||
+        msg === "User not found" ||
+        msg.startsWith("Project not found") ||
+        msg.startsWith("No docs found") ||
+        msg.startsWith("UPGRADE_REQUIRED:") ||
+        msg.includes("OPENROUTER_API_KEY") ||
+        msg.includes("OpenRouter API error") ||
+        msg.includes("Failed to modify docs with AI") ||
+        msg.includes("Documentation modification resulted in missing sections") ||
+        msg.includes("removed too many sections")
+      ) {
+        throw error;
+      }
+      if (process.env.NODE_ENV === "development") {
+        throw new Error(`Failed to modify docs: ${msg}`);
+      }
+    }
+
+    throw new Error(
+      "Failed to modify docs. Check that OPENROUTER_API_KEY is set and try again."
+    );
   }
 }
 

@@ -41,6 +41,12 @@ export default function ArchitecturePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [diagnostics, setDiagnostics] = useState<{
+    embeddingsCount: number;
+    indexingStatus: "queued" | "processing" | "completed" | "failed" | null;
+    indexingProgress: number;
+    indexingError: string | null;
+  } | null>(null);
 
   const currentProject = projects.find((p) => p.id === selectedProjectId);
 
@@ -69,6 +75,7 @@ export default function ArchitecturePage() {
       const data = await res.json();
       setNodes(data.nodes ?? []);
       setEdges(data.edges ?? []);
+      setDiagnostics(data.diagnostics ?? null);
       setSelectedId(null);
     } catch (e) {
       setError(
@@ -76,10 +83,12 @@ export default function ArchitecturePage() {
       );
       setNodes([]);
       setEdges([]);
+      setDiagnostics(null);
     } finally {
       setLoading(false);
     }
   }, [currentProject?.id]);
+
 
   useEffect(() => {
     if (currentProject) fetchGraph();
@@ -230,10 +239,30 @@ export default function ArchitecturePage() {
                 <p className="text-[#666] text-sm font-mono">
                   No indexed files for this project.
                 </p>
-                <p className="text-[#555] text-xs mt-1">
-                  Index the project first from the dashboard or wait for
-                  indexing to complete.
-                </p>
+                {diagnostics?.indexingStatus === "processing" && (
+                  <p className="text-[#7dd3fc] text-xs mt-1">
+                    Indexing is in progress ({diagnostics.indexingProgress}%).
+                    Please wait a bit and refresh.
+                  </p>
+                )}
+                {diagnostics?.indexingStatus === "queued" && (
+                  <p className="text-[#93c5fd] text-xs mt-1">
+                    Indexing job is queued. It will start shortly.
+                  </p>
+                )}
+                {diagnostics?.indexingStatus === "failed" && (
+                  <p className="text-[#fca5a5] text-xs mt-1">
+                    Last indexing failed
+                    {diagnostics.indexingError
+                      ? `: ${diagnostics.indexingError}`
+                      : "."}
+                  </p>
+                )}
+                {!diagnostics?.indexingStatus && (
+                  <p className="text-[#555] text-xs mt-1">
+                    Index the project first from dashboard.
+                  </p>
+                )}
               </div>
             )}
 

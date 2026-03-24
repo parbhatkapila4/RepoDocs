@@ -1,6 +1,11 @@
 <div align="center">
 
-# RepoDoc
+<img src="./header.svg" alt="RepoDoc: AI infrastructure for understanding code" width="920" />
+
+<br />
+<br />
+
+## RepoDoc
 
 ### The AI infrastructure for understanding code.
 
@@ -9,8 +14,6 @@
 [Live Demo](https://repodoc.parbhat.dev/) • [Get Started](https://repodoc.parbhat.dev/sign-up) • [Pricing](https://repodoc.parbhat.dev/pricing)
 
 <br />
-
-![RepoDoc Demo](./public/repodoc.png)
 
 </div>
 

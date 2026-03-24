@@ -4,6 +4,7 @@ import { useEffect, Suspense, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useUser } from "@/hooks/useUser";
+import { useAuth } from "@clerk/nextjs";
 import {
   Navigation,
   Hero,
@@ -96,6 +97,19 @@ function LandingPageContent() {
   );
 }
 
+function SignedInRedirect() {
+  const { isLoaded, isSignedIn } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      router.replace("/dashboard");
+    }
+  }, [isLoaded, isSignedIn, router]);
+
+  return null;
+}
+
 export default function LandingPage() {
   return (
     <Suspense
@@ -107,6 +121,7 @@ export default function LandingPage() {
         </div>
       }
     >
+      <SignedInRedirect />
       <PaymentStatusHandler />
       <LandingPageContent />
     </Suspense>

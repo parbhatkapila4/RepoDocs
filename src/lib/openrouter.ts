@@ -1,8 +1,13 @@
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 
-if (!OPENROUTER_API_KEY) {
-  throw new Error("Missing OPENROUTER_API_KEY environment variable");
+function getOpenRouterKey(): string {
+  const key = process.env.OPENROUTER_API_KEY;
+  if (!key?.trim()) {
+    throw new Error(
+      "OPENROUTER_API_KEY is not set. Add it in your environment (e.g. .env) to use doc modification and AI features."
+    );
+  }
+  return key;
 }
 
 interface ChatMessage {
@@ -61,11 +66,12 @@ export async function openrouterChatCompletion(
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
+    const apiKey = getOpenRouterKey();
     const response: Response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
         "HTTP-Referer": "https://repodoc.dev",
         "X-Title": "RepoDocs",
       },

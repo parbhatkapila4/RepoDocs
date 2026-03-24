@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useSignIn } from "@clerk/nextjs";
+import { useSignIn, useAuth } from "@clerk/nextjs";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Mail, Lock, Globe, Github } from "lucide-react";
 import Link from "next/link";
@@ -10,6 +10,7 @@ import { Suspense } from "react";
 
 function SignInForm() {
   const { isLoaded, signIn, setActive } = useSignIn();
+  const { isSignedIn } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
@@ -18,6 +19,9 @@ function SignInForm() {
   const [isLoading, setIsLoading] = useState(false);
   const isMountedRef = useRef(true);
 
+  const redirectPath = searchParams.get("redirect_url") || "/dashboard";
+  const redirectPathNormalized = redirectPath.startsWith("/") ? redirectPath : "/dashboard";
+
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
@@ -25,7 +29,24 @@ function SignInForm() {
     };
   }, []);
 
-  const redirectUrl = searchParams.get("redirect_url") || "/dashboard";
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      window.location.replace(redirectPathNormalized);
+    }
+  }, [isLoaded, isSignedIn, redirectPathNormalized]);
+
+  const redirectUrl =
+    typeof window !== "undefined" && redirectPath.startsWith("/")
+      ? `${window.location.origin}${redirectPath}`
+      : redirectPath;
+  const ssoCallbackUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/sign-in/sso-callback`
+      : "/sign-in/sso-callback";
+  const completeUrl =
+    typeof window !== "undefined" && redirectPath.startsWith("/")
+      ? `${window.location.origin}${redirectPath}`
+      : redirectPath;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,8 +67,7 @@ function SignInForm() {
         if (!isMountedRef.current) return;
 
         toast.success("Welcome back!");
-        router.push(redirectUrl);
-        router.refresh();
+        window.location.replace(redirectPathNormalized);
       } else {
         if (isMountedRef.current) {
           toast.error("Sign in incomplete. Please try again.");
@@ -67,20 +87,27 @@ function SignInForm() {
   const handleSocialSignIn = async (
     strategy: "oauth_google" | "oauth_github"
   ) => {
-    if (!isLoaded || !isMountedRef.current) return;
+    if (!isLoaded || !signIn || !isMountedRef.current) return;
 
+    const providerName = strategy === "oauth_google" ? "Google" : "GitHub";
     try {
       await signIn.authenticateWithRedirect({
         strategy,
-        redirectUrl: redirectUrl,
-        redirectUrlComplete: redirectUrl,
+        redirectUrl: ssoCallbackUrl,
+        redirectUrlComplete: completeUrl,
       });
-    } catch (err: any) {
-      if (isMountedRef.current) {
-        toast.error(
-          err.errors?.[0]?.message || `Failed to sign in with ${strategy}`
-        );
-      }
+    } catch (err: unknown) {
+      if (!isMountedRef.current) return;
+      const msg =
+        err && typeof err === "object" && "errors" in err && Array.isArray((err as { errors: { message?: string }[] }).errors)
+          ? (err as { errors: { message?: string }[] }).errors[0]?.message
+          : err instanceof Error
+            ? err.message
+            : null;
+      const display =
+        msg ||
+        `${providerName} sign-in failed. Enable ${providerName} in Clerk Dashboard (User & Authentication → Social Connections) and add http://localhost:3000 to Redirect URLs.`;
+      toast.error(display);
     }
   };
 

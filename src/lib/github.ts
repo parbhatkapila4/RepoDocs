@@ -33,21 +33,6 @@ export async function loadGithubRepository(
   const docs = await loader.load();
   return docs;
 }
-
-/**
- * Index a GitHub repository by generating embeddings for all code files
- * 
- * IMPORTANT: This function ALWAYS runs from the beginning - there is NO resume capability.
- * If interrupted (timeout/crash), the entire indexing process will restart from scratch.
- * 
- * TODO: Encrypt GitHub tokens at rest using KMS / envelope encryption
- * (Currently stored in plaintext - acceptable for MVP but must fix before production)
- * 
- * @param projectId - The project to index
- * @param githubUrl - The repository URL
- * @param githubToken - Optional GitHub token (NEVER logged for security)
- * @param onProgress - Optional callback for progress updates (0-100)
- */
 export async function indexGithubRepository(
   projectId: string,
   githubUrl: string,
@@ -82,7 +67,9 @@ export async function indexGithubRepository(
       throw new Error("No files found in repository");
     }
 
-    const BATCH_SIZE = 25;
+    
+    const BATCH_SIZE = 5;
+    const EMBEDDING_THROTTLE_MS = 700;
     const summaries: string[] = [];
     let successCount = 0;
     let failCount = 0;
@@ -90,83 +77,53 @@ export async function indexGithubRepository(
     for (let i = 0; i < docs.length; i += BATCH_SIZE) {
       const batch = docs.slice(i, i + BATCH_SIZE);
 
-      const batchEmbeddings = await Promise.allSettled(
-        batch.map(async (doc) => {
-          try {
-            const summary = await retryAsync(() => getSummariseCode(doc), {
-              maxRetries: 2,
-              initialDelay: 500,
-            });
+      for (const doc of batch) {
+        try {
+          const summary = await retryAsync(() => getSummariseCode(doc), {
+            maxRetries: 2,
+            initialDelay: 500,
+          });
 
-            if (!summary) {
-              throw new Error("Empty summary generated");
-            }
+          if (!summary) {
+            throw new Error("Empty summary generated");
+          }
 
-            const embedding = await retryAsync(
-              () => getGenerateEmbeddings(summary),
-              { maxRetries: 2, initialDelay: 500 }
-            );
+          const embedding = await retryAsync(
+            () => getGenerateEmbeddings(summary),
+            { maxRetries: 2, initialDelay: 500 }
+          );
 
-            return {
-              summary,
-              embedding,
-              fileName: doc.metadata.source,
+          const sourceCodeEmbiddings = await prisma.sourceCodeEmbiddings.create({
+            data: {
               sourceCode: JSON.parse(JSON.stringify(doc.pageContent)),
-            };
-          } catch (error) {
-            logError(error, {
-              file: doc.metadata.source,
-              projectId,
-            });
-            return null;
-          }
-        })
-      );
+              fileName: doc.metadata.source,
+              Summary: summary,
+              projectId: projectId,
+            },
+          });
 
-      const dbOperations = batchEmbeddings
-        .filter((result) => result.status === "fulfilled" && result.value)
-        .map(async (result) => {
-          const embedding = (result as PromiseFulfilledResult<any>).value;
-          summaries.push(embedding.summary);
+          await prisma.$executeRaw`
+            UPDATE "SourceCodeEmbiddings"
+            SET "summaryEmbedding" = ${embedding}::vector
+            WHERE "id" = ${sourceCodeEmbiddings.id}
+          `;
 
-          try {
-            const sourceCodeEmbiddings =
-              await prisma.sourceCodeEmbiddings.create({
-                data: {
-                  sourceCode: embedding.sourceCode,
-                  fileName: embedding.fileName,
-                  Summary: embedding.summary,
-                  projectId: projectId,
-                },
-              });
-
-            await prisma.$executeRaw`
-              UPDATE "SourceCodeEmbiddings"
-              SET "summaryEmbedding" = ${embedding.embedding}::vector
-              WHERE "id" = ${sourceCodeEmbiddings.id}
-            `;
-
-            successCount++;
-            return true;
-          } catch (dbError) {
-            logError(dbError, {
-              fileName: embedding.fileName,
-              projectId,
-            });
-            failCount++;
-            return false;
-          }
-        });
-
-      await Promise.allSettled(dbOperations);
-
-      for (const result of batchEmbeddings) {
-        if (result.status === "rejected" || !result.value) {
+          summaries.push(summary);
+          successCount++;
+          
+          await new Promise((resolve) =>
+            setTimeout(resolve, EMBEDDING_THROTTLE_MS)
+          );
+        } catch (error) {
+          logError(error, {
+            file: doc.metadata.source,
+            projectId,
+          });
           failCount++;
         }
       }
 
-      // Report progress after each batch
+      
       const filesProcessed = Math.min(i + BATCH_SIZE, docs.length);
       const progressPercent = Math.floor((filesProcessed / docs.length) * 100);
       
@@ -174,13 +131,12 @@ export async function indexGithubRepository(
         try {
           await onProgress(progressPercent);
         } catch (progressError) {
-          // Don't fail indexing if progress update fails
           console.error("Progress update failed:", progressError);
         }
       }
 
       if (i + BATCH_SIZE < docs.length) {
-        await new Promise((resolve) => setTimeout(resolve, 200));
+        await new Promise((resolve) => setTimeout(resolve, 300));
       }
     }
 

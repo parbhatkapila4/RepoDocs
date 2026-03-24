@@ -3,10 +3,6 @@
 import { auth } from "@clerk/nextjs/server";
 import prisma from "./prisma";
 
-/**
- * Get indexing status for a project
- * Safe to call frequently (polling from UI)
- */
 export async function getIndexingStatus(projectId: string) {
   try {
     const { userId } = await auth();
@@ -14,7 +10,6 @@ export async function getIndexingStatus(projectId: string) {
       throw new Error("Unauthorized");
     }
 
-    // Verify project ownership
     let dbUser = await prisma.user.findUnique({
       where: { id: userId },
       select: { id: true },
@@ -50,7 +45,6 @@ export async function getIndexingStatus(projectId: string) {
       throw new Error("Project not found or unauthorized");
     }
 
-    // Get indexing job status
     const job = await prisma.indexingJob.findUnique({
       where: { projectId },
       select: {
@@ -63,7 +57,6 @@ export async function getIndexingStatus(projectId: string) {
     });
 
     if (!job) {
-      // No job exists yet
       return {
         status: "not_started" as const,
         progress: 0,
@@ -84,13 +77,6 @@ export async function getIndexingStatus(projectId: string) {
   }
 }
 
-/**
- * Retry a failed indexing job or restart a completed one
- * 
- * IMPORTANT: This resets the job to queued status.
- * When the worker picks it up, indexing will restart from the beginning
- * (no resume/checkpoint capability).
- */
 export async function retryIndexingJob(projectId: string) {
   try {
     const { userId } = await auth();
@@ -98,7 +84,6 @@ export async function retryIndexingJob(projectId: string) {
       throw new Error("Unauthorized");
     }
 
-    // Verify project ownership
     let dbUser = await prisma.user.findUnique({
       where: { id: userId },
       select: { id: true },
@@ -133,13 +118,11 @@ export async function retryIndexingJob(projectId: string) {
       throw new Error("Project not found or unauthorized");
     }
 
-    // Check current job status
     const currentJob = await prisma.indexingJob.findUnique({
       where: { projectId },
       select: { status: true, lockedAt: true },
     });
 
-    // Prevent retrying if currently processing (unless lease expired)
     if (currentJob?.status === "processing") {
       const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
       if (currentJob.lockedAt && currentJob.lockedAt > fiveMinutesAgo) {
@@ -147,8 +130,6 @@ export async function retryIndexingJob(projectId: string) {
       }
     }
 
-    // Reset job to queued
-    // NOTE: When picked up, indexing will restart from the beginning
     await prisma.indexingJob.upsert({
       where: { projectId },
       create: {
@@ -175,9 +156,6 @@ export async function retryIndexingJob(projectId: string) {
   }
 }
 
-/**
- * Cancel an in-progress or queued indexing job
- */
 export async function cancelIndexingJob(projectId: string) {
   try {
     const { userId } = await auth();
@@ -185,7 +163,6 @@ export async function cancelIndexingJob(projectId: string) {
       throw new Error("Unauthorized");
     }
 
-    // Verify project ownership (same pattern as above)
     let dbUser = await prisma.user.findUnique({
       where: { id: userId },
       select: { id: true },
@@ -220,7 +197,6 @@ export async function cancelIndexingJob(projectId: string) {
       throw new Error("Project not found or unauthorized");
     }
 
-    // Mark as failed with cancellation message
     await prisma.indexingJob.update({
       where: { projectId },
       data: {

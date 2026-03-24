@@ -1,6 +1,6 @@
 import crypto from "crypto";
 
-const TTL_MS = 5 * 60 * 1000; // 5 minutes
+const TTL_MS = 5 * 60 * 1000;
 
 export interface CachedSource {
   fileName: string;

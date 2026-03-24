@@ -21,8 +21,19 @@ export const useProjects = () => {
         dispatch(setLoading(true));
         dispatch(setError(null));
 
-        const project = await createProject(name, githubUrl, githubToken);
+        const result = await createProject(name, githubUrl, githubToken);
 
+        if (result.error) {
+          dispatch(setError(result.error));
+          throw new Error(result.error);
+        }
+
+        const project = result.project;
+        if (!project) {
+          const message = "Failed to create project";
+          dispatch(setError(message));
+          throw new Error(message);
+        }
         dispatch(
           addProject({
             name: project.name,
@@ -33,7 +44,9 @@ export const useProjects = () => {
 
         return project;
       } catch (error) {
-        dispatch(setError("Failed to create project"));
+        const message =
+          error instanceof Error ? error.message : "Failed to create project";
+        dispatch(setError(message));
         throw error;
       } finally {
         dispatch(setLoading(false));

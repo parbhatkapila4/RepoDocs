@@ -1952,8 +1952,11 @@ export async function modifyDocsWithQuery(
   projectName: string
 ) {
   try {
-    const sectionMatches = currentDocs.match(/^##\s+\d+\.\s+[^\n]+/gm) || [];
-    const sectionHeaders = sectionMatches.map(match => match.trim());
+    const sectionMatches =
+      currentDocs.match(/^##\s+\d+\.\s+[^\n]+/gm) ||
+      currentDocs.match(/^#\s+\d+\.\s+[^\n]+/gm) ||
+      [];
+    const sectionHeaders = sectionMatches.map((match) => match.trim());
     const sectionCount = sectionHeaders.length;
     const originalLength = currentDocs.length;
 
@@ -2046,7 +2049,14 @@ The user wants you to PRESERVE existing content, not regenerate it.`;
       maxModifyOutputTokens,
       systemInstruction
     );
-    let modifiedDocs = modifiedResult.content;
+
+    const rawContent = modifiedResult?.content;
+    if (rawContent == null || typeof rawContent !== "string") {
+      throw new Error(
+        "AI returned no content. The model response was empty or invalid. Please try again."
+      );
+    }
+    let modifiedDocs = rawContent.trim() || currentDocs;
 
     const expectedSections = isRemovalRequest
       ? Array.from({ length: sectionCount - 1 }, (_, i) => i + 2)
@@ -2054,7 +2064,8 @@ The user wants you to PRESERVE existing content, not regenerate it.`;
 
     let modifiedLength = modifiedDocs.length;
     const lengthRatio = modifiedLength / originalLength;
-    const modifiedSectionMatches = modifiedDocs.match(/^##\s+(\d+)\./gm) || [];
+    const modifiedSectionMatches =
+      modifiedDocs.match(/^##\s+(\d+)\./gm) || modifiedDocs.match(/^#\s+(\d+)\./gm) || [];
     let modifiedSectionCount = modifiedSectionMatches.length;
     let modifiedSectionNumbers = modifiedSectionMatches.map(m => {
       const match = m.match(/^##\s+(\d+)\./);
@@ -2114,7 +2125,8 @@ GENERATE THE COMPLETE DOCUMENTATION NOW WITH ALL ${isRemovalRequest ? sectionCou
         );
         const retryDocs = retryResult.content;
         const retryLength = retryDocs.length;
-        const retrySectionMatches = retryDocs.match(/^##\s+(\d+)\./gm) || [];
+        const retrySectionMatches =
+          retryDocs.match(/^##\s+(\d+)\./gm) || retryDocs.match(/^#\s+(\d+)\./gm) || [];
         const retrySectionCount = retrySectionMatches.length;
         const retrySectionNumbers = retrySectionMatches.map(m => {
           const match = m.match(/^##\s+(\d+)\./);
@@ -2143,7 +2155,7 @@ GENERATE THE COMPLETE DOCUMENTATION NOW WITH ALL ${isRemovalRequest ? sectionCou
       }
     }
 
-    if (hasGaps) {
+    if (sectionCount > 0 && hasGaps) {
       console.error(
         `❌ ERROR: Final response has missing sections! Expected: ${expectedSections.join(', ')}, Got: ${modifiedSectionNumbers.join(', ')}, Missing: ${missingSections.join(', ')}`
       );
@@ -2152,7 +2164,7 @@ GENERATE THE COMPLETE DOCUMENTATION NOW WITH ALL ${isRemovalRequest ? sectionCou
       );
     }
 
-    if (isRemovalRequest && modifiedSectionCount < sectionCount - 1) {
+    if (sectionCount > 0 && isRemovalRequest && modifiedSectionCount < sectionCount - 1) {
       console.error(
         `❌ ERROR: Removal request resulted in too few sections. Expected ${sectionCount - 1}, got ${modifiedSectionCount}`
       );
@@ -2164,6 +2176,13 @@ GENERATE THE COMPLETE DOCUMENTATION NOW WITH ALL ${isRemovalRequest ? sectionCou
     return modifiedDocs;
   } catch (error) {
     console.error("Error modifying docs:", error);
-    throw new Error("Failed to modify docs with AI");
+    if (error instanceof Error && error.message !== "Failed to modify docs with AI") {
+      throw error;
+    }
+    throw new Error(
+      error instanceof Error
+        ? `Failed to modify docs with AI: ${error.message}`
+        : "Failed to modify docs with AI"
+    );
   }
 }

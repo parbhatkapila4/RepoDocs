@@ -102,7 +102,6 @@ export async function storeMemories(
       `;
     } catch (err) {
       console.error("[RepoMemory] Failed to store memory:", err);
-      // Don't throw - fire-and-forget; caller should not be blocked
     }
   }
 }

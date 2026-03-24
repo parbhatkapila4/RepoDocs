@@ -203,7 +203,15 @@ export default function SearchPage() {
     setAddingRepoId(repo.id);
 
     try {
-      await createProject(repo.name, repo.htmlUrl);
+      const result = await createProject(repo.name, repo.htmlUrl);
+
+      if (result.error) {
+        toast.error("Failed to add repository", {
+          description: result.error,
+        });
+        setAddingRepoId(null);
+        return;
+      }
 
       await loadProjects();
 
@@ -214,11 +222,13 @@ export default function SearchPage() {
       setTimeout(() => {
         router.push("/dashboard");
       }, 1000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error adding repository:", error);
       toast.error("Failed to add repository", {
         description:
-          error.message || "An error occurred while adding the repository.",
+          error instanceof Error
+            ? error.message
+            : "An error occurred while adding the repository.",
       });
       setAddingRepoId(null);
     }

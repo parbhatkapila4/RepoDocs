@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { POST } from "@/app/api/query/route";
+import { POST } from "../../src/app/api/query/route";
 
 const mockAuth = jest.fn();
 jest.mock("@clerk/nextjs/server", () => ({

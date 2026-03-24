@@ -5,7 +5,7 @@ import prisma from "@/lib/prisma";
 async function page() {
   const { userId } = await auth();
   if (!userId) {
-    return redirect("/");
+    return redirect("/dashboard");
   }
 
   const client = await clerkClient();

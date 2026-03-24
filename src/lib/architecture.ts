@@ -1,4 +1,6 @@
 import prisma from "./prisma";
+import { loadGithubRepository } from "./github";
+import { Octokit } from "octokit";
 
 export interface ArchitectureNode {
   id: string;
@@ -117,4 +119,110 @@ export async function buildDependencyGraph(
   }
 
   return { nodes, edges };
+}
+
+function isLikelyCodeFile(path: string): boolean {
+  const p = path.toLowerCase();
+  return (
+    p.endsWith(".ts") ||
+    p.endsWith(".tsx") ||
+    p.endsWith(".js") ||
+    p.endsWith(".jsx") ||
+    p.endsWith(".mjs") ||
+    p.endsWith(".cjs") ||
+    p.endsWith(".py") ||
+    p.endsWith(".go") ||
+    p.endsWith(".java") ||
+    p.endsWith(".rs") ||
+    p.endsWith(".php") ||
+    p.endsWith(".rb")
+  );
+}
+
+export async function buildDependencyGraphFromRepo(
+  githubUrl: string,
+  githubToken?: string
+): Promise<DependencyGraph> {
+  const docs = await loadGithubRepository(githubUrl, githubToken);
+  if (!docs || docs.length === 0) {
+    return { nodes: [], edges: [] };
+  }
+
+  const MAX_FILES = 350;
+  const filteredDocs = docs
+    .filter((d) => isLikelyCodeFile(String(d.metadata?.source || "")))
+    .slice(0, MAX_FILES);
+
+  const pathSet = new Set<string>();
+  for (const d of filteredDocs) {
+    const path = normalizePath(String(d.metadata?.source || ""));
+    if (path) pathSet.add(path);
+  }
+
+  const nodes: ArchitectureNode[] = Array.from(pathSet).map((path) => ({
+    id: path,
+    path,
+  }));
+
+  const edgeKey = (from: string, to: string) => `${from}\0${to}`;
+  const edgesSet = new Set<string>();
+  const edges: ArchitectureEdge[] = [];
+
+  for (const d of filteredDocs) {
+    const fromPath = normalizePath(String(d.metadata?.source || ""));
+    if (!fromPath) continue;
+
+    const importPaths = extractImportPaths(String(d.pageContent || ""));
+    for (const rawImport of importPaths) {
+      const toPath = resolveRelative(fromPath, rawImport);
+      if (!toPath) continue;
+      const key = edgeKey(fromPath, toPath);
+      if (edgesSet.has(key)) continue;
+      edgesSet.add(key);
+      edges.push({ from: fromPath, to: toPath });
+    }
+  }
+
+  return { nodes, edges };
+}
+
+function parseGitHubRepo(url: string): { owner: string; repo: string } | null {
+  const m = url.match(/github\.com\/([^\/]+)\/([^\/?#]+)/i);
+  if (!m) return null;
+  return { owner: m[1], repo: m[2].replace(/\.git$/i, "") };
+}
+
+export async function buildQuickDependencyGraphFromGitTree(
+  githubUrl: string,
+  githubToken?: string
+): Promise<DependencyGraph> {
+  const parsed = parseGitHubRepo(githubUrl);
+  if (!parsed) return { nodes: [], edges: [] };
+
+  const octokit = new Octokit({
+    auth: githubToken || undefined,
+  });
+
+  const repoMeta = await octokit.rest.repos.get({
+    owner: parsed.owner,
+    repo: parsed.repo,
+  });
+
+  const defaultBranch = repoMeta.data.default_branch || "main";
+  const tree = await octokit.rest.git.getTree({
+    owner: parsed.owner,
+    repo: parsed.repo,
+    tree_sha: defaultBranch,
+    recursive: "true",
+  });
+
+  const MAX_FILES = 260;
+  const files = (tree.data.tree || [])
+    .filter((item) => item.type === "blob" && item.path && isLikelyCodeFile(item.path))
+    .slice(0, MAX_FILES)
+    .map((item) => normalizePath(item.path || ""))
+    .filter(Boolean);
+
+  const nodes: ArchitectureNode[] = files.map((path) => ({ id: path, path }));
+  return { nodes, edges: [] };
 }

@@ -144,30 +144,49 @@ export async function createProjectWithAuth(
       },
     });
 
-    // Queue indexing job instead of fire-and-forget
-    // Worker will pick it up via vercel.json cron trigger
-    await prisma.indexingJob.create({
-      data: {
-        projectId: project.id,
-        status: "queued",
-        progress: 0,
-      },
-    });
+    try {
+      await prisma.indexingJob.create({
+        data: {
+          projectId: project.id,
+          status: "queued",
+          progress: 0,
+        },
+      });
+      console.log(`[Indexing] Queued job for project ${project.id}`);
+    } catch (indexingError) {
+      console.error(
+        "[Indexing] Failed to queue indexing job (project still created):",
+        indexingError
+      );
+    }
 
-    // Log safely - never log token value (FIX 3: GitHub Token Security)
-    console.log(`[Indexing] Queued job for project ${project.id}`);
     console.log(`[Indexing] Repo: ${githubUrl}, Has token: ${!!githubToken}`);
 
     return project;
   } catch (error) {
     console.error("Error creating project:", error);
-    if (
-      error instanceof Error &&
-      error.message.startsWith("PROJECT_LIMIT_REACHED:")
-    ) {
-      throw error;
+
+
+    if (error instanceof Error) {
+      const msg = error.message;
+      if (
+        msg.startsWith("PROJECT_LIMIT_REACHED:") ||
+        msg === "Unauthorized" ||
+        msg === "Name and GitHub URL are required" ||
+        msg === "User email not found" ||
+        msg === "Failed to create user account"
+      ) {
+        throw error;
+      }
+
+      if (process.env.NODE_ENV === "development") {
+        throw new Error(`Failed to create project: ${msg}`);
+      }
     }
-    throw new Error("Failed to create project");
+
+    throw new Error(
+      "Failed to create project. Please check your connection and try again."
+    );
   }
 }
 

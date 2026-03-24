@@ -122,6 +122,202 @@ interface DocsWithQna extends DocsData {
   qnaHistory?: QnaRecord[];
 }
 
+interface DocsQnaPanelProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  isProcessingQna: boolean;
+  qnaHistory: QnaRecord[];
+  onSubmit: (question: string) => Promise<boolean>;
+  onDelete: (qnaId: string) => void;
+  onDeleteAll: () => void;
+}
+
+function DocsQnaPanel({
+  open,
+  onOpenChange,
+  isProcessingQna,
+  qnaHistory,
+  onSubmit,
+  onDelete,
+  onDeleteAll,
+}: DocsQnaPanelProps) {
+  const [questionValue, setQuestionValue] = useState("");
+
+  const handleSubmit = async () => {
+    const q = questionValue.trim();
+    if (!q) return;
+    const success = await onSubmit(q);
+    if (success) setQuestionValue("");
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="min-w-[300px] sm:min-w-[400px] md:min-w-[500px] w-[90vw] sm:w-[400px] md:w-[500px] bg-black/30 border-l border-white/10 backdrop-blur-md px-2 sm:px-4"
+      >
+        <SheetHeader className="pb-4 sm:pb-6">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-blue-500/20 border border-blue-500/30 rounded-lg w-8 h-8 sm:w-10 sm:h-10 shrink-0">
+              <Bot className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <SheetTitle className="text-lg sm:text-xl md:text-2xl font-semibold text-white leading-tight mobile-no-truncate">
+                Ask a question
+              </SheetTitle>
+              <SheetDescription className="text-white/60 text-xs sm:text-sm mt-1 mobile-no-truncate">
+                Modify your documentation
+              </SheetDescription>
+            </div>
+          </div>
+        </SheetHeader>
+
+        <div className="pb-4 sm:pb-6 border-b border-white/10">
+          <div className="space-y-4 sm:space-y-6">
+            <textarea
+              value={questionValue}
+              onChange={(e) => setQuestionValue(e.target.value)}
+              placeholder="Which file contains authentication logic?"
+              className="w-full h-[60px] sm:h-[80px] p-2 sm:p-3 bg-black/30 border border-white/20 rounded-lg resize-none text-sm sm:text-base text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent mobile-no-truncate"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && e.ctrlKey) {
+                  e.preventDefault();
+                  handleSubmit();
+                }
+              }}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck="false"
+            />
+            <Button
+              onClick={handleSubmit}
+              disabled={isProcessingQna || !questionValue.trim()}
+              className="w-full bg-red-600 hover:bg-red-700 text-white py-2 sm:py-3 rounded-lg transition-colors h-[40px] sm:h-[48px] text-sm sm:text-base font-medium"
+            >
+              {isProcessingQna ? (
+                <>
+                  <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin shrink-0" />
+                  <span className="mobile-no-truncate">Processing...</span>
+                </>
+              ) : (
+                <span className="mobile-no-truncate">Ask RepoDocs</span>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex-1 mt-4 sm:mt-6 overflow-hidden">
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <div className="flex items-center gap-1 sm:gap-2">
+              <History className="h-3 w-3 sm:h-4 sm:w-4 text-white/60 shrink-0" />
+              <h4 className="text-sm sm:text-base font-medium text-white/80 mobile-no-truncate">
+                Recent Questions
+              </h4>
+            </div>
+            {qnaHistory.length > 0 && (
+              <Button
+                onClick={onDeleteAll}
+                variant="outline"
+                size="sm"
+                className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/30 text-xs px-2 sm:px-3 py-1 h-6 sm:h-7"
+              >
+                <Trash2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1 shrink-0" />
+                <span className="mobile-no-truncate">Clear All</span>
+              </Button>
+            )}
+          </div>
+
+          <ScrollArea className="h-full max-h-[400px]">
+            <div className="pr-4">
+              {qnaHistory.length > 0 ? (
+                <div className="space-y-3 sm:space-y-4">
+                  {qnaHistory.map((qna) => (
+                    <div
+                      key={qna.id}
+                      className="bg-black/30 border border-white/10 rounded-lg p-3 sm:p-4"
+                    >
+                      <div className="space-y-2 sm:space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white/90 text-sm sm:text-base font-medium mb-1 mobile-no-truncate">
+                              Your Question:
+                            </p>
+                            <p className="text-white/70 text-sm sm:text-base wrap-break-word mobile-no-truncate">
+                              {qna.question}
+                            </p>
+                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-5 w-5 sm:h-6 sm:w-6 p-0 text-white/50 hover:text-white/80 hover:bg-white/10 ml-1 sm:ml-2 shrink-0"
+                              >
+                                <MoreVertical className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              align="end"
+                              className="bg-gray-800 border-white/20"
+                            >
+                              <DropdownMenuItem
+                                onClick={() => onDelete(qna.id)}
+                                className="text-red-400 hover:bg-red-500/10 focus:bg-red-500/10"
+                              >
+                                <Trash2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1 sm:mr-2" />
+                                <span className="mobile-no-truncate">Delete</span>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+
+                        <div>
+                          <p className="text-white/90 text-sm sm:text-base font-medium mb-1 mobile-no-truncate">
+                            AI Response:
+                          </p>
+                          <p className="text-white/70 text-sm sm:text-base wrap-break-word mobile-no-truncate">
+                            {qna.answer}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-1 sm:gap-2 text-xs text-white/50 pt-1 sm:pt-2 border-t border-white/10">
+                          <Clock className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
+                          <span className="mobile-no-truncate">
+                            {new Date(qna.createdAt).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 sm:py-8">
+                  <div className="p-3 sm:p-4 bg-black/30 border border-white/20 rounded-2xl mb-3 sm:mb-4 inline-block">
+                    <MessageSquare className="h-6 w-6 sm:h-8 sm:w-8 text-white/50" />
+                  </div>
+                  <h4 className="text-sm sm:text-base font-semibold text-white mb-2 mobile-no-truncate">
+                    No questions yet
+                  </h4>
+                  <p className="text-white/60 text-xs sm:text-sm mb-3 sm:mb-4 mobile-no-truncate">
+                    Ask questions to modify your documentation
+                  </p>
+                  <div className="space-y-1 text-xs text-white/50">
+                    <p className="mobile-no-truncate">Try asking:</p>
+                    <p className="mobile-no-truncate">&quot;Add API examples&quot;</p>
+                    <p className="mobile-no-truncate">&quot;Update installation guide&quot;</p>
+                    <p className="mobile-no-truncate">&quot;Add troubleshooting section&quot;</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 function DocsPage() {
   const { selectedProjectId, projects } = useProjectsContext();
   const { currentRepository: repoInfo, fetchRepository } = useRepository();
@@ -133,10 +329,8 @@ function DocsPage() {
   const [error, setError] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
   const [qnaHistory, setQnaHistory] = useState<QnaRecord[]>([]);
-  const [qnaQuestion, setQnaQuestion] = useState("");
   const [isProcessingQna, setIsProcessingQna] = useState(false);
   const [activeTab, setActiveTab] = useState("preview");
-  const qnaInputRef = useRef<HTMLTextAreaElement>(null);
   const [shareToken, setShareToken] = useState<string | null>(null);
   const [isCreatingShare, setIsCreatingShare] = useState(false);
   const [isRevokingShare, setIsRevokingShare] = useState(false);
@@ -565,9 +759,8 @@ function DocsPage() {
     }
   };
 
-  const handleQnaSubmit = async () => {
-    const questionValue = qnaInputRef.current?.value || qnaQuestion;
-    if (!selectedProjectId || !questionValue.trim()) return;
+  const handleQnaSubmit = async (questionValue: string): Promise<boolean> => {
+    if (!selectedProjectId || !questionValue.trim()) return false;
 
     setIsProcessingQna(true);
     setError(null);
@@ -581,17 +774,13 @@ function DocsPage() {
       }
 
       setQnaHistory((prev) => [result.qnaRecord, ...prev]);
-      setQnaQuestion("");
-      if (qnaInputRef.current) {
-        qnaInputRef.current.value = "";
-      }
-
       setActiveTab("preview");
 
       toast.success("Documentation updated successfully!", {
         description:
           "Your request has been processed and the documentation has been modified.",
       });
+      return true;
     } catch (err) {
       console.error("Error processing Q&A:", err);
       const errorMessage =
@@ -609,20 +798,11 @@ function DocsPage() {
           description: errorMessage,
         });
       }
+      return false;
     } finally {
       setIsProcessingQna(false);
     }
   };
-
-  const handleQnaQuestionChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      const value = e.target.value;
-      setTimeout(() => {
-        setQnaQuestion(value);
-      }, 0);
-    },
-    []
-  );
 
   const fetchQnaHistory = useCallback(async () => {
     if (!selectedProjectId) return;
@@ -802,11 +982,13 @@ function DocsPage() {
   const handleDownloadPDF = async () => {
     if (!docsData?.content) return;
 
+    let iframe: HTMLIFrameElement | null = null;
+
     try {
       const html2canvas = (await import("html2canvas")).default;
       const { jsPDF } = await import("jspdf");
 
-      const iframe = document.createElement("iframe");
+      iframe = document.createElement("iframe");
       iframe.style.position = "absolute";
       iframe.style.left = "-9999px";
       iframe.style.width = "794px";
@@ -817,7 +999,7 @@ function DocsPage() {
       const iframeDoc =
         iframe.contentDocument || iframe.contentWindow?.document;
       if (!iframeDoc) {
-        throw new Error("Could not access iframe document");
+        throw new Error("Could not access iframe document. PDF export may be blocked in this environment.");
       }
 
       const markdownToHtml = (md: string): string => {
@@ -969,7 +1151,11 @@ function DocsPage() {
       `);
       iframeDoc.close();
 
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      const bodyHeight = iframeDoc.body.scrollHeight;
+      const maxHeight = 15000;
+      const captureHeight = Math.min(bodyHeight, maxHeight);
 
       const canvas = await html2canvas(iframeDoc.body, {
         scale: 2,
@@ -977,12 +1163,19 @@ function DocsPage() {
         logging: false,
         backgroundColor: "#ffffff",
         width: 794,
-        height: iframeDoc.body.scrollHeight,
+        height: captureHeight,
+        windowHeight: captureHeight,
       });
 
-      document.body.removeChild(iframe);
+      if (iframe?.parentNode) document.body.removeChild(iframe);
+      iframe = null;
 
-      const imgData = canvas.toDataURL("image/png");
+      let imgData: string;
+      try {
+        imgData = canvas.toDataURL("image/png");
+      } catch (taintErr) {
+        throw new Error("PDF export failed: canvas export not allowed. Try downloading as Markdown.");
+      }
       const pdf = new jsPDF({
         orientation: "portrait",
         unit: "mm",
@@ -1009,9 +1202,18 @@ function DocsPage() {
       toast.success("Documentation downloaded as PDF!");
     } catch (error) {
       console.error("Error generating PDF:", error);
+      const msg = error instanceof Error ? error.message : String(error);
       toast.error("Failed to generate PDF", {
-        description: "Please try downloading as Markdown instead.",
+        description: msg.includes("Markdown") ? msg : "Please try downloading as Markdown instead.",
       });
+    } finally {
+      if (iframe?.parentNode) {
+        try {
+          document.body.removeChild(iframe);
+        } catch {
+          // ignore
+        }
+      }
     }
   };
 
@@ -1229,7 +1431,7 @@ function DocsPage() {
   }
 
   return (
-    <div className="h-full flex flex-col mobile-layout">
+    <div className="h-full min-h-0 flex flex-col mobile-layout">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 mt-2 sm:mt-4 px-2 sm:px-4 gap-3 sm:gap-4">
         <div
           ref={headingRef}
@@ -1250,9 +1452,8 @@ function DocsPage() {
 
         <div
           ref={disclaimerRef}
-          className={`hidden show-disclaimer items-center justify-start flex-1 -ml-16 ${
-            !showDisclaimer ? "invisible" : ""
-          }`}
+          className={`hidden show-disclaimer items-center justify-start flex-1 -ml-16 ${!showDisclaimer ? "invisible" : ""
+            }`}
         >
           <p className="text-white/40 text-xs italic text-center animate-pulse">
             ✨ This may take time because we focus on quality documentation
@@ -1424,8 +1625,8 @@ function DocsPage() {
         </div>
       )}
 
-      <Card className="flex-1 flex flex-col border border-white/20 shadow-xl mx-1 sm:mx-2 md:mx-4 mb-2 sm:mb-4 mobile-card">
-        <CardContent className="flex-1 p-0 mobile-card-content">
+      <Card className="flex-1 min-h-0 flex flex-col border border-white/20 shadow-xl mx-1 sm:mx-2 md:mx-4 mb-2 sm:mb-4 mobile-card">
+        <CardContent className="flex-1 min-h-0 p-0 mobile-card-content">
           {isLoading ? (
             <div className="p-4 sm:p-8 space-y-6">
               <div className="space-y-4">
@@ -1447,10 +1648,10 @@ function DocsPage() {
               </div>
             </div>
           ) : docsData ? (
-            <div className="h-full">
-              <div className="h-full rounded-lg shadow-sm backdrop-blur-sm overflow-hidden">
-                <div className="h-full overflow-hidden">
-                  <div className="h-full overflow-y-auto overflow-x-hidden smooth-scroll-docs">
+            <div className="h-full min-h-0 flex flex-col">
+              <div className="flex-1 min-h-0 rounded-lg shadow-sm backdrop-blur-sm overflow-hidden flex flex-col">
+                <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+                  <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden smooth-scroll-docs">
                     <div className="p-2 sm:p-4 md:p-8 mobile-card-content">
                       <div className="prose prose-lg max-w-none text-white mobile-no-truncate mobile-prose">
                         {(() => {
@@ -1630,14 +1831,14 @@ function DocsPage() {
 
                                       const bgColor =
                                         badgeColors[
-                                          badge.color.toLowerCase()
+                                        badge.color.toLowerCase()
                                         ] ||
                                         badge.color ||
                                         "#3b82f6";
                                       const isProjectBadge =
                                         badge.icon === "pin" ||
                                         badge.text.toLowerCase() ===
-                                          selectedProject?.name?.toLowerCase();
+                                        selectedProject?.name?.toLowerCase();
 
                                       return (
                                         <div
@@ -1846,188 +2047,15 @@ function DocsPage() {
                 </div>
               </div>
 
-              <Sheet open={isQnaPanelOpen} onOpenChange={setIsQnaPanelOpen}>
-                <SheetContent
-                  side="right"
-                  className="min-w-[300px] sm:min-w-[400px] md:min-w-[500px] w-[90vw] sm:w-[400px] md:w-[500px] bg-black/30 border-l border-white/10 backdrop-blur-md px-2 sm:px-4"
-                >
-                  <SheetHeader className="pb-4 sm:pb-6">
-                    <div className="flex items-center gap-2 sm:gap-3">
-                      <div className="p-1.5 sm:p-2 bg-blue-500/20 border border-blue-500/30 rounded-lg w-8 h-8 sm:w-10 sm:h-10 shrink-0">
-                        <Bot className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <SheetTitle className="text-lg sm:text-xl md:text-2xl font-semibold text-white leading-tight mobile-no-truncate">
-                          Ask a question
-                        </SheetTitle>
-                        <SheetDescription className="text-white/60 text-xs sm:text-sm mt-1 mobile-no-truncate">
-                          Modify your documentation
-                        </SheetDescription>
-                      </div>
-                    </div>
-                  </SheetHeader>
-
-                  <div className="pb-4 sm:pb-6 border-b border-white/10">
-                    <div className="space-y-4 sm:space-y-6">
-                      <textarea
-                        ref={qnaInputRef}
-                        defaultValue={qnaQuestion}
-                        onChange={handleQnaQuestionChange}
-                        placeholder="Which file contains authentication logic?"
-                        className="w-full h-[60px] sm:h-[80px] p-2 sm:p-3 bg-black/30 border border-white/20 rounded-lg resize-none text-sm sm:text-base text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent mobile-no-truncate"
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && e.ctrlKey) {
-                            e.preventDefault();
-                            handleQnaSubmit();
-                          }
-                        }}
-                        autoComplete="off"
-                        autoCorrect="off"
-                        autoCapitalize="off"
-                        spellCheck="false"
-                      />
-                      <Button
-                        onClick={handleQnaSubmit}
-                        disabled={
-                          isProcessingQna ||
-                          !(qnaInputRef.current?.value || qnaQuestion).trim()
-                        }
-                        className="w-full bg-red-600 hover:bg-red-700 text-white py-2 sm:py-3 rounded-lg transition-colors h-[40px] sm:h-[48px] text-sm sm:text-base font-medium"
-                      >
-                        {isProcessingQna ? (
-                          <>
-                            <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin shrink-0" />
-                            <span className="mobile-no-truncate">
-                              Processing...
-                            </span>
-                          </>
-                        ) : (
-                          <span className="mobile-no-truncate">
-                            Ask RepoDocs
-                          </span>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="flex-1 mt-4 sm:mt-6 overflow-hidden">
-                    <div className="flex items-center justify-between mb-3 sm:mb-4">
-                      <div className="flex items-center gap-1 sm:gap-2">
-                        <History className="h-3 w-3 sm:h-4 sm:w-4 text-white/60 shrink-0" />
-                        <h4 className="text-sm sm:text-base font-medium text-white/80 mobile-no-truncate">
-                          Recent Questions
-                        </h4>
-                      </div>
-                      {qnaHistory.length > 0 && (
-                        <Button
-                          onClick={openDeleteAllDialog}
-                          variant="outline"
-                          size="sm"
-                          className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/30 text-xs px-2 sm:px-3 py-1 h-6 sm:h-7"
-                        >
-                          <Trash2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1 shrink-0" />
-                          <span className="mobile-no-truncate">Clear All</span>
-                        </Button>
-                      )}
-                    </div>
-
-                    <ScrollArea className="h-full max-h-[400px]">
-                      <div className="pr-4">
-                        {qnaHistory.length > 0 ? (
-                          <div className="space-y-3 sm:space-y-4">
-                            {qnaHistory.map((qna, index) => (
-                              <div
-                                key={qna.id}
-                                className="bg-black/30 border border-white/10 rounded-lg p-3 sm:p-4"
-                              >
-                                <div className="space-y-2 sm:space-y-3">
-                                  <div className="flex items-start justify-between">
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-white/90 text-sm sm:text-base font-medium mb-1 mobile-no-truncate">
-                                        Your Question:
-                                      </p>
-                                      <p className="text-white/70 text-sm sm:text-base wrap-break-word mobile-no-truncate">
-                                        {qna.question}
-                                      </p>
-                                    </div>
-                                    <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-5 w-5 sm:h-6 sm:w-6 p-0 text-white/50 hover:text-white/80 hover:bg-white/10 ml-1 sm:ml-2 shrink-0"
-                                        >
-                                          <MoreVertical className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                                        </Button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent
-                                        align="end"
-                                        className="bg-gray-800 border-white/20"
-                                      >
-                                        <DropdownMenuItem
-                                          onClick={() =>
-                                            openDeleteDialog(qna.id)
-                                          }
-                                          className="text-red-400 hover:bg-red-500/10 focus:bg-red-500/10"
-                                        >
-                                          <Trash2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1 sm:mr-2" />
-                                          <span className="mobile-no-truncate">
-                                            Delete
-                                          </span>
-                                        </DropdownMenuItem>
-                                      </DropdownMenuContent>
-                                    </DropdownMenu>
-                                  </div>
-
-                                  <div>
-                                    <p className="text-white/90 text-sm sm:text-base font-medium mb-1 mobile-no-truncate">
-                                      AI Response:
-                                    </p>
-                                    <p className="text-white/70 text-sm sm:text-base wrap-break-word mobile-no-truncate">
-                                      {qna.answer}
-                                    </p>
-                                  </div>
-
-                                  <div className="flex items-center gap-1 sm:gap-2 text-xs text-white/50 pt-1 sm:pt-2 border-t border-white/10">
-                                    <Clock className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
-                                    <span className="mobile-no-truncate">
-                                      {new Date(qna.createdAt).toLocaleString()}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-center py-6 sm:py-8">
-                            <div className="p-3 sm:p-4 bg-black/30 border border-white/20 rounded-2xl mb-3 sm:mb-4 inline-block">
-                              <MessageSquare className="h-6 w-6 sm:h-8 sm:w-8 text-white/50" />
-                            </div>
-                            <h4 className="text-sm sm:text-base font-semibold text-white mb-2 mobile-no-truncate">
-                              No questions yet
-                            </h4>
-                            <p className="text-white/60 text-xs sm:text-sm mb-3 sm:mb-4 mobile-no-truncate">
-                              Ask questions to modify your documentation
-                            </p>
-                            <div className="space-y-1 text-xs text-white/50">
-                              <p className="mobile-no-truncate">Try asking:</p>
-                              <p className="mobile-no-truncate">
-                                &quot;Add API examples&quot;
-                              </p>
-                              <p className="mobile-no-truncate">
-                                &quot;Update installation guide&quot;
-                              </p>
-                              <p className="mobile-no-truncate">
-                                &quot;Add troubleshooting section&quot;
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </ScrollArea>
-                  </div>
-                </SheetContent>
-              </Sheet>
+              <DocsQnaPanel
+                open={isQnaPanelOpen}
+                onOpenChange={setIsQnaPanelOpen}
+                isProcessingQna={isProcessingQna}
+                qnaHistory={qnaHistory}
+                onSubmit={handleQnaSubmit}
+                onDelete={openDeleteDialog}
+                onDeleteAll={openDeleteAllDialog}
+              />
             </div>
           ) : (
             <div className="flex items-center justify-center h-full p-8">

@@ -1,0 +1,80 @@
+<svg width="1200" height="420" viewBox="0 0 1200 420" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">RepoDoc</title>
+  <desc id="desc">Professional dark header banner for RepoDoc.</desc>
+
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="420" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#07090E"/>
+      <stop offset="1" stop-color="#0B101A"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="78" y1="308" x2="1120" y2="308" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2563EB"/>
+      <stop offset="1" stop-color="#7C3AED"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="748" y1="88" x2="1120" y2="334" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#111827"/>
+      <stop offset="1" stop-color="#0F172A"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="420" rx="18" fill="url(#bg)"/>
+  <rect x="1" y="1" width="1198" height="418" rx="17" stroke="#FFFFFF" stroke-opacity="0.10"/>
+
+  <!-- subtle texture -->
+  <g opacity="0.10" stroke="#94A3B8">
+    <path d="M0 116H1200"/>
+    <path d="M0 174H1200"/>
+    <path d="M0 232H1200"/>
+    <path d="M0 290H1200"/>
+    <path d="M0 348H1200"/>
+  </g>
+
+  <!-- left block -->
+  <g transform="translate(78 92)">
+    <rect x="0" y="-28" width="132" height="36" rx="9" fill="#111827" stroke="#334155"/>
+    <text x="66" y="-10" text-anchor="middle" dominant-baseline="middle" fill="#93C5FD" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="600">Production</text>
+
+    <text x="0" y="62" fill="#F8FAFC" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="64" font-weight="700" letter-spacing="0.3">RepoDoc</text>
+    <text x="0" y="108" fill="#CBD5E1" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="27" font-weight="500">
+      The AI infrastructure for understanding code.
+    </text>
+    <text x="0" y="144" fill="#94A3B8" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="21">
+      Grounded answers, source citations, and documentation generation.
+    </text>
+
+    <g transform="translate(0 172)">
+      <rect x="0" y="0" width="138" height="40" rx="11" fill="#0F172A" stroke="#1E293B"/>
+      <text x="69" y="20" text-anchor="middle" dominant-baseline="middle" fill="#E2E8F0" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" font-weight="600">Citations</text>
+
+      <rect x="150" y="0" width="98" height="40" rx="11" fill="#0F172A" stroke="#1E293B"/>
+      <text x="183" y="25" fill="#E2E8F0" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" font-weight="600">RAG</text>
+
+      <rect x="260" y="0" width="178" height="40" rx="11" fill="#0F172A" stroke="#1E293B"/>
+      <text x="349" y="20" text-anchor="middle" dominant-baseline="middle" fill="#E2E8F0" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" font-weight="600">Observability</text>
+    </g>
+  </g>
+
+  <!-- right panel -->
+  <g transform="translate(748 88)">
+    <rect x="0" y="0" width="372" height="246" rx="14" fill="url(#panel)" stroke="#334155" stroke-opacity="0.8"/>
+    <text x="22" y="34" fill="#93C5FD" font-family="JetBrains Mono,Consolas,monospace" font-size="13">architecture overview</text>
+
+    <g opacity="0.24" stroke="#64748B">
+      <path d="M22 74H350"/>
+      <path d="M22 112H350"/>
+      <path d="M22 150H350"/>
+      <path d="M22 188H350"/>
+    </g>
+
+    <polyline points="34,188 98,162 164,168 236,130 334,92" fill="none" stroke="#60A5FA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <g fill="#0B1220" stroke="#93C5FD" stroke-width="2">
+      <circle cx="34" cy="188" r="6"/>
+      <circle cx="98" cy="162" r="6"/>
+      <circle cx="164" cy="168" r="6"/>
+      <circle cx="236" cy="130" r="6"/>
+      <circle cx="334" cy="92" r="6"/>
+    </g>
+  </g>
+
+  <rect x="78" y="304" width="1042" height="4" rx="2" fill="url(#accent)"/>
+</svg>

@@ -1,4 +1,4 @@
-import { searchCodebase, queryCodebase } from "@/lib/rag";
+import { searchCodebase, queryCodebase } from "../../src/lib/rag";
 
 const mockQueryRaw = jest.fn();
 const mockPrisma = {
@@ -8,18 +8,18 @@ const mockPrisma = {
   },
 };
 
-jest.mock("@/lib/prisma", () => ({
+jest.mock("../../src/lib/prisma", () => ({
   __esModule: true,
   default: mockPrisma,
 }));
 
 const mockGetGenerateEmbeddings = jest.fn();
-jest.mock("@/lib/gemini", () => ({
+jest.mock("../../src/lib/gemini", () => ({
   getGenerateEmbeddings: mockGetGenerateEmbeddings,
 }));
 
 const mockOpenrouterChatCompletion = jest.fn();
-jest.mock("@/lib/openrouter", () => ({
+jest.mock("../../src/lib/openrouter", () => ({
   openrouterChatCompletion: mockOpenrouterChatCompletion,
 }));
 
