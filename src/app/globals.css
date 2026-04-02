@@ -134,6 +134,7 @@
     scroll-behavior: auto;
     -webkit-overflow-scrolling: touch;
     scroll-padding-top: 5rem;
+    scrollbar-gutter: stable;
   }
 
   @media (prefers-reduced-motion: no-preference) {
@@ -506,6 +507,8 @@
   .overflow-y-auto,
   .overflow-x-auto {
     scroll-behavior: smooth;
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
 }
 

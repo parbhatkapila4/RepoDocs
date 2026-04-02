@@ -686,7 +686,17 @@ export default function Page() {
 
       <div className="relative z-10 w-full max-w-md">
         <div className="[&_.cl-card]:bg-white [&_.cl-card]:rounded-xl [&_.cl-card]:shadow-lg [&_.cl-card]:border [&_.cl-card]:border-gray-100/50 [&_.cl-card]:backdrop-blur-sm [&_.cl-cardRoot]:w-full [&_h1]:text-3xl [&_h1]:md:text-4xl [&_h1]:font-bold [&_h1]:text-black [&_h1]:mb-3 [&_h1]:leading-tight [&_p]:text-sm [&_p]:md:text-base [&_p]:text-gray-500 [&_p]:mb-8 [&_p]:leading-relaxed [&_input]:border [&_input]:border-gray-200 [&_input]:rounded-lg [&_input]:focus:border-orange-500 [&_input]:focus:ring-2 [&_input]:focus:ring-orange-500/20 [&_input]:transition-all [&_button[type='submit']]:bg-orange-500 [&_button[type='submit']]:hover:bg-orange-600 [&_button[type='submit']]:active:bg-orange-700 [&_button[type='submit']]:shadow-sm [&_button[type='submit']]:hover:shadow-md">
-          <SignUp />
+          <SignUp
+            appearance={{
+              layout: { unsafe_disableDevelopmentModeWarnings: true },
+              elements: {
+                footer: { display: "none" },
+                footerPages: { display: "none" },
+                footerItem: { display: "none" },
+                footerAction: { display: "none" },
+              },
+            }}
+          />
         </div>
       </div>
     </div>
