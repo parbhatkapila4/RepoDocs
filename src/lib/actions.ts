@@ -1,8 +1,15 @@
 "use server";
 
+import { after } from "next/server";
 import { createProjectWithAuth } from "./queries";
+import { kickIndexingWorker } from "./indexing-worker-kick";
 import { auth } from "@clerk/nextjs/server";
+import { Prisma } from "@prisma/client";
 import prisma from "./prisma";
+import { withPrismaRetry } from "./prisma-retry";
+import { getDbUserId } from "./get-db-user-id";
+import { isLikelyGitHubRateLimitMessage } from "./github-rate-limit-message";
+import { githubCoreQuotaRecovered } from "./github-rate-limit-status";
 import { getGitHubRepositoryInfo, type GitHubRepoInfo } from "./github";
 import type { Project } from "@prisma/client";
 
@@ -27,32 +34,6 @@ function normalizePlanName(plan: string): keyof typeof PLAN_LIMITS {
   return "starter";
 }
 
-async function getDbUserId(clerkUserId: string): Promise<string | null> {
-  let dbUser = await prisma.user.findUnique({
-    where: { id: clerkUserId },
-    select: { id: true },
-  });
-
-  if (!dbUser) {
-    try {
-      const { clerkClient } = await import("@clerk/nextjs/server");
-      const client = await clerkClient();
-      const clerkUser = await client.users.getUser(clerkUserId);
-
-      if (clerkUser.emailAddresses[0]?.emailAddress) {
-        dbUser = await prisma.user.findUnique({
-          where: { emailAddress: clerkUser.emailAddresses[0].emailAddress },
-          select: { id: true },
-        });
-      }
-    } catch {
-      return null;
-    }
-  }
-
-  return dbUser?.id || null;
-}
-
 export async function createProject(
   name: string,
   githubUrl: string,
@@ -60,6 +41,7 @@ export async function createProject(
 ): Promise<CreateProjectResult> {
   try {
     const project = await createProjectWithAuth(name, githubUrl, githubToken);
+    void kickIndexingWorker();
     return { project };
   } catch (err) {
     const message =
@@ -379,6 +361,19 @@ export async function updateUserCredits(credits: number) {
   }
 }
 
+function isDatabaseUnreachable(error: unknown): boolean {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    return ["P1001", "P1000", "P1017", "P1002"].includes(error.code);
+  }
+  if (error instanceof Prisma.PrismaClientInitializationError) {
+    return true;
+  }
+  const msg = error instanceof Error ? error.message : String(error);
+  return /can't reach database|connection refused|timeout|ECONNREFUSED|ETIMEDOUT/i.test(
+    msg
+  );
+}
+
 export async function getUserProjects() {
   try {
     const { userId } = await auth();
@@ -432,17 +427,42 @@ export async function getUserProjects() {
     return projects;
   } catch (error) {
     console.error("Error fetching user projects:", error);
+    if (isDatabaseUnreachable(error)) {
+      throw new Error(
+        "Cannot reach the database. If you use Neon: resume the project in the Neon console, confirm DATABASE_URL uses the pooled connection string, and ensure sslmode=require. Then retry."
+      );
+    }
     return [];
   }
 }
 
-export async function fetchRepositoryInfo(repoUrl: string) {
+export async function fetchRepositoryInfo(
+  repoUrl: string
+): Promise<{ data: any } | { error: string }> {
   try {
     const repoInfo = await getGitHubRepositoryInfo(repoUrl);
-    return repoInfo;
-  } catch (error) {
+    if (!repoInfo) return { error: "Repository not found" };
+    return { data: repoInfo };
+  } catch (error: any) {
     console.error("Error fetching repository information:", error);
-    return null;
+    const status = error?.status ?? error?.response?.status;
+    const msg = error?.message ?? "";
+    if (
+      status === 403 ||
+      msg.toLowerCase().includes("rate limit") ||
+      msg.toLowerCase().includes("quota exhausted")
+    ) {
+      const resetHeader = error?.response?.headers?.["x-ratelimit-reset"];
+      let resetNote = "";
+      if (resetHeader) {
+        const secs = Math.max(0, Number(resetHeader) - Math.floor(Date.now() / 1000));
+        resetNote = ` reset in ${secs}s`;
+      }
+      return {
+        error: `GitHub API rate limit reached${resetNote}. Try again in a few minutes.`,
+      };
+    }
+    return { error: "Failed to fetch repository information" };
   }
 }
 
@@ -572,7 +592,7 @@ export async function regenerateProjectReadme(projectId: string) {
       throw new Error(`UPGRADE_REQUIRED: ${quotaCheck.reason}`);
     }
 
-    const sourceCodeEmbeddings = await prisma.sourceCodeEmbiddings.findMany({
+    const sourceCodeEmbeddings = await prisma.sourceCodeEmbeddings.findMany({
       where: {
         projectId: projectId,
       },
@@ -597,9 +617,6 @@ export async function regenerateProjectReadme(projectId: string) {
           lockedBy: null,
         },
       });
-
-      console.log(`[Indexing] Queued job for project ${projectId}`);
-      console.log(`[Indexing] Repo: ${project.repoUrl}, Has token: ${!!project.githubToken}`);
 
       let repoInfo: Partial<GitHubRepoInfo> | null = null;
       try {
@@ -1129,47 +1146,151 @@ export async function getProjectWithToken(projectId: string) {
   }
 }
 
+const embeddingsStatusEmpty = {
+  hasEmbeddings: false,
+  count: 0,
+  indexing: false,
+  progress: 0,
+  phase: "fast" as const,
+  filesTotal: 0,
+  filesProcessed: 0,
+  jobError: null,
+};
+
 export async function checkEmbeddingsStatus(projectId: string) {
   try {
     const { userId } = await auth();
 
     if (!userId) {
-      throw new Error("Unauthorized");
+      return embeddingsStatusEmpty;
     }
 
-    const dbUserId = await getDbUserId(userId);
-    if (!dbUserId) {
-      throw new Error("User not found");
-    }
+    return await withPrismaRetry(async () => {
+      const dbUserId = await getDbUserId(userId);
+      if (!dbUserId) {
+        throw new Error("User not found");
+      }
 
-    const project = await prisma.project.findFirst({
-      where: {
-        id: projectId,
-        userId: dbUserId,
-        deletedAt: null,
-      },
+      const project = await prisma.project.findFirst({
+        where: {
+          id: projectId,
+          userId: dbUserId,
+          deletedAt: null,
+        },
+      });
+
+      if (!project) {
+        throw new Error("Project not found or unauthorized");
+      }
+
+      const embeddingsCount = await prisma.sourceCodeEmbeddings.count({
+        where: { projectId },
+      });
+
+      type JobExtras = {
+        phase?: string;
+        filesTotal?: number;
+        filesProcessed?: number;
+      };
+
+      const now = new Date();
+      const staleProcessingThreshold = new Date(now.getTime() - 5 * 60 * 1000);
+
+      let job = await prisma.indexingJob.findUnique({
+        where: { projectId },
+      });
+
+      if (job?.status === "processing") {
+        if (!job.lockedAt || job.lockedAt < staleProcessingThreshold) {
+          await prisma.indexingJob.update({
+            where: { projectId },
+            data: {
+              status: "queued",
+              progress: 0,
+              error: null,
+              lockedAt: null,
+              lockedBy: null,
+              updatedAt: now,
+            },
+          });
+        }
+      }
+
+      job = await prisma.indexingJob.findUnique({
+        where: { projectId },
+      });
+
+      if (embeddingsCount === 0) {
+        if (!job || job.status === "failed") {
+          await prisma.indexingJob.upsert({
+            where: { projectId },
+            create: { projectId, status: "queued", progress: 0 },
+            update: {
+              status: "queued",
+              progress: 0,
+              error: null,
+              lockedAt: null,
+              lockedBy: null,
+            },
+          });
+        }
+      }
+
+      job = await prisma.indexingJob.findUnique({
+        where: { projectId },
+      });
+
+      if (job?.error && isLikelyGitHubRateLimitMessage(job.error)) {
+        const ghAuth =
+          project.githubToken || process.env.GITHUB_TOKEN || undefined;
+        const recovered = await githubCoreQuotaRecovered(ghAuth);
+        if (recovered) {
+          const prevStatus = job.status;
+          await prisma.indexingJob.update({
+            where: { projectId },
+            data: {
+              error: null,
+              ...(prevStatus === "failed"
+                ? {
+                  status: "queued",
+                  lockedAt: null,
+                  lockedBy: null,
+                }
+                : {}),
+              updatedAt: now,
+            },
+          });
+          job = await prisma.indexingJob.findUnique({
+            where: { projectId },
+          });
+        }
+      }
+
+      if (job?.status === "queued" && job.lockedAt == null) {
+        void kickIndexingWorker();
+      }
+      const jobExtrasFresh = job as
+        | (typeof job & JobExtras)
+        | null;
+
+      const isIndexing = job
+        ? job.status === "queued" || job.status === "processing"
+        : false;
+
+      return {
+        hasEmbeddings: embeddingsCount > 0,
+        count: embeddingsCount,
+        indexing: isIndexing,
+        progress: job?.progress ?? 0,
+        phase: jobExtrasFresh?.phase ?? "fast",
+        filesTotal: jobExtrasFresh?.filesTotal ?? 0,
+        filesProcessed: jobExtrasFresh?.filesProcessed ?? 0,
+        jobError: job?.error ?? null,
+      };
     });
-
-    if (!project) {
-      throw new Error("Project not found or unauthorized");
-    }
-
-    const embeddingsCount = await prisma.sourceCodeEmbiddings.count({
-      where: {
-        projectId: projectId,
-      },
-    });
-
-    return {
-      hasEmbeddings: embeddingsCount > 0,
-      count: embeddingsCount,
-    };
   } catch (error) {
     console.error("Error checking embeddings status:", error);
-    return {
-      hasEmbeddings: false,
-      count: 0,
-    };
+    return embeddingsStatusEmpty;
   }
 }
 
@@ -1214,8 +1335,7 @@ export async function retryIndexing(projectId: string) {
       },
     });
 
-    console.log(`[Indexing] Queued retry job for project ${projectId}`);
-    console.log(`[Indexing] Repo: ${project.repoUrl}, Has token: ${!!project.githubToken}`);
+    void kickIndexingWorker();
 
     return { success: true, message: "Indexing restarted successfully" };
   } catch (error) {
@@ -1249,7 +1369,7 @@ export async function getIndexingDiagnostics(projectId: string) {
       throw new Error("Project not found or unauthorized");
     }
 
-    const embeddingsCount = await prisma.sourceCodeEmbiddings.count({
+    const embeddingsCount = await prisma.sourceCodeEmbeddings.count({
       where: { projectId: projectId },
     });
 
@@ -1319,7 +1439,7 @@ export async function regenerateProjectDocs(projectId: string) {
       throw new Error(`UPGRADE_REQUIRED: ${quotaCheck.reason}`);
     }
 
-    const sourceCodeEmbeddings = await prisma.sourceCodeEmbiddings.findMany({
+    const sourceCodeEmbeddings = await prisma.sourceCodeEmbeddings.findMany({
       where: {
         projectId: projectId,
       },
@@ -1344,9 +1464,6 @@ export async function regenerateProjectDocs(projectId: string) {
           lockedBy: null,
         },
       });
-
-      console.log(`[Indexing] Queued job for project ${projectId}`);
-      console.log(`[Indexing] Repo: ${project.repoUrl}, Has token: ${!!project.githubToken}`);
 
       let repoInfo: Partial<GitHubRepoInfo> | null = null;
       try {
@@ -1457,6 +1574,154 @@ export async function regenerateProjectDocs(projectId: string) {
       error instanceof Error ? error.message : "Unknown error";
     throw new Error(`Failed to regenerate docs: ${errorMessage}`);
   }
+}
+
+export async function enqueueReadmeRegeneration(projectId: string) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Please sign in and try again.");
+
+  const dbUserId = await getDbUserId(userId);
+  if (!dbUserId) throw new Error("User not found");
+
+  const project = await prisma.project.findFirst({
+    where: { id: projectId, userId: dbUserId, deletedAt: null },
+  });
+  if (!project) throw new Error("Project not found or unauthorized");
+
+  const quotaCheck = await isProjectWithinQuota(projectId, dbUserId);
+  if (!quotaCheck.allowed) {
+    throw new Error(`UPGRADE_REQUIRED: ${quotaCheck.reason}`);
+  }
+
+  const existing = await prisma.backgroundJob.findFirst({
+    where: {
+      projectId,
+      kind: "readme_regen",
+      status: "running",
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  if (existing) {
+    return { jobId: existing.id, continuing: true as const };
+  }
+
+  const job = await prisma.backgroundJob.create({
+    data: {
+      userId: dbUserId,
+      projectId,
+      kind: "readme_regen",
+      status: "running",
+    },
+  });
+
+  after(async () => {
+    try {
+      await regenerateProjectReadme(projectId);
+      await prisma.backgroundJob.update({
+        where: { id: job.id },
+        data: { status: "completed", completedAt: new Date() },
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      await prisma.backgroundJob.update({
+        where: { id: job.id },
+        data: {
+          status: "failed",
+          completedAt: new Date(),
+          error: msg.slice(0, 2000),
+        },
+      });
+    }
+  });
+
+  return { jobId: job.id, continuing: false as const };
+}
+
+export async function enqueueDocsRegeneration(projectId: string) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+
+  const dbUserId = await getDbUserId(userId);
+  if (!dbUserId) throw new Error("User not found");
+
+  const project = await prisma.project.findFirst({
+    where: { id: projectId, userId: dbUserId, deletedAt: null },
+  });
+  if (!project) throw new Error("Project not found or unauthorized");
+
+  const quotaCheck = await isProjectWithinQuota(projectId, dbUserId);
+  if (!quotaCheck.allowed) {
+    throw new Error(`UPGRADE_REQUIRED: ${quotaCheck.reason}`);
+  }
+
+  const existing = await prisma.backgroundJob.findFirst({
+    where: {
+      projectId,
+      kind: "docs_regen",
+      status: "running",
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  if (existing) {
+    return { jobId: existing.id, continuing: true as const };
+  }
+
+  const job = await prisma.backgroundJob.create({
+    data: {
+      userId: dbUserId,
+      projectId,
+      kind: "docs_regen",
+      status: "running",
+    },
+  });
+
+  after(async () => {
+    try {
+      await regenerateProjectDocs(projectId);
+      await prisma.backgroundJob.update({
+        where: { id: job.id },
+        data: { status: "completed", completedAt: new Date() },
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      await prisma.backgroundJob.update({
+        where: { id: job.id },
+        data: {
+          status: "failed",
+          completedAt: new Date(),
+          error: msg.slice(0, 2000),
+        },
+      });
+    }
+  });
+
+  return { jobId: job.id, continuing: false as const };
+}
+
+export async function getBackgroundJob(jobId: string) {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Unauthorized");
+
+  const dbUserId = await getDbUserId(userId);
+  if (!dbUserId) throw new Error("User not found");
+
+  const job = await withPrismaRetry(() =>
+    prisma.backgroundJob.findFirst({
+      where: { id: jobId, userId: dbUserId },
+      select: {
+        id: true,
+        status: true,
+        kind: true,
+        error: true,
+        completedAt: true,
+        projectId: true,
+        createdAt: true,
+      },
+    })
+  );
+
+  if (!job) return null;
+  return job;
 }
 
 export async function modifyDocsWithQna(projectId: string, question: string) {
@@ -1737,9 +2002,6 @@ export async function createDocsShare(projectId: string) {
 
 export async function getPublicDocs(shareToken: string) {
   try {
-    console.log("getPublicDocs called with token:", shareToken);
-    console.log("Token length:", shareToken?.length);
-
     const share = await prisma.docsShare.findUnique({
       where: {
         shareToken: shareToken,
@@ -1760,24 +2022,9 @@ export async function getPublicDocs(shareToken: string) {
     });
 
     if (!share) {
-      console.log("No share found for token:", shareToken);
-      const allShares = await prisma.docsShare.findMany({
-        where: {
-          shareToken: {
-            startsWith: shareToken.substring(0, 10),
-          },
-        },
-        select: {
-          shareToken: true,
-          isActive: true,
-        },
-        take: 5,
-      });
-      console.log("Similar tokens found:", allShares);
       return null;
     }
 
-    console.log("Share found successfully");
     return share;
   } catch (error) {
     console.error("Error fetching public docs:", error);

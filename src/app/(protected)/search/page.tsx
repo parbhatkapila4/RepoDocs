@@ -30,8 +30,10 @@ import {
 } from "lucide-react";
 import { GitHubSearchResult } from "@/app/api/search/route";
 import { toast } from "sonner";
+import GitHubRateLimitNotice from "@/components/GitHubRateLimitNotice";
 import { createProject } from "@/lib/actions";
 import { useProjectsContext } from "@/context/ProjectsContext";
+import { useMountedRef } from "@/hooks/useMountedRef";
 
 const BACKEND_LANGUAGES = [
   { value: "Python", label: "Python" },
@@ -83,6 +85,8 @@ export default function SearchPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [addingRepoId, setAddingRepoId] = useState<number | null>(null);
+  const [rateLimitError, setRateLimitError] = useState<string | null>(null);
+  const mountedRef = useMountedRef();
 
   useEffect(() => {
     const mainElement = document.querySelector(
@@ -105,12 +109,14 @@ export default function SearchPage() {
     }
 
     if (append) {
-      setIsLoadingMore(true);
+      if (mountedRef.current) setIsLoadingMore(true);
     } else {
-      setIsLoading(true);
-      setHasSearched(true);
-      setResults([]);
-      setCurrentPage(1);
+      if (mountedRef.current) {
+        setIsLoading(true);
+        setHasSearched(true);
+        setResults([]);
+        setCurrentPage(1);
+      }
     }
 
     try {
@@ -137,6 +143,8 @@ export default function SearchPage() {
         throw new Error(data.error || "Failed to search repositories");
       }
 
+      if (!mountedRef.current) return;
+
       if (append) {
         setResults((prev) => [...prev, ...(data.results || [])]);
       } else {
@@ -160,14 +168,26 @@ export default function SearchPage() {
       }
     } catch (error: any) {
       console.error("Search error:", error);
-      toast.error(error.message || "Failed to search repositories");
+      const msg = error.message || "Failed to search repositories";
+      const isRate =
+        msg.toLowerCase().includes("rate limit") ||
+        msg.toLowerCase().includes("quota") ||
+        msg.toLowerCase().includes("403");
+      if (!mountedRef.current) return;
+      if (isRate) {
+        setRateLimitError("GitHub API rate limit reached. Try again in a few minutes.");
+      } else {
+        toast.error(msg);
+      }
       if (!append) {
         setResults([]);
         setTotalCount(0);
       }
     } finally {
-      setIsLoading(false);
-      setIsLoadingMore(false);
+      if (mountedRef.current) {
+        setIsLoading(false);
+        setIsLoadingMore(false);
+      }
     }
   };
 
@@ -209,7 +229,7 @@ export default function SearchPage() {
         toast.error("Failed to add repository", {
           description: result.error,
         });
-        setAddingRepoId(null);
+        if (mountedRef.current) setAddingRepoId(null);
         return;
       }
 
@@ -220,7 +240,7 @@ export default function SearchPage() {
       });
 
       setTimeout(() => {
-        router.push("/dashboard");
+        if (mountedRef.current) router.push("/dashboard");
       }, 1000);
     } catch (error: unknown) {
       console.error("Error adding repository:", error);
@@ -230,7 +250,7 @@ export default function SearchPage() {
             ? error.message
             : "An error occurred while adding the repository.",
       });
-      setAddingRepoId(null);
+      if (mountedRef.current) setAddingRepoId(null);
     }
   };
 
@@ -357,21 +377,21 @@ export default function SearchPage() {
           </CardContent>
         </Card>
 
+        <GitHubRateLimitNotice error={rateLimitError} className="mb-4" />
+
         {hasSearched && (
           <div>
             {isLoading ? (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {[...Array(5)].map((_, i) => (
-                  <Card key={i} className="bg-gray-800/50 border-gray-700">
-                    <CardContent className="p-6">
-                      <Skeleton className="h-6 w-3/4 mb-2 bg-gray-700" />
-                      <Skeleton className="h-4 w-full mb-4 bg-gray-700" />
-                      <div className="flex gap-4">
-                        <Skeleton className="h-4 w-20 bg-gray-700" />
-                        <Skeleton className="h-4 w-20 bg-gray-700" />
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 space-y-3">
+                    <Skeleton className="h-4 w-3/5" />
+                    <Skeleton className="h-[14px] w-full" />
+                    <div className="flex gap-3 pt-1">
+                      <Skeleton className="h-3 w-16" />
+                      <Skeleton className="h-3 w-16" />
+                    </div>
+                  </div>
                 ))}
               </div>
             ) : results.length > 0 ? (

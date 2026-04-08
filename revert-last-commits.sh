@@ -50,7 +50,7 @@ git status --short
 git --no-pager diff --staged --name-only | sed -n '1,200p'
 echo
 
-REVERT_MSG="Revert commits ${OLDEST}..${NEWEST} — roll back changes from last 24h"
+REVERT_MSG="Revert commits ${OLDEST}..${NEWEST}: roll back changes from last 24h"
 git commit -m "${REVERT_MSG}"
 
 git push origin "${TARGET_BRANCH}"

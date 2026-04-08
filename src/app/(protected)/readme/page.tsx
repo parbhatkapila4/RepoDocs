@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useMountedRef } from "@/hooks/useMountedRef";
 import { useProjectsContext } from "@/context/ProjectsContext";
 import { useUser } from "@/hooks/useUser";
 import {
   getProjectReadme,
-  regenerateProjectReadme,
+  enqueueReadmeRegeneration,
+  getBackgroundJob,
   modifyReadmeWithQna,
   getReadmeQnaHistory,
   createReadmeShare,
@@ -14,6 +16,7 @@ import {
   deleteReadmeQnaRecord,
   deleteAllReadmeQnaHistory,
 } from "@/lib/actions";
+import { useBackgroundRegenJob } from "@/hooks/useBackgroundRegenJob";
 import {
   Card,
   CardContent,
@@ -73,6 +76,9 @@ import {
 } from "lucide-react";
 import NextLink from "next/link";
 import { toast } from "sonner";
+import GitHubRateLimitNotice, {
+  isRateLimitError,
+} from "@/components/GitHubRateLimitNotice";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -129,6 +135,30 @@ function ReadmePage() {
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
   const [upgradeRequired, setUpgradeRequired] = useState(false);
   const [repositoryInfo, setRepositoryInfo] = useState<any>(null);
+  const readmeMountedRef = useMountedRef();
+
+  const readmeBgJob = useBackgroundRegenJob({
+    projectId: selectedProjectId,
+    storageKey: "readme",
+    enqueue: enqueueReadmeRegeneration,
+    getJob: getBackgroundJob,
+    onSync: () => fetchReadme(),
+    setBusy: setIsRegenerating,
+    onUpgradeRequired: () => setUpgradeRequired(true),
+    toastSuccessActive: {
+      title: "README regenerated",
+      description: "Updated with the latest codebase analysis.",
+    },
+    toastSuccessAway: {
+      title: "README is ready",
+      description:
+        "Generation finished while you were on another screen or idle. Content has been refreshed.",
+    },
+    toastFailed: (message) => ({
+      title: "README generation failed",
+      description: message,
+    }),
+  });
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
 
@@ -225,8 +255,7 @@ function ReadmePage() {
               return info;
             }
           }
-        } catch (e) {
-          console.debug("Strategy 1 failed:", e);
+        } catch {
         }
         return null;
       },
@@ -251,8 +280,7 @@ function ReadmePage() {
               return info;
             }
           }
-        } catch (e) {
-          console.debug("Strategy 2 failed:", e);
+        } catch {
         }
         return null;
       },
@@ -270,8 +298,7 @@ function ReadmePage() {
           ) {
             return info;
           }
-        } catch (e) {
-          console.debug("Strategy 3 failed:", e);
+        } catch {
         }
         return null;
       },
@@ -279,7 +306,9 @@ function ReadmePage() {
       async () => {
         try {
           const { fetchRepositoryInfo } = await import("@/lib/actions");
-          const info = await fetchRepositoryInfo(repoUrl);
+          const result = await fetchRepositoryInfo(repoUrl);
+          if ("error" in result) return null;
+          const info = result.data;
           if (
             info &&
             (info.stars > 0 ||
@@ -289,8 +318,7 @@ function ReadmePage() {
           ) {
             return info;
           }
-        } catch (e) {
-          console.debug("Strategy 4 failed:", e);
+        } catch {
         }
         return null;
       },
@@ -300,29 +328,23 @@ function ReadmePage() {
       try {
         const result = await strategy();
         if (result) {
-          console.log("✅ Repository info fetched successfully:", {
-            stars: result.stars || result.stargazersCount,
-            forks: result.forks || result.forksCount,
-            language: result.language,
-            license: result.license?.name,
-          });
           return result;
         }
-      } catch (error) {
-        console.debug("Strategy failed:", error);
+      } catch {
         continue;
       }
     }
 
-    console.warn("⚠️ All repository info fetch strategies failed");
     return null;
   };
 
   const fetchReadme = async () => {
     if (!selectedProjectId) return;
 
-    setIsLoading(true);
-    setError(null);
+    if (readmeMountedRef.current) {
+      setIsLoading(true);
+      setError(null);
+    }
 
     try {
       const project = projects.find((p) => p.id === selectedProjectId);
@@ -332,12 +354,14 @@ function ReadmePage() {
       if (repoUrl) {
         fetchedRepoInfo = await fetchRepositoryInfo(selectedProjectId, repoUrl);
 
-        if (fetchedRepoInfo) {
+        if (fetchedRepoInfo && readmeMountedRef.current) {
           setRepositoryInfo(fetchedRepoInfo);
         }
       }
 
       const readme = await getProjectReadme(selectedProjectId);
+      if (!readmeMountedRef.current) return;
+
       setReadmeData(readme);
 
       const repoInfoToUse = fetchedRepoInfo || repositoryInfo;
@@ -346,94 +370,70 @@ function ReadmePage() {
       }
     } catch (err) {
       console.error("Error fetching README:", err);
-      setError(err instanceof Error ? err.message : "Failed to fetch README");
+      if (readmeMountedRef.current) {
+        setError(err instanceof Error ? err.message : "Failed to fetch README");
+      }
     } finally {
-      setIsLoading(false);
+      if (readmeMountedRef.current) setIsLoading(false);
     }
   };
 
-  const handleRegenerateReadme = async () => {
+  const handleRegenerateReadme = () => {
     if (!selectedProjectId) return;
-
-    setIsRegenerating(true);
+    if (!user) {
+      toast.error("Please sign in to regenerate README");
+      return;
+    }
     setError(null);
     setUpgradeRequired(false);
-
-    try {
-      const newReadme = await regenerateProjectReadme(selectedProjectId);
-      setReadmeData(newReadme);
-      if (newReadme.content) {
-        setMetadata(parseReadmeMetadata(newReadme.content));
-      }
-      toast.success("README regenerated successfully!", {
-        description:
-          "The README has been updated with the latest codebase analysis.",
-      });
-    } catch (err) {
-      console.error("Error regenerating README:", err);
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to regenerate README";
-
-      if (errorMessage.includes("UPGRADE_REQUIRED")) {
-        setUpgradeRequired(true);
-        toast.error("Upgrade required", {
-          description:
-            "Upgrade to Professional for 10 projects or Enterprise for unlimited.",
-        });
-      } else {
-        setError(errorMessage);
-        toast.error("Failed to regenerate README", {
-          description: errorMessage,
-        });
-      }
-    } finally {
-      setIsRegenerating(false);
-    }
+    void readmeBgJob.start();
   };
 
-  const handleQnaSubmit = async () => {
+  const handleQnaSubmit = () => {
     if (!selectedProjectId || !qnaQuestion.trim()) return;
 
+    const question = qnaQuestion.trim();
     setIsProcessingQna(true);
     setError(null);
     setUpgradeRequired(false);
 
-    try {
-      const result = await modifyReadmeWithQna(selectedProjectId, qnaQuestion);
-      setReadmeData(result.readme);
-      if (result.readme.content) {
-        setMetadata(parseReadmeMetadata(result.readme.content));
-      }
-
-      setQnaHistory((prev) => [result.qnaRecord, ...prev]);
-      setQnaQuestion("");
-
-      setActiveTab("preview");
-
-      toast.success("README updated successfully!", {
-        description:
-          "Your request has been processed and the README has been modified.",
-      });
-    } catch (err) {
-      console.error("Error processing Q&A:", err);
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to modify README";
-
-      if (errorMessage.includes("UPGRADE_REQUIRED")) {
-        setUpgradeRequired(true);
-        toast.error("Upgrade required", {
+    void (async () => {
+      try {
+        const result = await modifyReadmeWithQna(selectedProjectId, question);
+        toast.success("README updated successfully!", {
           description:
-            "Upgrade to Professional for 10 projects or Enterprise for unlimited.",
+            "Your request has been processed and the README has been modified.",
         });
-      } else {
-        setError(errorMessage);
-        toast.error("Failed to modify README", {
-          description: errorMessage,
-        });
+        if (readmeMountedRef.current) {
+          setReadmeData(result.readme);
+          if (result.readme.content) {
+            setMetadata(parseReadmeMetadata(result.readme.content));
+          }
+          setQnaHistory((prev) => [result.qnaRecord, ...prev]);
+          setQnaQuestion("");
+          setActiveTab("preview");
+        }
+      } catch (err) {
+        console.error("Error processing Q&A:", err);
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to modify README";
+
+        if (errorMessage.includes("UPGRADE_REQUIRED")) {
+          if (readmeMountedRef.current) setUpgradeRequired(true);
+          toast.error("Upgrade required", {
+            description:
+              "Upgrade to Professional for 10 projects or Enterprise for unlimited.",
+          });
+        } else {
+          if (readmeMountedRef.current) setError(errorMessage);
+          toast.error("Failed to modify README", {
+            description: errorMessage,
+          });
+        }
+      } finally {
+        if (readmeMountedRef.current) setIsProcessingQna(false);
       }
-    } finally {
-      setIsProcessingQna(false);
-    }
+    })();
   };
 
   const fetchQnaHistory = async () => {
@@ -653,7 +653,7 @@ function ReadmePage() {
   }
 
   return (
-    <div className="h-full flex flex-col mobile-layout">
+    <div className="h-full min-h-0 flex flex-col mobile-layout">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 mt-2 sm:mt-4 px-2 sm:px-4 gap-3 sm:gap-4">
         <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
           <div className="p-2 sm:p-3 bg-white/10 border border-white/20 rounded-xl shrink-0">
@@ -793,7 +793,8 @@ function ReadmePage() {
         </div>
       )}
 
-      {error && (
+      <GitHubRateLimitNotice error={error} className="mb-6 mx-4" />
+      {error && !isRateLimitError(error) && (
         <Alert className="mb-6 mx-4 border-red-500/50 bg-red-500/10">
           <AlertCircle className="h-4 w-4 text-red-400" />
           <AlertDescription className="text-red-300">{error}</AlertDescription>
@@ -832,35 +833,67 @@ function ReadmePage() {
         </div>
       )}
 
-      <Card className="flex-1 flex flex-col border border-white/20 shadow-xl mx-1 sm:mx-2 md:mx-4 mb-2 sm:mb-4 mobile-card">
-        <CardContent className="flex-1 p-0 mobile-card-content">
+      <Card className="flex-1 min-h-0 flex flex-col overflow-hidden border border-white/20 shadow-xl mx-1 sm:mx-2 md:mx-4 mb-2 sm:mb-4 mobile-card">
+        <CardContent className="flex flex-1 min-h-0 flex-col overflow-hidden p-0 mobile-card-content">
           {isLoading ? (
-            <div className="p-4 sm:p-8 space-y-6">
-              <div className="space-y-4">
-                <Skeleton className="h-12 w-1/2 bg-gray-700/50 rounded-lg" />
-                <div className="h-1 w-20 bg-gray-700/30 rounded-full"></div>
+            <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-6 sm:p-10 space-y-10">
+              <div className="space-y-3">
+                <Skeleton className="h-7 w-2/5" />
+                <Skeleton className="h-[3px] w-12" />
+              </div>
+              <div className="space-y-2.5">
+                <Skeleton className="h-[14px] w-full" />
+                <Skeleton className="h-[14px] w-[92%]" />
+                <Skeleton className="h-[14px] w-[78%]" />
+                <Skeleton className="h-[14px] w-[88%]" />
               </div>
               <div className="space-y-3">
-                <Skeleton className="h-4 w-full bg-gray-700/50 rounded" />
-                <Skeleton className="h-4 w-5/6 bg-gray-700/50 rounded" />
-                <Skeleton className="h-4 w-4/5 bg-gray-700/50 rounded" />
-              </div>
-              <div className="space-y-4 mt-8">
-                <Skeleton className="h-8 w-1/3 bg-gray-700/50 rounded-lg" />
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-full bg-gray-700/50 rounded" />
-                  <Skeleton className="h-4 w-3/4 bg-gray-700/50 rounded" />
-                  <Skeleton className="h-4 w-5/6 bg-gray-700/50 rounded" />
+                <Skeleton className="h-5 w-1/4" />
+                <div className="space-y-2.5">
+                  <Skeleton className="h-[14px] w-full" />
+                  <Skeleton className="h-[14px] w-[85%]" />
+                  <Skeleton className="h-[14px] w-[70%]" />
+                  <Skeleton className="h-[14px] w-[93%]" />
                 </div>
+              </div>
+              <div className="space-y-3">
+                <Skeleton className="h-5 w-1/3" />
+                <div className="space-y-2.5">
+                  <Skeleton className="h-[14px] w-[95%]" />
+                  <Skeleton className="h-[14px] w-full" />
+                  <Skeleton className="h-[14px] w-[60%]" />
+                </div>
+              </div>
+              <div className="space-y-3">
+                <Skeleton className="h-5 w-2/5" />
+                <div className="space-y-2.5">
+                  <Skeleton className="h-[14px] w-full" />
+                  <Skeleton className="h-[14px] w-[75%]" />
+                  <Skeleton className="h-[14px] w-[90%]" />
+                  <Skeleton className="h-[14px] w-[82%]" />
+                </div>
+              </div>
+              <div className="space-y-3">
+                <Skeleton className="h-5 w-1/5" />
+                <div className="space-y-2.5">
+                  <Skeleton className="h-[14px] w-[88%]" />
+                  <Skeleton className="h-[14px] w-full" />
+                  <Skeleton className="h-[14px] w-[65%]" />
+                </div>
+              </div>
+              <div className="space-y-2.5">
+                <Skeleton className="h-[14px] w-full" />
+                <Skeleton className="h-[14px] w-[80%]" />
+                <Skeleton className="h-[14px] w-[72%]" />
               </div>
             </div>
           ) : readmeData ? (
             <Tabs
               value={activeTab}
               onValueChange={setActiveTab}
-              className="h-full flex flex-col"
+              className="flex min-h-0 flex-1 flex-col"
             >
-              <div className="border-b border-white/10 px-3 sm:px-6 py-2 pb-6 sm:pb-8">
+              <div className="shrink-0 border-b border-white/10 px-3 sm:px-6 py-2 pb-6 sm:pb-8">
                 <TabsList className="grid w-full grid-cols-3 bg-white/5 border border-white/10 text-xs sm:text-sm">
                   <TabsTrigger
                     value="preview"
@@ -880,8 +913,11 @@ function ReadmePage() {
                 </TabsList>
               </div>
 
-              <TabsContent value="preview" className="flex-1 m-0">
-                <ScrollArea className="h-full overflow-x-hidden">
+              <TabsContent
+                value="preview"
+                className="m-0 flex min-h-0 flex-1 flex-col overflow-hidden p-0 data-[state=inactive]:hidden"
+              >
+                <ScrollArea className="h-0 min-h-0 flex-1 overflow-x-hidden">
                   <div className="p-2 sm:p-4 md:p-8 mobile-card-content">
                     <div className="max-w-4xl mx-auto">
                       <div className="prose prose-invert prose-lg max-w-none mobile-no-truncate mobile-prose">
@@ -974,8 +1010,11 @@ function ReadmePage() {
                 </ScrollArea>
               </TabsContent>
 
-              <TabsContent value="code" className="flex-1 m-0">
-                <ScrollArea className="h-full overflow-x-hidden">
+              <TabsContent
+                value="code"
+                className="m-0 flex min-h-0 flex-1 flex-col overflow-hidden p-0 data-[state=inactive]:hidden"
+              >
+                <ScrollArea className="h-0 min-h-0 flex-1 overflow-x-hidden">
                   <div className="p-2 sm:p-4 md:p-8 mobile-card-content">
                     <div className="max-w-4xl mx-auto">
                       <div className="relative">
@@ -1013,9 +1052,12 @@ function ReadmePage() {
                 </ScrollArea>
               </TabsContent>
 
-              <TabsContent value="qna" className="flex-1 m-0">
-                <div className="h-full flex flex-col">
-                  <div className="p-2 sm:p-4 md:p-6 border-b border-white/10 mobile-card-content">
+              <TabsContent
+                value="qna"
+                className="m-0 flex min-h-0 flex-1 flex-col overflow-hidden p-0 data-[state=inactive]:hidden"
+              >
+                <div className="flex min-h-0 flex-1 flex-col">
+                  <div className="shrink-0 p-2 sm:p-4 md:p-6 border-b border-white/10 mobile-card-content">
                     <div className="max-w-4xl mx-auto">
                       <div className="flex items-center gap-3 mb-4">
                         <div className="p-2 bg-blue-500/20 border border-blue-500/30 rounded-lg">
@@ -1065,7 +1107,7 @@ function ReadmePage() {
                     </div>
                   </div>
 
-                  <ScrollArea className="flex-1 overflow-x-hidden">
+                  <ScrollArea className="h-0 min-h-0 flex-1 overflow-x-hidden">
                     <div className="p-2 sm:p-4 md:p-6 mobile-card-content">
                       <div className="max-w-4xl mx-auto">
                         {qnaHistory.length > 0 ? (

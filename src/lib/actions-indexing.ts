@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@clerk/nextjs/server";
+import { kickIndexingWorker } from "./indexing-worker-kick";
 import prisma from "./prisma";
 
 export async function getIndexingStatus(projectId: string) {
@@ -52,7 +53,6 @@ export async function getIndexingStatus(projectId: string) {
         progress: true,
         error: true,
         updatedAt: true,
-        lockedAt: true,
       },
     });
 
@@ -146,12 +146,65 @@ export async function retryIndexingJob(projectId: string) {
       },
     });
 
+    void kickIndexingWorker();
+
     return {
       success: true,
       message: "Indexing job queued successfully",
     };
   } catch (error) {
     console.error("Error retrying indexing job:", error);
+    throw error;
+  }
+}
+
+export async function wakeIndexingWorkerForProject(projectId: string) {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      throw new Error("Unauthorized");
+    }
+
+    let dbUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+
+    if (!dbUser) {
+      const { clerkClient } = await import("@clerk/nextjs/server");
+      const client = await clerkClient();
+      const clerkUser = await client.users.getUser(userId);
+
+      if (clerkUser.emailAddresses[0]?.emailAddress) {
+        dbUser = await prisma.user.findUnique({
+          where: { emailAddress: clerkUser.emailAddresses[0].emailAddress },
+          select: { id: true },
+        });
+      }
+    }
+
+    if (!dbUser) {
+      throw new Error("User not found");
+    }
+
+    const project = await prisma.project.findFirst({
+      where: {
+        id: projectId,
+        userId: dbUser.id,
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+
+    if (!project) {
+      throw new Error("Project not found or unauthorized");
+    }
+
+    void kickIndexingWorker();
+
+    return { success: true as const };
+  } catch (error) {
+    console.error("Error waking indexing worker:", error);
     throw error;
   }
 }

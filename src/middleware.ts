@@ -1,5 +1,10 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+
+function isServerActionPost(req: NextRequest): boolean {
+  return req.method === "POST" && req.headers.has("next-action");
+}
 
 const isPublicRoute = createRouteMatcher([
   "/",
@@ -24,6 +29,11 @@ const isDev = process.env.NODE_ENV === "development";
 
 export default clerkMiddleware(
   async (auth, req) => {
+    if (isServerActionPost(req)) {
+      await auth();
+      return NextResponse.next();
+    }
+
     const { userId } = await auth();
     if (userId && (req.nextUrl.pathname.startsWith("/sign-in") || req.nextUrl.pathname.startsWith("/sign-up"))) {
       return NextResponse.redirect(new URL("/dashboard", req.url));

@@ -1,1 +1,8 @@
-{}
+{
+  "crons": [
+    {
+      "path": "/api/indexing-worker",
+      "schedule": "0 6 * * *"
+    }
+  ]
+}

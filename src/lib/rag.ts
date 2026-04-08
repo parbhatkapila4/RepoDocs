@@ -2,6 +2,75 @@ import prisma from "./prisma";
 import { getGenerateEmbeddings } from "./gemini";
 import { openrouterChatCompletion } from "./openrouter";
 import { searchRepoMemory } from "./memory";
+import {
+  getGitHubRepositoryInfo,
+  fetchRepositoryReadmeRaw,
+  isHighValueFile,
+  listGithubRepoPathsForPreindex,
+  fetchGithubPreindexFileContents,
+} from "./github";
+import { buildQuickDependencyGraphFromGitTree } from "./architecture";
+
+const PREINDEX_FETCH_FILES = 22;
+const PREINDEX_PATH_LIST_CAP = 200;
+const PREINDEX_EXCERPT_BUDGET = 90_000;
+
+const PREINDEX_PREFERRED_LOWER = [
+  "readme.md",
+  "readme.markdown",
+  "contributing.md",
+  "package.json",
+  "pnpm-workspace.yaml",
+  "turbo.json",
+  "tsconfig.json",
+  "next.config.ts",
+  "next.config.mjs",
+  "next.config.js",
+  "vite.config.ts",
+  "vite.config.mts",
+  "vitest.config.ts",
+  "prisma/schema.prisma",
+  "dockerfile",
+  "src/app/layout.tsx",
+  "src/app/page.tsx",
+  "app/layout.tsx",
+  "app/page.tsx",
+];
+
+function pickPreindexFetchPaths(allPaths: string[], maxFiles: number): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const byLower = new Map<string, string>();
+  for (const p of allPaths) {
+    byLower.set(p.replace(/\\/g, "/").toLowerCase(), p);
+  }
+  const push = (p: string) => {
+    if (!p || seen.has(p)) return;
+    seen.add(p);
+    out.push(p);
+  };
+  for (const want of PREINDEX_PREFERRED_LOWER) {
+    if (out.length >= maxFiles) break;
+    const exact = byLower.get(want);
+    if (exact) push(exact);
+  }
+  for (const p of allPaths) {
+    if (out.length >= maxFiles) break;
+    if (isHighValueFile(p)) push(p);
+  }
+  const need = maxFiles - out.length;
+  if (need > 0 && allPaths.length > 0) {
+    const stride = Math.max(1, Math.floor(allPaths.length / need));
+    for (let i = 0; i < allPaths.length && out.length < maxFiles; i += stride) {
+      push(allPaths[i]);
+    }
+  }
+  for (const p of allPaths) {
+    if (out.length >= maxFiles) break;
+    push(p);
+  }
+  return out.slice(0, maxFiles);
+}
 
 export interface RAGQueryResult {
   answer: string;
@@ -64,7 +133,7 @@ export async function searchCodebase(
         "sourceCode",
         "Summary",
         1 - ("summaryEmbedding" <=> ${queryEmbedding}::vector) as similarity
-      FROM "SourceCodeEmbiddings"
+      FROM "SourceCodeEmbeddings"
       WHERE "projectId" = ${projectId}
         AND "summaryEmbedding" IS NOT NULL
       ORDER BY "summaryEmbedding" <=> ${queryEmbedding}::vector
@@ -124,7 +193,7 @@ export async function queryCodebase(
             "\n\n## Repository memory (use to inform answers; code overrides when in conflict):\n" +
             memories
               .map(
-                (m) => `[Memory – ${m.type}] ${m.content}`
+                (m) => `[Memory: ${m.type}] ${m.content}`
               )
               .join("\n");
         }
@@ -286,6 +355,162 @@ Remember: Your goal is to make the codebase as understandable as possible. Be de
     console.error("Error in RAG query:", error);
     throw new Error("Failed to process your question. Please try again.");
   }
+}
+
+export async function queryCodebasePreindex(
+  repoUrl: string,
+  githubToken: string | null | undefined,
+  question: string,
+  conversationHistory?: { role: "user" | "assistant"; content: string }[],
+  options?: QueryCodebaseOptions
+): Promise<RAGQueryResult> {
+  const token = githubToken || undefined;
+  const repoInfo = await getGitHubRepositoryInfo(repoUrl, token);
+  const treeMeta = await listGithubRepoPathsForPreindex(repoUrl, token);
+
+  let paths: string[] = treeMeta?.paths ?? [];
+  const owner = treeMeta?.owner;
+  const repoName = treeMeta?.repo;
+  const branch =
+    treeMeta?.defaultBranch ?? repoInfo?.defaultBranch ?? "main";
+
+  if (paths.length === 0) {
+    const graph = await buildQuickDependencyGraphFromGitTree(repoUrl, token);
+    paths = graph.nodes.map((n) => n.path).slice(0, 220);
+  }
+
+  const urlMatch = repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/);
+  const own = owner ?? urlMatch?.[1];
+  const rep = repoName ?? urlMatch?.[2]?.replace(/\.git$/, "");
+
+  const picked = pickPreindexFetchPaths(paths, PREINDEX_FETCH_FILES);
+  const fetched =
+    own && rep
+      ? await fetchGithubPreindexFileContents(
+        own,
+        rep,
+        picked,
+        branch,
+        token,
+        7200,
+        PREINDEX_FETCH_FILES
+      )
+      : [];
+
+  const readme = await fetchRepositoryReadmeRaw(repoUrl, token, 10_000);
+  const hasReadmeInFetched = fetched.some((f) =>
+    /^readme(\.|$)/i.test(f.path.split("/").pop() || "")
+  );
+  const readmeSupplement =
+    readme && !hasReadmeInFetched
+      ? `\n## README (supplementary excerpt)\n${readme}\n`
+      : "";
+
+  const excerptParts: string[] = [];
+  let excerptUsed = 0;
+  for (const f of fetched) {
+    const header = `\n## File: ${f.path}${f.truncated ? " (trimmed per file)" : ""}\n\`\`\`\n`;
+    const footer = `\n\`\`\`\n`;
+    const room = PREINDEX_EXCERPT_BUDGET - excerptUsed - header.length - footer.length;
+    if (room < 200) break;
+    const body =
+      f.text.length > room ? `${f.text.slice(0, room)}\n...` : f.text;
+    excerptParts.push(header + body + footer);
+    excerptUsed += header.length + body.length + footer.length;
+  }
+
+  const pathList = paths.length
+    ? paths.slice(0, PREINDEX_PATH_LIST_CAP).join("\n")
+    : "(no file paths discovered yet)";
+
+  const metaBlock = repoInfo
+    ? `Repository: ${repoInfo.fullName}
+Description: ${repoInfo.description ?? "n/a"}
+Default branch: ${repoInfo.defaultBranch}
+Primary language: ${repoInfo.language ?? "n/a"}
+Topics: ${repoInfo.topics?.join(", ") || "n/a"}
+Stars / forks: ${repoInfo.stars} / ${repoInfo.forks}`
+    : "Repository metadata could not be loaded (check URL, privacy, or GitHub token).";
+
+  const guidanceBlock =
+    options?.mode === "guidance"
+      ? `\n## GUIDANCE MODE\nGive file-oriented guidance using paths from the list and excerpts. Do not invent files that are not listed.`
+      : "";
+
+  const fileExcerptSection =
+    excerptParts.length > 0
+      ? `## File contents (raw from GitHub; pre-index)\n${excerptParts.join("")}`
+      : "";
+
+  const systemContent = `You help developers understand a GitHub repository. Embeddings may still be indexing in the background.
+
+Use the metadata, the file excerpts (when present), any README supplement, and the path list. Do not claim you read files that are not in the excerpts or README supplement. If detail is missing, say what is missing and that full indexing will improve answers.
+${guidanceBlock}
+
+## Context
+
+${metaBlock}
+
+${fileExcerptSection}
+${readmeSupplement}
+## File paths (from GitHub tree, truncated)
+${pathList}`;
+
+  const messages: {
+    role: "user" | "assistant" | "system";
+    content: string;
+  }[] = [{ role: "system", content: systemContent }];
+
+  if (conversationHistory?.length) {
+    messages.push(...conversationHistory);
+  }
+  messages.push({ role: "user", content: question });
+
+  const chatResult = await openrouterChatCompletion({
+    model: "google/gemini-2.5-flash",
+    messages,
+    temperature: 0.35,
+  });
+
+  const usage = chatResult.usage;
+  let sources = fetched.map((f, i) => ({
+    fileName: f.path,
+    sourceCode: f.text.slice(0, 600),
+    summary: f.truncated
+      ? "Pre-index excerpt (trimmed per file)"
+      : "Pre-index file from GitHub",
+    similarity: Math.max(0.22, 0.58 - i * 0.02),
+  }));
+  if (sources.length === 0 && readme && !hasReadmeInFetched) {
+    sources = [
+      {
+        fileName: "README.md",
+        sourceCode: readme.slice(0, 500),
+        summary: "README excerpt (pre-index)",
+        similarity: 0.45,
+      },
+    ];
+  } else if (sources.length === 0 && paths.length) {
+    sources = paths.slice(0, 10).map((p) => ({
+      fileName: p,
+      sourceCode: "",
+      summary: "Tree path only (pre-index; could not fetch contents)",
+      similarity: 0.25,
+    }));
+  }
+
+  return {
+    answer: chatResult.content,
+    sources,
+    usage: chatResult.usage,
+    model: chatResult.model,
+    promptTokens: usage?.prompt_tokens,
+    completionTokens: usage?.completion_tokens,
+    totalTokens: usage?.total_tokens,
+    modelUsed: chatResult.model,
+    memoryHitCount: 0,
+    avgMemorySimilarity: null,
+  };
 }
 
 export async function* queryCodebaseStream(

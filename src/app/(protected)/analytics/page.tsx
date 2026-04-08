@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useMountedRef } from "@/hooks/useMountedRef";
 import { motion } from "motion/react";
 import {
   Users,
@@ -105,15 +106,37 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const mountedRef = useMountedRef();
+
+  const fetchAnalytics = useCallback(async () => {
+    try {
+      if (mountedRef.current) setLoading(true);
+      const response = await fetch("/api/analytics");
+      if (!response.ok) {
+        throw new Error("Failed to fetch analytics");
+      }
+      const analyticsData = await response.json();
+      if (!mountedRef.current) return;
+      setData(analyticsData);
+      setLastUpdated(new Date());
+      setError(null);
+    } catch (err) {
+      if (!mountedRef.current) return;
+      setError(err instanceof Error ? err.message : "Failed to load analytics");
+      console.error("Error fetching analytics:", err);
+    } finally {
+      if (mountedRef.current) setLoading(false);
+    }
+  }, [mountedRef]);
 
   useEffect(() => {
-    fetchAnalytics();
+    void fetchAnalytics();
     const interval = setInterval(() => {
-      fetchAnalytics();
+      void fetchAnalytics();
     }, 30000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchAnalytics]);
 
   useEffect(() => {
     const mainElement = document.querySelector(
@@ -128,25 +151,6 @@ export default function AnalyticsPage() {
       }
     };
   }, []);
-
-  const fetchAnalytics = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch("/api/analytics");
-      if (!response.ok) {
-        throw new Error("Failed to fetch analytics");
-      }
-      const analyticsData = await response.json();
-      setData(analyticsData);
-      setLastUpdated(new Date());
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load analytics");
-      console.error("Error fetching analytics:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const formatNumber = (num: number) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;

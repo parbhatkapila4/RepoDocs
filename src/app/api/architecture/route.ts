@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import prisma from "@/lib/prisma";
+import { getDbUserId } from "@/lib/get-db-user-id";
 import {
   buildDependencyGraph,
   buildQuickDependencyGraphFromGitTree,
@@ -9,31 +10,6 @@ import {
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-async function getDbUserId(clerkUserId: string): Promise<string | null> {
-  let dbUser = await prisma.user.findUnique({
-    where: { id: clerkUserId },
-    select: { id: true },
-  });
-
-  if (!dbUser) {
-    try {
-      const { clerkClient } = await import("@clerk/nextjs/server");
-      const client = await clerkClient();
-      const clerkUser = await client.users.getUser(clerkUserId);
-
-      if (clerkUser.emailAddresses[0]?.emailAddress) {
-        dbUser = await prisma.user.findUnique({
-          where: { emailAddress: clerkUser.emailAddresses[0].emailAddress },
-          select: { id: true },
-        });
-      }
-    } catch {
-      return null;
-    }
-  }
-
-  return dbUser?.id || null;
-}
 export async function GET(request: NextRequest) {
   try {
     const { userId } = await auth();
@@ -72,7 +48,7 @@ export async function GET(request: NextRequest) {
     }
 
     let result = await buildDependencyGraph(projectId);
-    const embeddingsCount = await prisma.sourceCodeEmbiddings.count({
+    const embeddingsCount = await prisma.sourceCodeEmbeddings.count({
       where: { projectId },
     });
     let indexingJob = await prisma.indexingJob.findUnique({

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import prisma from "@/lib/prisma";
+import { getDbUserId } from "@/lib/get-db-user-id";
 
 export const runtime = "nodejs";
 
@@ -9,32 +10,6 @@ const RECENT_ERRORS_LIMIT = 20;
 const ERROR_MESSAGE_MAX_LENGTH = 500;
 const ROLLING_BUDGET_DAYS = 30;
 const HEALTH_LATENCY_THRESHOLD_MS = 15000;
-
-async function getDbUserId(clerkUserId: string): Promise<string | null> {
-  let dbUser = await prisma.user.findUnique({
-    where: { id: clerkUserId },
-    select: { id: true },
-  });
-
-  if (!dbUser) {
-    try {
-      const { clerkClient } = await import("@clerk/nextjs/server");
-      const client = await clerkClient();
-      const clerkUser = await client.users.getUser(clerkUserId);
-
-      if (clerkUser.emailAddresses[0]?.emailAddress) {
-        dbUser = await prisma.user.findUnique({
-          where: { emailAddress: clerkUser.emailAddresses[0].emailAddress },
-          select: { id: true },
-        });
-      }
-    } catch {
-      return null;
-    }
-  }
-
-  return dbUser?.id ?? null;
-}
 
 export async function GET(request: NextRequest) {
   const { userId } = await auth();

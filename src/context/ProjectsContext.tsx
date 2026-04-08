@@ -20,6 +20,7 @@ interface ProjectsContextType {
   projects: SidebarProject[];
   selectedProjectId: string | null;
   isLoading: boolean;
+  loadError: string | null;
   loadProjects: () => Promise<void>;
   selectProject: (projectId: string) => void;
   deleteProject: (projectId: string) => Promise<void>;
@@ -47,14 +48,22 @@ export const ProjectsProvider: React.FC<{ children: React.ReactNode }> = ({
     null
   );
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadProjects = useCallback(async () => {
     try {
       setIsLoading(true);
+      setLoadError(null);
       const userProjects = await getUserProjects();
       setProjects(userProjects);
     } catch (error) {
       console.error("Error loading projects:", error);
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to load projects from the database.";
+      setLoadError(message);
+      setProjects([]);
     } finally {
       setIsLoading(false);
     }
@@ -100,6 +109,7 @@ export const ProjectsProvider: React.FC<{ children: React.ReactNode }> = ({
         projects,
         selectedProjectId,
         isLoading,
+        loadError,
         loadProjects,
         selectProject,
         deleteProject,

@@ -3,7 +3,7 @@ import { searchCodebase, queryCodebase } from "../../src/lib/rag";
 const mockQueryRaw = jest.fn();
 const mockPrisma = {
   $queryRaw: mockQueryRaw,
-  sourceCodeEmbiddings: {
+  sourceCodeEmbeddings: {
     count: jest.fn(),
   },
 };

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { useRouter } from "next/navigation";
 import { useProjects } from "@/hooks/useProjects";
 import { useProjectsContext } from "@/context/ProjectsContext";
+import { useMountedRef } from "@/hooks/useMountedRef";
 import { checkProjectLimit } from "@/lib/actions";
 import { motion } from "motion/react";
 import {
@@ -86,6 +87,7 @@ function CreatePage() {
   const { createNewProject, isLoading } = useProjects();
   const { loadProjects, selectProject } = useProjectsContext();
   const isSubmittingRef = useRef(false);
+  const mountedRef = useMountedRef();
   const [loadingSteps, setLoadingSteps] = useState<LoadingStep[]>([
     { id: 1, label: "Creating project...", status: "pending", icon: Plus },
     {
@@ -117,17 +119,18 @@ function CreatePage() {
   useEffect(() => {
     const checkLimit = async () => {
       try {
-        setIsCheckingLimit(true);
+        if (mountedRef.current) setIsCheckingLimit(true);
         const limitStatus = await checkProjectLimit();
+        if (!mountedRef.current) return;
         setProjectLimit(limitStatus);
       } catch (error) {
         console.error("Error checking project limit:", error);
       } finally {
-        setIsCheckingLimit(false);
+        if (mountedRef.current) setIsCheckingLimit(false);
       }
     };
-    checkLimit();
-  }, []);
+    void checkLimit();
+  }, [mountedRef]);
 
   useEffect(() => {
     const mainElement = document.querySelector(
@@ -165,9 +168,19 @@ function CreatePage() {
 
     isSubmittingRef.current = true;
 
+    const finishCreateInBackground = (newProject: { id: string } | null) => {
+      toast.success("Project created successfully!", {
+        description: `${data.name} is being indexed in the background. It will be ready shortly!`,
+      });
+      void loadProjects();
+      if (newProject?.id) selectProject(newProject.id);
+    };
+
     try {
-      updateStep(1, "loading");
-      setProgress(10);
+      if (mountedRef.current) {
+        updateStep(1, "loading");
+        setProgress(10);
+      }
 
       const newProject = await createNewProject(
         data.name,
@@ -175,26 +188,47 @@ function CreatePage() {
         process.env.GITHUB_TOKEN
       );
 
+      if (!mountedRef.current) {
+        finishCreateInBackground(newProject);
+        return;
+      }
+
       updateStep(1, "completed");
       setProgress(20);
 
       updateStep(2, "loading");
       await new Promise((resolve) => setTimeout(resolve, 800));
+      if (!mountedRef.current) {
+        finishCreateInBackground(newProject);
+        return;
+      }
       updateStep(2, "completed");
       setProgress(40);
 
       updateStep(3, "loading");
       await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (!mountedRef.current) {
+        finishCreateInBackground(newProject);
+        return;
+      }
       updateStep(3, "completed");
       setProgress(60);
 
       updateStep(4, "loading");
       await new Promise((resolve) => setTimeout(resolve, 1200));
+      if (!mountedRef.current) {
+        finishCreateInBackground(newProject);
+        return;
+      }
       updateStep(4, "completed");
       setProgress(80);
 
       updateStep(5, "loading");
       await new Promise((resolve) => setTimeout(resolve, 800));
+      if (!mountedRef.current) {
+        finishCreateInBackground(newProject);
+        return;
+      }
       updateStep(5, "completed");
       setProgress(100);
 
@@ -210,14 +244,16 @@ function CreatePage() {
 
       await new Promise((resolve) => setTimeout(resolve, 500));
 
-      router.push("/dashboard");
+      if (mountedRef.current) router.push("/dashboard");
     } catch (error) {
       console.error("Error creating project:", error);
 
-      setLoadingSteps((prev) =>
-        prev.map((step) => ({ ...step, status: "pending" }))
-      );
-      setProgress(0);
+      if (mountedRef.current) {
+        setLoadingSteps((prev) =>
+          prev.map((step) => ({ ...step, status: "pending" }))
+        );
+        setProgress(0);
+      }
 
       const errorMessage =
         error instanceof Error
@@ -226,7 +262,7 @@ function CreatePage() {
 
       if (errorMessage.includes("PROJECT_LIMIT_REACHED")) {
         const limitStatus = await checkProjectLimit();
-        setProjectLimit(limitStatus);
+        if (mountedRef.current) setProjectLimit(limitStatus);
 
         const upgradeMessage =
           limitStatus.plan === "professional"

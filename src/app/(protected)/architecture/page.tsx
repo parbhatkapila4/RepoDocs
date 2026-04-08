@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useMountedRef } from "@/hooks/useMountedRef";
 import Link from "next/link";
 import { useProjectsContext } from "@/context/ProjectsContext";
 import { motion } from "motion/react";
@@ -9,8 +10,16 @@ import {
   Loader2,
   AlertCircle,
   FileCode,
+  Copy,
+  CheckCheck,
 } from "lucide-react";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import type { ArchitectureNode, ArchitectureEdge } from "@/lib/architecture";
+import { previewToCopyText } from "@/lib/architecture-preview";
+import GitHubRateLimitNotice, {
+  isRateLimitError,
+} from "@/components/GitHubRateLimitNotice";
 
 const colors = {
   green: "#50fa7b",
@@ -34,6 +43,28 @@ function shortName(path: string): string {
   return parts[parts.length - 1] || path;
 }
 
+function PreviewCopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      title="Copy excerpt"
+      onClick={() => {
+        void navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1600);
+      }}
+      className="p-1.5 rounded-md bg-white/6 hover:bg-white/10 text-[#888] hover:text-[#ccc] transition-colors"
+    >
+      {copied ? (
+        <CheckCheck className="w-3.5 h-3.5" style={{ color: colors.green }} />
+      ) : (
+        <Copy className="w-3.5 h-3.5" />
+      )}
+    </button>
+  );
+}
+
 export default function ArchitecturePage() {
   const { projects, selectedProjectId } = useProjectsContext();
   const [nodes, setNodes] = useState<ArchitectureNode[]>([]);
@@ -47,8 +78,19 @@ export default function ArchitecturePage() {
     indexingProgress: number;
     indexingError: string | null;
   } | null>(null);
+  const [filePreview, setFilePreview] = useState<{
+    summary: string | null;
+    segments: Array<{ startLine: number; endLine: number; code: string }>;
+    omittedBetween?: { fromLine: number; toLine: number };
+    language: string;
+    totalLines: number;
+    truncated: boolean;
+  } | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
 
   const currentProject = projects.find((p) => p.id === selectedProjectId);
+  const mountedRef = useMountedRef();
 
   useEffect(() => {
     const main = document.querySelector('main[data-slot="sidebar-inset"]');
@@ -60,8 +102,10 @@ export default function ArchitecturePage() {
 
   const fetchGraph = useCallback(async () => {
     if (!currentProject) return;
-    setLoading(true);
-    setError(null);
+    if (mountedRef.current) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const res = await fetch(
         `/api/architecture?projectId=${encodeURIComponent(currentProject.id)}`
@@ -73,11 +117,13 @@ export default function ArchitecturePage() {
         );
       }
       const data = await res.json();
+      if (!mountedRef.current) return;
       setNodes(data.nodes ?? []);
       setEdges(data.edges ?? []);
       setDiagnostics(data.diagnostics ?? null);
       setSelectedId(null);
     } catch (e) {
+      if (!mountedRef.current) return;
       setError(
         e instanceof Error ? e.message : "Failed to load architecture"
       );
@@ -85,9 +131,9 @@ export default function ArchitecturePage() {
       setEdges([]);
       setDiagnostics(null);
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
-  }, [currentProject?.id]);
+  }, [currentProject?.id, mountedRef]);
 
 
   useEffect(() => {
@@ -98,6 +144,75 @@ export default function ArchitecturePage() {
       setError(null);
     }
   }, [currentProject, fetchGraph]);
+
+  useEffect(() => {
+    if (!selectedId || !currentProject?.id) {
+      setFilePreview(null);
+      setPreviewError(null);
+      setPreviewLoading(false);
+      return;
+    }
+
+    const ac = new AbortController();
+    setPreviewLoading(true);
+    setPreviewError(null);
+    setFilePreview(null);
+
+    const url = `/api/architecture/preview?projectId=${encodeURIComponent(
+      currentProject.id
+    )}&path=${encodeURIComponent(selectedId)}`;
+
+    void fetch(url, { signal: ac.signal })
+      .then(async (res) => {
+        const data = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          message?: string;
+          summary?: string | null;
+          segments?: Array<{
+            startLine: number;
+            endLine: number;
+            code: string;
+          }>;
+          language?: string;
+          totalLines?: number;
+          truncated?: boolean;
+          omittedBetween?: { fromLine: number; toLine: number } | null;
+        };
+        if (!res.ok) {
+          throw new Error(
+            data.message || data.error || "Failed to load file preview"
+          );
+        }
+        return data;
+      })
+      .then((data) => {
+        if (ac.signal.aborted || !mountedRef.current) return;
+        setFilePreview({
+          summary: data.summary ?? null,
+          segments: Array.isArray(data.segments) ? data.segments : [],
+          omittedBetween:
+            data.omittedBetween &&
+              data.omittedBetween.fromLine <= data.omittedBetween.toLine
+              ? data.omittedBetween
+              : undefined,
+          language: data.language ?? "typescript",
+          totalLines: data.totalLines ?? 0,
+          truncated: Boolean(data.truncated),
+        });
+      })
+      .catch((e: unknown) => {
+        if (ac.signal.aborted || !mountedRef.current) return;
+        if (e instanceof Error && e.name === "AbortError") return;
+        setPreviewError(
+          e instanceof Error ? e.message : "Failed to load file preview"
+        );
+      })
+      .finally(() => {
+        if (!ac.signal.aborted && mountedRef.current) setPreviewLoading(false);
+      });
+
+    return () => ac.abort();
+  }, [selectedId, currentProject?.id, mountedRef]);
 
   const nodePositions = React.useMemo(() => {
     const pos: Record<string, { x: number; y: number }> = {};
@@ -212,7 +327,8 @@ export default function ArchitecturePage() {
               </div>
             )}
 
-            {error && (
+            <GitHubRateLimitNotice error={error} className="mb-6" />
+            {error && !isRateLimitError(error) && (
               <div
                 className="flex items-center gap-3 p-4 rounded-lg border mb-6"
                 style={{
@@ -350,7 +466,7 @@ export default function ArchitecturePage() {
                 </div>
 
                 {selectedId && (
-                  <div className="lg:w-80 shrink-0 bg-[#1a1a1a] border border-[#333] rounded-lg overflow-hidden h-fit">
+                  <div className="lg:w-[min(26rem,calc(100vw-3rem))] shrink-0 bg-[#1a1a1a] border border-[#333] rounded-lg overflow-hidden h-fit max-w-full">
                     <div className="px-4 py-3 bg-[#252525] border-b border-[#333]">
                       <span className="text-xs font-mono text-[#666] uppercase tracking-wider">
                         File details
@@ -370,6 +486,115 @@ export default function ArchitecturePage() {
                       </div>
                       <div>
                         <h3 className="text-xs font-mono text-[#666] uppercase tracking-wider mb-2">
+                          Overview
+                        </h3>
+                        {previewLoading && (
+                          <div className="flex items-center gap-2 text-[#666] text-xs font-mono py-2">
+                            <Loader2
+                              className="w-3.5 h-3.5 animate-spin shrink-0"
+                              style={{ color: colors.cyan }}
+                            />
+                            Loading excerpt…
+                          </div>
+                        )}
+                        {!previewLoading && previewError && (
+                          <p className="text-xs text-[#888] leading-relaxed">
+                            {previewError.includes("No indexed source") ||
+                              previewError.includes("not_indexed")
+                              ? "Code preview needs indexed source. If indexing is not done yet, only the file list from GitHub may be shown."
+                              : previewError}
+                          </p>
+                        )}
+                        {!previewLoading &&
+                          !previewError &&
+                          filePreview &&
+                          filePreview.totalLines > 0 &&
+                          filePreview.segments.length > 0 && (
+                            <div className="space-y-3">
+                              {filePreview.summary ? (
+                                <p className="text-xs text-[#b8b8b8] leading-relaxed">
+                                  {filePreview.summary}
+                                </p>
+                              ) : null}
+                              <div className="rounded-lg border border-[#333] overflow-hidden bg-[#0a0a0a]">
+                                <div className="flex items-center justify-between gap-2 px-3 py-1.5 border-b border-[#333] bg-[#141414]">
+                                  <div className="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                    <span
+                                      className="text-[10px] font-mono uppercase tracking-wide"
+                                      style={{ color: colors.purple }}
+                                    >
+                                      {filePreview.language}
+                                    </span>
+                                    <span className="text-[10px] font-mono text-[#555]">
+                                      {filePreview.segments.length} excerpt
+                                      {filePreview.segments.length !== 1
+                                        ? "s"
+                                        : ""}{" "}
+                                      · {filePreview.totalLines} lines
+                                      {filePreview.truncated ? " · …" : ""}
+                                    </span>
+                                  </div>
+                                  <PreviewCopyButton
+                                    text={previewToCopyText(
+                                      filePreview.segments,
+                                      filePreview.omittedBetween
+                                    )}
+                                  />
+                                </div>
+                                <div
+                                  className="max-h-[min(56vh,480px)] overflow-auto"
+                                  style={{ overscrollBehavior: "contain" }}
+                                >
+                                  {filePreview.segments.map((seg, idx) => {
+                                    const ob = filePreview.omittedBetween;
+                                    const showGap =
+                                      idx === 1 &&
+                                      ob &&
+                                      ob.toLine >= ob.fromLine;
+                                    return (
+                                      <React.Fragment
+                                        key={`${seg.startLine}-${seg.endLine}-${idx}`}
+                                      >
+                                        {showGap ? (
+                                          <div className="text-center py-2 px-2 text-[10px] font-mono text-[#666] border-b border-[#252525] bg-[#0c0c0c]">
+                                            Lines {ob.fromLine}–{ob.toLine}{" "}
+                                            omitted in source
+                                          </div>
+                                        ) : null}
+                                        <SyntaxHighlighter
+                                          style={vscDarkPlus}
+                                          language={filePreview.language}
+                                          PreTag="div"
+                                          showLineNumbers
+                                          startingLineNumber={seg.startLine}
+                                          lineNumberStyle={{
+                                            minWidth: "2.5em",
+                                            paddingRight: "0.75em",
+                                            color: "#4a4a4a",
+                                            fontSize: "10px",
+                                            userSelect: "none",
+                                          }}
+                                          customStyle={{
+                                            fontSize: "11.5px",
+                                            lineHeight: "1.58",
+                                            margin: 0,
+                                            padding: "10px 10px 12px 6px",
+                                            background: "#0a0a0a",
+                                            overflowX: "auto",
+                                          }}
+                                        >
+                                          {seg.code}
+                                        </SyntaxHighlighter>
+                                      </React.Fragment>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-mono text-[#666] uppercase tracking-wider mb-2">
                           Related
                         </h3>
                         <div className="space-y-3 text-sm">
@@ -378,7 +603,7 @@ export default function ArchitecturePage() {
                               Imports this file (incoming)
                             </p>
                             {incoming.length === 0 ? (
-                              <p className="text-[#555] text-xs italic">—</p>
+                              <p className="text-[#555] text-xs italic">-</p>
                             ) : (
                               <ul className="space-y-1">
                                 {incoming.map((path) => (
@@ -399,7 +624,7 @@ export default function ArchitecturePage() {
                               This file imports (outgoing)
                             </p>
                             {outgoing.length === 0 ? (
-                              <p className="text-[#555] text-xs italic">—</p>
+                              <p className="text-[#555] text-xs italic">-</p>
                             ) : (
                               <ul className="space-y-1">
                                 {outgoing.map((path) => (

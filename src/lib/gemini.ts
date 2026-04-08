@@ -14,6 +14,10 @@ if (!geminiApiKey) {
 
 const genAi = new GoogleGenAI({ apiKey: geminiApiKey });
 
+const OPENROUTER_DOCS_MODIFY_MODEL =
+  process.env.OPENROUTER_DOCS_MODIFY_MODEL?.trim() ||
+  "anthropic/claude-3.5-haiku";
+
 export async function getSummariseCode(doc: Document) {
   try {
     const code = doc.pageContent.slice(0, 10000);
@@ -103,12 +107,12 @@ export async function generateReadmeFromCodebase(
     const codebaseContext = sourceCodeSummaries.join("\n\n");
     const hasCodebaseAnalysis = sourceCodeSummaries.length > 0;
 
-    const prompt = `You are an elite $500K/year Staff+ full-stack engineer who has built and shipped production-grade AI systems, SaaS products, and developer tools at startup speed. You write READMEs the way senior founders, investors, and top engineers expect — precise, structured, and narrative-driven.
+    const prompt = `You are an elite $500K/year Staff+ full-stack engineer who has built and shipped production-grade AI systems, SaaS products, and developer tools at startup speed. You write READMEs the way senior founders, investors, and top engineers expect: precise, structured, and narrative-driven.
 
 ${hasCodebaseAnalysis ? "You are inside Cursor with FULL access to this repository." : "You are generating a README based on repository metadata. The codebase is currently being indexed, so detailed code analysis is not yet available."}
 
 Your mission:
-Generate a **README.md** that positions this repo as a serious, production-ready, valuable engineering asset — not a toy project.
+Generate a **README.md** that positions this repo as a serious, production-ready, valuable engineering asset, not a toy project.
 It must instantly communicate clarity, purpose, architecture, and adoption ease.
 Avoid fluff, buzzwords, or filler text. Everything must demonstrate competence, intentionality, and confidence.
 
@@ -132,7 +136,7 @@ This is a DEMO/PREVIEW README generated from repository metadata only. The codeb
 # ✅ README STRUCTURE AND RULES
 
 ## 1. 🧠 Overview
-A 2–3 sentence founder-level summary explaining what the project *is*, what problem it solves, and who it's for.
+A 2-3 sentence founder-level summary explaining what the project *is*, what problem it solves, and who it's for.
 Tone: visionary but grounded.
 
 Example:
@@ -236,7 +240,7 @@ Example Output:
 ## 8. 🧠 Design Philosophy
 Add a short section that proves you think like a systems engineer.
 
-"This codebase follows clean modular principles — separating orchestration, inference, and persistence layers. Every design choice favors scalability, testability, and real-world deployment simplicity."
+"This codebase follows clean modular principles: separating orchestration, inference, and persistence layers. Every design choice favors scalability, testability, and real-world deployment simplicity."
 
 This section differentiates senior developers from juniors.
 
@@ -285,13 +289,13 @@ Add clear credit and credibility:
 ## 14. ⚡ TL;DR Summary
 End with a single paragraph written for an investor or founder:
 
-"This project is a foundation for real-world AI product development — modular, clean, and production-ready. It demonstrates strong architecture, practical scalability, and craftsmanship expected from top-tier engineers."
+"This project is a foundation for real-world AI product development: modular, clean, and production-ready. It demonstrates strong architecture, practical scalability, and craftsmanship expected from top-tier engineers."
 
 ---
 
 🧭 GLOBAL RULES:
 - Every section must read like it was written by a $500K+ engineer.
-- Be concise, confident, and intentional — zero fluff.
+- Be concise, confident, and intentional; zero fluff.
 - Explain "why" behind choices.
 - Use markdown syntax properly for readability.
 - Make the repo look ready for adoption or investment, not experimentation.
@@ -755,7 +759,7 @@ Provide comprehensive documentation:
 
 **START THIS SECTION WITH: ## 15. 🧾 License & Deployment Details**
 
-## 16. ⚡ TL;DR – Founder Summary
+## 16. ⚡ TL;DR: Founder Summary
 **YOU MUST INCLUDE THIS SECTION - IT IS MANDATORY**
 **MANDATORY: Write EXACTLY 5-6 FULL PARAGRAPHS, each 100-200 words minimum. Total section must be 500-1000+ words.**
 
@@ -769,7 +773,7 @@ Write a comprehensive summary for a non-technical founder:
 
 **Be EXTREMELY detailed, honest, and based on actual codebase analysis. Each paragraph MUST be 100-200 words. Total section MUST be 500-1000+ words. NO SHORT PARAGRAPHS ALLOWED.**
 
-**START THIS SECTION WITH: ## 16. ⚡ TL;DR – Founder Summary**
+**START THIS SECTION WITH: ## 16. ⚡ TL;DR: Founder Summary**
 
 ## 17. 🗺️ Complete System Flow Diagram
 **YOU MUST INCLUDE THIS SECTION - IT IS MANDATORY AND MUST BE THE LAST SECTION**
@@ -968,7 +972,7 @@ MANDATORY SECTION CHECKLIST - YOU MUST INCLUDE ALL OF THESE:
 ✅ Section 13: 💡 Business Applications (5-8 use cases) - **MANDATORY - DO NOT SKIP**
 ✅ Section 14: 📊 Roadmap & Growth Potential (3 paragraphs) - **MANDATORY - DO NOT SKIP**
 ✅ Section 15: 🧾 License & Deployment Details (3 paragraphs) - **MANDATORY - DO NOT SKIP**
-✅ Section 16: ⚡ TL;DR – Founder Summary (5-6 paragraphs) - **MANDATORY - DO NOT SKIP**
+✅ Section 16: ⚡ TL;DR: Founder Summary (5-6 paragraphs) - **MANDATORY - DO NOT SKIP**
 ✅ Section 17: 🗺️ Complete System Flow Diagram (comprehensive ASCII art diagram + 2-3 paragraphs) - **MANDATORY - DO NOT SKIP - THIS IS THE FINAL SECTION**
 
 🚨 CRITICAL INSTRUCTIONS FOR ALL SECTIONS:
@@ -1027,7 +1031,7 @@ Your output MUST follow this exact structure:
 14. ## 13. 💡 Business Applications (8-12 use cases with detailed explanations) ← **YOU MUST NOT SKIP THIS**
 15. ## 14. 📊 Roadmap & Growth Potential (5-6 paragraphs) ← **YOU MUST NOT SKIP THIS**
 16. ## 15. 🧾 License & Deployment Details (5-6 paragraphs) ← **YOU MUST NOT SKIP THIS**
-17. ## 16. ⚡ TL;DR – Founder Summary (5-6 paragraphs) ← **YOU MUST NOT SKIP THIS**
+17. ## 16. ⚡ TL;DR: Founder Summary (5-6 paragraphs) ← **YOU MUST NOT SKIP THIS**
 18. ## 17. 🗺️ Complete System Flow Diagram (comprehensive ASCII art diagram + 2-3 paragraphs) ← **YOU MUST NOT SKIP THIS - THIS IS YOUR FINAL SECTION**
 
 **REMEMBER: Sections 11-17 are MANDATORY. Your response is INCOMPLETE if any of these sections are missing. Start with section 1 and continue through section 17 (Complete System Flow Diagram) without stopping. Each section must be detailed (5-6 paragraphs) with substantial depth based on actual codebase analysis. Section 17 must include a comprehensive ASCII art diagram showing the complete system flow. No fluff, no lies - only accurate information.**`;
@@ -1086,7 +1090,7 @@ ABSOLUTE REQUIREMENTS - NO EXCEPTIONS:
    - ## 13. 💡 Business Applications
    - ## 14. 📊 Roadmap & Growth Potential
    - ## 15. 🧾 License & Deployment Details
-   - ## 16. ⚡ TL;DR – Founder Summary
+   - ## 16. ⚡ TL;DR: Founder Summary
    - ## 17. 🗺️ Complete System Flow Diagram (THIS IS THE FINAL SECTION)
 10. Be DETAILED and PRECISE - base everything on actual codebase analysis, no fluff or lies
 11. Include specific file paths, function names, and code patterns from the repository
@@ -1295,7 +1299,7 @@ REMEMBER: Incomplete documentation (missing ANY sections 1-17) is WORSE than sho
         "13": "## 13. 💡 Business Applications - List 5-8 realistic startup use cases",
         "14": "## 14. 📊 Roadmap & Growth Potential - Short/medium/long-term roadmap (3 paragraphs)",
         "15": "## 15. 🧾 License & Deployment Details - License, deployment, CI/CD (3 paragraphs)",
-        "16": "## 16. ⚡ TL;DR – Founder Summary - 5-6 paragraph summary for founders",
+        "16": "## 16. ⚡ TL;DR: Founder Summary - 5-6 paragraph summary for founders",
         "17": "## 17. 🗺️ Complete System Flow Diagram - Comprehensive ASCII art diagram + 2-3 paragraphs",
       };
 
@@ -1513,7 +1517,7 @@ ${missingSectionsList.map(num => {
           "13": "Business Applications",
           "14": "Roadmap & Growth Potential",
           "15": "License & Deployment Details",
-          "16": "TL;DR – Founder Summary",
+          "16": "TL;DR: Founder Summary",
           "17": "Complete System Flow Diagram",
         };
         return `- Section ${num}: ${titles[num] || `Section ${num}`}`;
@@ -1626,7 +1630,7 @@ ${stillMissing.map(num => {
                 "13": `## 13. 💡 Business Applications\nList 5-8 realistic startup use cases. For EACH use case, provide:\n- What it is (1-2 sentences)\n- How this repo enables it (1-2 sentences)\n- Required modifications (1 sentence)\n\n`,
                 "14": `## 14. 📊 Roadmap & Growth Potential\nProvide roadmap analysis in exactly 3 paragraphs:\n\n**Short-term (1-3 months):**\n- List 3-5 quick fixes, polish items, and critical bug fixes (1 sentence each)\n\n**Medium-term (3-6 months):**\n- List 3-5 architectural improvements, new features, and integrations (1 sentence each)\n\n**Long-term (6-12+ months):**\n- List 2-3 scaling strategies, observability improvements, and ecosystem integrations (1 sentence each)\n\n`,
                 "15": `## 15. 🧾 License & Deployment Details\nProvide documentation in exactly 3 paragraphs:\n- Paragraph 1: License type and deployment targets (Docker, Vercel, Render, AWS, etc.)\n- Paragraph 2: CI/CD configuration and environment variables\n- Paragraph 3: Infrastructure requirements and deployment process\n\n`,
-                "16": `## 16. ⚡ TL;DR – Founder Summary\nWrite a comprehensive summary in 5-6 paragraphs for a non-technical founder:\n- Paragraph 1: What this repo gives them today and how easily it fits their product\n- Paragraph 2: How close it is to production and key strengths/weaknesses\n- Paragraph 3: Why it's a strong or weak base for real use\n- Paragraph 4: Time and resource requirements to make it production-ready\n- Paragraph 5: Competitive advantages and unique selling points\n- Paragraph 6 (optional): Final recommendation and risk assessment\n\n`,
+                "16": `## 16. ⚡ TL;DR: Founder Summary\nWrite a comprehensive summary in 5-6 paragraphs for a non-technical founder:\n- Paragraph 1: What this repo gives them today and how easily it fits their product\n- Paragraph 2: How close it is to production and key strengths/weaknesses\n- Paragraph 3: Why it's a strong or weak base for real use\n- Paragraph 4: Time and resource requirements to make it production-ready\n- Paragraph 5: Competitive advantages and unique selling points\n- Paragraph 6 (optional): Final recommendation and risk assessment\n\n`,
                 "17": `## 17. 🗺️ Complete System Flow Diagram\nCreate a comprehensive ASCII art diagram showing the COMPLETE flow of how the entire repository works from start to end.\nCRITICAL: START IMMEDIATELY with the actual ASCII art diagram using box-drawing characters (┌ ┐ └ ┘ │ ─ ├ ┤ ┬ ┴ ┼) and arrows (→ ← ↑ ↓).\nDO NOT write text descriptions first - the diagram must be the first thing after the section header.\nInclude ALL major components, services, databases, APIs, and external services.\nAfter the diagram, provide 2-3 paragraphs explaining the flow.\n\n`,
               };
               return sectionTemplates[num] || `## ${num}. [Section ${num}]\nGenerate this section with 5-6 paragraphs based on the codebase.\n\n`;
@@ -1693,7 +1697,7 @@ Generate ONLY these sections. Do not include any other content. Start directly w
               "13": `## 13. 💡 Business Applications (5-8 use cases)\n`,
               "14": `## 14. 📊 Roadmap & Growth Potential (3 paragraphs)\n`,
               "15": `## 15. 🧾 License & Deployment Details (3 paragraphs)\n`,
-              "16": `## 16. ⚡ TL;DR – Founder Summary (5-6 paragraphs)\n`,
+              "16": `## 16. ⚡ TL;DR: Founder Summary (5-6 paragraphs)\n`,
               "17": `## 17. 🗺️ Complete System Flow Diagram (comprehensive ASCII art diagram + 2-3 paragraphs)\n`,
             };
 
@@ -1788,7 +1792,7 @@ Create documentation with these sections:
 13. 💡 Business Applications
 14. 📊 Roadmap & Growth Potential
 15. 🧾 License & Deployment Details
-16. ⚡ TL;DR – Founder Summary
+16. ⚡ TL;DR: Founder Summary
 
 Use markdown format with clear sections, tables, and Mermaid diagrams.`;
 
@@ -1939,7 +1943,7 @@ This codebase demonstrates solid engineering practices with a modern tech stack.
 - **Deployment:** Vercel, Docker, or any Node.js host
 - **CI/CD:** GitHub Actions compatible
 
-## 16. ⚡ TL;DR – Founder Summary
+## 16. ⚡ TL;DR: Founder Summary
 
 ${projectName} is a well-structured ${repoInfo?.language || "software"} project ready for development and iteration. It provides a solid foundation for building products with modern tooling. The codebase is maintainable and can be extended for various use cases.
 `;
@@ -2045,7 +2049,7 @@ The user wants you to PRESERVE existing content, not regenerate it.`;
 
     const modifiedResult = await openrouterSingleMessage(
       prompt,
-      "anthropic/claude-3.5-sonnet",
+      OPENROUTER_DOCS_MODIFY_MODEL,
       maxModifyOutputTokens,
       systemInstruction
     );
@@ -2119,7 +2123,7 @@ GENERATE THE COMPLETE DOCUMENTATION NOW WITH ALL ${isRemovalRequest ? sectionCou
       try {
         const retryResult = await openrouterSingleMessage(
           retryPrompt,
-          "anthropic/claude-3.5-sonnet",
+          OPENROUTER_DOCS_MODIFY_MODEL,
           maxModifyOutputTokens,
           systemInstruction
         );

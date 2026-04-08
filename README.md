@@ -119,7 +119,7 @@ RepoDoc is engineering infrastructure for understanding code, not just an AI cha
 
 ### Infrastructure Layer
 
-**⚙️ Background Indexing**: Indexing runs as a serverless job queue (Vercel cron + Postgres leasing). No blocking on project create or regenerate — jobs are queued, processed by a worker, and report progress. Retry and cancel from the UI.
+**⚙️ Background Indexing**: Indexing runs as a serverless job queue (Vercel cron + Postgres leasing). No blocking on project create or regenerate: jobs are queued, processed by a worker, and report progress. Retry and cancel from the UI.
 
 **Model fallback**: Primary model (e.g. Gemini) with deterministic fallback (e.g. OpenRouter) under rate limits or outages so behavior is predictable.
 
@@ -209,7 +209,7 @@ model User {
   id           String    @id @default(uuid())
   emailAddress String    @unique
   credits      Int       @default(150)
-  plan         String    @default("starter")  // starter | professional | enterprise
+  plan         String    @default("starter") 
   projects     Project[]
 }
 
@@ -218,17 +218,17 @@ model Project {
   name                 String
   repoUrl              String
   userId               String
-  sourceCodeEmbiddings SourceCodeEmbiddings[]
+  sourceCodeEmbeddings SourceCodeEmbeddings[]
   docs                 Docs?
   readme               Readme?
 }
 
-model SourceCodeEmbiddings {
+model SourceCodeEmbeddings {
   id               String                  @id @default(uuid())
   fileName         String
   sourceCode       String
   Summary          String
-  summaryEmbedding Unsupported("vector")?  // pgvector
+  summaryEmbedding Unsupported("vector")? 
   projectId        String
 }
 
@@ -289,7 +289,7 @@ const results = await prisma.$queryRaw`
     "sourceCode",
     "Summary",
     1 - ("summaryEmbedding" <=> ${queryEmbedding}::vector) as similarity
-  FROM "SourceCodeEmbiddings"
+  FROM "SourceCodeEmbeddings"
   WHERE "projectId" = ${projectId}
   ORDER BY "summaryEmbedding" <=> ${queryEmbedding}::vector
   LIMIT 5

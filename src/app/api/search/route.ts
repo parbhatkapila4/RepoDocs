@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { Octokit } from "octokit";
+import { createGitHubOctokit } from "@/lib/github-octokit";
 
 export interface SearchFilters {
   query: string;
@@ -114,9 +114,7 @@ export async function POST(request: NextRequest) {
     searchQuery += " is:public";
 
     const token = process.env.GITHUB_TOKEN;
-    const octokit = new Octokit({
-      auth: token || undefined,
-    });
+    const octokit = createGitHubOctokit(token);
 
     try {
       const pageNumber = Math.max(1, page);

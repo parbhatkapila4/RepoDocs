@@ -29,6 +29,9 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import GitHubRateLimitNotice, {
+  isRateLimitError,
+} from "@/components/GitHubRateLimitNotice";
 
 const terminalColors = {
   green: "#50fa7b",
@@ -42,7 +45,8 @@ const terminalColors = {
 };
 
 function ReposPage() {
-  const { projects, selectedProjectId } = useProjectsContext();
+  const { projects, selectedProjectId, loadError, loadProjects } =
+    useProjectsContext();
   const {
     currentRepository: repoInfo,
     isLoading: loading,
@@ -65,12 +69,9 @@ function ReposPage() {
       const info = await fetchRepository(currentProject.repoUrl);
       if (info) {
         toast.success("Repository information loaded successfully");
-      } else {
-        toast.error("Failed to load repository information");
       }
     } catch (err) {
       console.error("Error fetching repo info:", err);
-      toast.error("Failed to load repository information");
     }
   }, [currentProject?.repoUrl, fetchRepository]);
 
@@ -83,12 +84,9 @@ function ReposPage() {
       const info = await refreshRepository(currentProject.repoUrl);
       if (info) {
         toast.success("Repository information refreshed successfully");
-      } else {
-        toast.error("Failed to refresh repository information");
       }
     } catch (err) {
       console.error("Error refreshing repo info:", err);
-      toast.error("Failed to refresh repository information");
     }
   }, [currentProject?.repoUrl, refreshRepository]);
 
@@ -162,10 +160,39 @@ function ReposPage() {
   if (userLoading) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-[#333] border-t-white rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-[#666] font-mono text-sm">Loading...</p>
+        <div className="flex gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-white/20 animate-pulse" />
+          <span className="w-1.5 h-1.5 rounded-full bg-white/20 animate-pulse [animation-delay:150ms]" />
+          <span className="w-1.5 h-1.5 rounded-full bg-white/20 animate-pulse [animation-delay:300ms]" />
         </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] relative flex items-center justify-center p-6">
+        <motion.div
+          className="text-center max-w-lg rounded-xl border border-red-500/30 bg-red-950/20 px-6 py-8"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-4" />
+          <h1 className="text-xl font-semibold text-white mb-2">
+            Can&apos;t load your projects
+          </h1>
+          <p className="text-[#b8b8b8] text-sm leading-relaxed mb-4">
+            {loadError}
+          </p>
+          <button
+            type="button"
+            onClick={() => void loadProjects()}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm font-medium transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Retry
+          </button>
+        </motion.div>
       </div>
     );
   }
@@ -203,8 +230,8 @@ function ReposPage() {
   }
 
   return (
-    <div 
-      className="bg-black relative w-full min-h-screen" 
+    <div
+      className="bg-black relative w-full min-h-screen"
       style={{
         position: "absolute",
         top: 0,
@@ -244,28 +271,28 @@ function ReposPage() {
           </div>
         </motion.div>
 
-        {error && (
+        <GitHubRateLimitNotice error={error} className="mb-6" />
+
+        {error && !isRateLimitError(error) && (
           <motion.div
-            className="mb-8 p-4 bg-[#1a1a1a] border border-red-500/30 rounded-lg"
+            className="mb-6 flex items-start gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-4 py-3.5"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
           >
-            <div className="flex items-center gap-3 text-red-400">
-              <AlertCircle className="h-5 w-5 shrink-0" />
-              <span className="text-sm">{error}</span>
-            </div>
+            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-white/30" />
+            <span className="text-[13px] text-white/40">{error}</span>
           </motion.div>
         )}
 
         {loading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
             {[...Array(8)].map((_, i) => (
               <div
                 key={i}
-                className="bg-[#1a1a1a] border border-[#333] rounded-lg p-6 animate-pulse"
+                className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5"
               >
-                <div className="h-4 bg-[#333] rounded w-1/2 mb-4" />
-                <div className="h-6 bg-[#333] rounded w-3/4" />
+                <div className="relative overflow-hidden h-3 w-16 rounded bg-white/[0.04] mb-4 before:absolute before:inset-0 before:-translate-x-full before:bg-gradient-to-r before:from-transparent before:via-white/[0.04] before:to-transparent before:animate-[shimmer_1.8s_ease-in-out_infinite]" />
+                <div className="relative overflow-hidden h-5 w-2/3 rounded bg-white/[0.04] before:absolute before:inset-0 before:-translate-x-full before:bg-gradient-to-r before:from-transparent before:via-white/[0.04] before:to-transparent before:animate-[shimmer_1.8s_ease-in-out_infinite]" />
               </div>
             ))}
           </div>
@@ -527,11 +554,10 @@ function ReposPage() {
                   ].map((feature) => (
                     <div
                       key={feature.label}
-                      className={`flex items-center gap-2 p-3 rounded-lg ${
-                        feature.enabled
+                      className={`flex items-center gap-2 p-3 rounded-lg ${feature.enabled
                           ? "bg-green-500/10 border border-green-500/20"
                           : "bg-[#252525] border border-[#333]"
-                      }`}
+                        }`}
                     >
                       <feature.icon
                         className={`w-4 h-4 ${feature.enabled ? "text-green-400" : "text-[#666]"}`}
@@ -580,7 +606,7 @@ function ReposPage() {
                       <Zap className="w-4 h-4 text-[#f1fa8c]" />
                       <span className="text-[#888] text-sm">
                         {new Date(repoInfo.pushedAt) >
-                        new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+                          new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
                           ? "Actively maintained"
                           : "Last activity over 30 days ago"}
                       </span>

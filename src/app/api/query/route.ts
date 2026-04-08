@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import prisma from "@/lib/prisma";
-import { queryCodebase } from "@/lib/rag";
+import { getDbUserId } from "@/lib/get-db-user-id";
+import { queryCodebase, queryCodebasePreindex } from "@/lib/rag";
 import {
   extractMemoriesFromConversation,
   storeMemories,
@@ -12,32 +13,6 @@ import * as queryCache from "@/lib/query-cache";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-
-async function getDbUserId(clerkUserId: string): Promise<string | null> {
-  let dbUser = await prisma.user.findUnique({
-    where: { id: clerkUserId },
-    select: { id: true },
-  });
-
-  if (!dbUser) {
-    try {
-      const { clerkClient } = await import("@clerk/nextjs/server");
-      const client = await clerkClient();
-      const clerkUser = await client.users.getUser(clerkUserId);
-
-      if (clerkUser.emailAddresses[0]?.emailAddress) {
-        dbUser = await prisma.user.findUnique({
-          where: { emailAddress: clerkUser.emailAddresses[0].emailAddress },
-          select: { id: true },
-        });
-      }
-    } catch {
-      return null;
-    }
-  }
-
-  return dbUser?.id || null;
-}
 
 export async function POST(request: NextRequest) {
   const startMs = Date.now();
@@ -90,21 +65,59 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const embeddingsCount = await prisma.sourceCodeEmbiddings.count({
+    const embeddingsCount = await prisma.sourceCodeEmbeddings.count({
       where: {
         projectId: projectId,
       },
     });
 
     if (embeddingsCount === 0) {
-      return NextResponse.json(
-        {
-          error: "Project not indexed yet",
-          message:
-            "This project has not been indexed yet. Please wait for the indexing to complete.",
-        },
-        { status: 400 }
+      void import("@/lib/indexing-worker-kick").then((m) =>
+        m.kickIndexingWorker().catch(() => { })
       );
+
+      const preResult = await queryCodebasePreindex(
+        project.repoUrl,
+        project.githubToken,
+        question,
+        conversationHistory,
+        { mode }
+      );
+
+      const latencyMs = Date.now() - startMs;
+      const promptTokens = preResult.promptTokens ?? 0;
+      const completionTokens = preResult.completionTokens ?? 0;
+      const totalTokens = preResult.totalTokens ?? 0;
+      const modelUsed = preResult.modelUsed ?? "unknown";
+      void recordQueryMetrics(prisma, {
+        projectId,
+        routeType: "query",
+        modelUsed,
+        promptTokens,
+        completionTokens,
+        totalTokens,
+        retrievalCount: preResult.sources.length,
+        memoryHitCount: 0,
+        latencyMs,
+        estimatedCostUsd: estimateCostUsd(
+          promptTokens,
+          completionTokens,
+          modelUsed
+        ),
+        success: true,
+        cacheHit: false,
+      }).catch((err) => console.error("[QueryMetrics]", err));
+
+      return NextResponse.json({
+        success: true,
+        answer: preResult.answer,
+        sources: preResult.sources,
+        metadata: {
+          sourcesCount: preResult.sources.length,
+          projectName: project.name,
+          preindex: true,
+        },
+      });
     }
 
     const cached = queryCache.get(projectId, question);

@@ -1,12 +1,12 @@
 import { useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/lib/store';
-import { 
-  setLoading, 
-  setError, 
-  setRepository, 
+import {
+  setLoading,
+  setError,
+  setRepository,
   clearRepository,
-  updateRepositoryStats 
+  updateRepositoryStats
 } from '@/lib/slices/repositorySlice';
 import { fetchRepositoryInfo } from '@/lib/actions';
 
@@ -26,15 +26,18 @@ export const useRepository = () => {
       dispatch(setLoading(true));
       dispatch(setError(null));
 
-      const repoInfo = await fetchRepositoryInfo(repoUrl);
-      
-      if (repoInfo) {
-        dispatch(setRepository(repoInfo));
-        return repoInfo;
-      } else {
-        dispatch(setError('Failed to fetch repository information'));
+      const result = await fetchRepositoryInfo(repoUrl);
+
+      if ('error' in result) {
+        dispatch(setError(result.error));
         return null;
       }
+      if (result.data) {
+        dispatch(setRepository(result.data));
+        return result.data;
+      }
+      dispatch(setError('Failed to fetch repository information'));
+      return null;
     } catch (err) {
       dispatch(setError('Error fetching repository information'));
       return null;

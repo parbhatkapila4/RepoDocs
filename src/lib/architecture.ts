@@ -1,6 +1,6 @@
 import prisma from "./prisma";
 import { loadGithubRepository } from "./github";
-import { Octokit } from "octokit";
+import { createGitHubOctokit } from "@/lib/github-octokit";
 
 export interface ArchitectureNode {
   id: string;
@@ -18,7 +18,7 @@ export interface DependencyGraph {
 }
 
 
-function normalizePath(p: string): string {
+export function normalizePath(p: string): string {
   let s = p.replace(/\\/g, "/").trim();
   while (s.startsWith("./")) s = s.slice(2);
   return s;
@@ -79,7 +79,7 @@ function extractImportPaths(sourceCode: string): string[] {
 export async function buildDependencyGraph(
   projectId: string
 ): Promise<DependencyGraph> {
-  const rows = await prisma.sourceCodeEmbiddings.findMany({
+  const rows = await prisma.sourceCodeEmbeddings.findMany({
     where: { projectId },
     select: { fileName: true, sourceCode: true },
   });
@@ -199,9 +199,7 @@ export async function buildQuickDependencyGraphFromGitTree(
   const parsed = parseGitHubRepo(githubUrl);
   if (!parsed) return { nodes: [], edges: [] };
 
-  const octokit = new Octokit({
-    auth: githubToken || undefined,
-  });
+  const octokit = createGitHubOctokit(githubToken);
 
   const repoMeta = await octokit.rest.repos.get({
     owner: parsed.owner,

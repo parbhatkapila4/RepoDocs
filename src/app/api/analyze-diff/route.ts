@@ -1,38 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import prisma from "@/lib/prisma";
+import { getDbUserId } from "@/lib/get-db-user-id";
 import { analyzeDiff } from "@/lib/diff";
 import { estimateCostUsd } from "@/lib/cost";
 import { recordQueryMetrics } from "@/lib/query-metrics";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-
-async function getDbUserId(clerkUserId: string): Promise<string | null> {
-  let dbUser = await prisma.user.findUnique({
-    where: { id: clerkUserId },
-    select: { id: true },
-  });
-
-  if (!dbUser) {
-    try {
-      const { clerkClient } = await import("@clerk/nextjs/server");
-      const client = await clerkClient();
-      const clerkUser = await client.users.getUser(clerkUserId);
-
-      if (clerkUser.emailAddresses[0]?.emailAddress) {
-        dbUser = await prisma.user.findUnique({
-          where: { emailAddress: clerkUser.emailAddresses[0].emailAddress },
-          select: { id: true },
-        });
-      }
-    } catch {
-      return null;
-    }
-  }
-
-  return dbUser?.id || null;
-}
 
 export async function POST(request: NextRequest) {
   let startMs = 0;

@@ -46,8 +46,10 @@ import {
   FileDiff,
   Network,
   Activity,
+  AlertCircle,
 } from "lucide-react";
 import { RepoDocLogo } from "@/components/ui/repodoc-logo";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useUser } from "@/hooks/useUser";
 import { useProjectsContext } from "@/context/ProjectsContext";
 import { useClerk } from "@clerk/nextjs";
@@ -115,8 +117,15 @@ const navigationItems: NavigationItem[] = [
 
 export default function AppSidebar() {
   const { user, isLoading: userLoading, refreshUser } = useUser();
-  const { projects, selectedProjectId, selectProject, deleteProject } =
-    useProjectsContext();
+  const {
+    projects,
+    selectedProjectId,
+    selectProject,
+    deleteProject,
+    loadError,
+    isLoading: projectsLoading,
+    loadProjects,
+  } = useProjectsContext();
   const { signOut } = useClerk();
   const pathname = usePathname();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -216,6 +225,27 @@ export default function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="py-3 scrollbar-hide">
+        {loadError && (
+          <div className="px-2 mb-3">
+            <Alert
+              variant="destructive"
+              className="border-red-500/40 bg-red-950/40 text-red-100 [&>svg]:text-red-300"
+            >
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle className="text-sm">Database unreachable</AlertTitle>
+              <AlertDescription className="text-xs text-red-200/90 leading-snug space-y-2">
+                <p>{loadError}</p>
+                <button
+                  type="button"
+                  onClick={() => void loadProjects()}
+                  className="text-xs font-medium text-white underline underline-offset-2 hover:text-red-50"
+                >
+                  Retry
+                </button>
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
         <SidebarGroup>
           <SidebarGroupLabel className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-2 px-2">
             Navigation
@@ -256,7 +286,13 @@ export default function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {projects.length > 0 ? (
+              {projectsLoading ? (
+                <SidebarMenuItem>
+                  <div className="h-10 px-3 flex items-center text-gray-500 text-sm">
+                    Loading projects…
+                  </div>
+                </SidebarMenuItem>
+              ) : projects.length > 0 ? (
                 projects.map((project) => {
                   const isSelected = selectedProjectId === project.id;
                   return (
@@ -282,6 +318,12 @@ export default function AppSidebar() {
                     </SidebarMenuItem>
                   );
                 })
+              ) : loadError ? (
+                <SidebarMenuItem>
+                  <div className="h-auto min-h-10 px-3 py-2 text-gray-400 text-xs leading-snug">
+                    Fix the connection above, then retry.
+                  </div>
+                </SidebarMenuItem>
               ) : (
                 <SidebarMenuItem>
                   <div className="h-10 px-3 flex items-center text-gray-500 text-sm">

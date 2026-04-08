@@ -4,9 +4,11 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useProjectsContext } from "@/context/ProjectsContext";
 import { useRepository } from "@/hooks/useRepository";
 import { useUser } from "@/hooks/useUser";
+import { useMountedRef } from "@/hooks/useMountedRef";
 import {
   getProjectDocs,
-  regenerateProjectDocs,
+  enqueueDocsRegeneration,
+  getBackgroundJob,
   modifyDocsWithQna,
   getDocsQnaHistory,
   createDocsShare,
@@ -16,6 +18,7 @@ import {
   deleteAllDocsQnaHistory,
   checkEmbeddingsStatus,
 } from "@/lib/actions";
+import { useBackgroundRegenJob } from "@/hooks/useBackgroundRegenJob";
 import {
   Card,
   CardContent,
@@ -90,6 +93,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import GitHubRateLimitNotice, {
+  isRateLimitError,
+} from "@/components/GitHubRateLimitNotice";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -350,6 +356,7 @@ function DocsPage() {
   const [repositoryInfo, setRepositoryInfo] = useState<any>(null);
   const headingRef = useRef<HTMLDivElement>(null);
   const disclaimerRef = useRef<HTMLDivElement>(null);
+  const docsMountedRef = useMountedRef();
   const [showDisclaimer, setShowDisclaimer] = useState(true);
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
@@ -569,8 +576,7 @@ function DocsPage() {
                 return info;
               }
             }
-          } catch (e) {
-            console.debug("Strategy 1 failed:", e);
+          } catch {
           }
           return null;
         },
@@ -595,8 +601,7 @@ function DocsPage() {
                 return info;
               }
             }
-          } catch (e) {
-            console.debug("Strategy 2 failed:", e);
+          } catch {
           }
           return null;
         },
@@ -614,8 +619,7 @@ function DocsPage() {
             ) {
               return info;
             }
-          } catch (e) {
-            console.debug("Strategy 3 failed:", e);
+          } catch {
           }
           return null;
         },
@@ -623,7 +627,9 @@ function DocsPage() {
         async () => {
           try {
             const { fetchRepositoryInfo } = await import("@/lib/actions");
-            const info = await fetchRepositoryInfo(repoUrl);
+            const result = await fetchRepositoryInfo(repoUrl);
+            if ("error" in result) return null;
+            const info = result.data;
             if (
               info &&
               (info.stars > 0 ||
@@ -633,8 +639,7 @@ function DocsPage() {
             ) {
               return info;
             }
-          } catch (e) {
-            console.debug("Strategy 4 failed:", e);
+          } catch {
           }
           return null;
         },
@@ -644,21 +649,13 @@ function DocsPage() {
         try {
           const result = await strategy();
           if (result) {
-            console.log("✅ Repository info fetched successfully:", {
-              stars: result.stars || result.stargazersCount,
-              forks: result.forks || result.forksCount,
-              language: result.language,
-              license: result.license?.name,
-            });
             return result;
           }
-        } catch (error) {
-          console.debug("Strategy failed:", error);
+        } catch {
           continue;
         }
       }
 
-      console.warn("⚠️ All repository info fetch strategies failed");
       return null;
     },
     []
@@ -667,8 +664,10 @@ function DocsPage() {
   const fetchDocs = useCallback(async () => {
     if (!selectedProjectId) return;
 
-    setIsLoading(true);
-    setError(null);
+    if (docsMountedRef.current) {
+      setIsLoading(true);
+      setError(null);
+    }
 
     try {
       const project = projectsRef.current.find(
@@ -681,12 +680,14 @@ function DocsPage() {
       if (repoUrl) {
         fetchedRepoInfo = await fetchRepositoryInfo(selectedProjectId, repoUrl);
 
-        if (fetchedRepoInfo) {
+        if (fetchedRepoInfo && docsMountedRef.current) {
           setRepositoryInfo(fetchedRepoInfo);
         }
       }
 
       const docs = await getProjectDocs(selectedProjectId);
+      if (!docsMountedRef.current) return;
+
       setDocsData(docs);
 
       if (docs?.content) {
@@ -694,114 +695,100 @@ function DocsPage() {
       }
 
       const embeddingsStatus = await checkEmbeddingsStatus(selectedProjectId);
+      if (!docsMountedRef.current) return;
       setHasEmbeddings(embeddingsStatus.hasEmbeddings);
     } catch (err) {
       console.error("Error fetching docs:", err);
-      setError(
-        err instanceof Error ? err.message : "Failed to fetch documentation"
-      );
+      if (docsMountedRef.current) {
+        setError(
+          err instanceof Error ? err.message : "Failed to fetch documentation"
+        );
+      }
     } finally {
-      setIsLoading(false);
+      if (docsMountedRef.current) setIsLoading(false);
     }
-  }, [selectedProjectId, parseDocsMetadata, fetchRepositoryInfo]);
+  }, [selectedProjectId, parseDocsMetadata, fetchRepositoryInfo, docsMountedRef]);
 
-  const handleRegenerateDocs = async () => {
+  const docsBgJob = useBackgroundRegenJob({
+    projectId: selectedProjectId,
+    storageKey: "docs",
+    enqueue: enqueueDocsRegeneration,
+    getJob: getBackgroundJob,
+    onSync: () => fetchDocs(),
+    setBusy: setIsRegenerating,
+    onUpgradeRequired: () => setUpgradeRequired(true),
+    toastSuccessActive: {
+      title: "Documentation regenerated",
+      description:
+        "The technical documentation has been updated with the latest codebase analysis.",
+    },
+    toastSuccessAway: {
+      title: "Documentation is ready",
+      description:
+        "Generation finished while you were on another screen or idle. Content has been refreshed.",
+    },
+    toastFailed: (message) => ({
+      title: "Documentation generation failed",
+      description: message,
+    }),
+  });
+
+  const handleRegenerateDocs = () => {
     if (!selectedProjectId) return;
-
-    setIsRegenerating(true);
     setError(null);
     setUpgradeRequired(false);
-
-    try {
-      const newDocs = await regenerateProjectDocs(selectedProjectId);
-      setDocsData(newDocs);
-      if (newDocs.content) {
-        setMetadata(parseDocsMetadata(newDocs.content));
-      }
-
-      const isPreview =
-        newDocs.prompt?.toLowerCase().includes("demo") ||
-        newDocs.prompt?.toLowerCase().includes("preview");
-
-      if (isPreview) {
-        toast.success("Demo documentation generated!", {
-          description:
-            "Indexing is in progress (takes 5-15 minutes). Please try again after indexing is ready for comprehensive docs. Thank you!",
-          duration: 7000,
-        });
-      } else {
-        toast.success("Documentation regenerated successfully!", {
-          description:
-            "The technical documentation has been updated with the latest codebase analysis.",
-        });
-      }
-    } catch (err) {
-      console.error("Error regenerating docs:", err);
-      const errorMessage =
-        err instanceof Error
-          ? err.message
-          : "Failed to regenerate documentation";
-
-      if (errorMessage.includes("UPGRADE_REQUIRED")) {
-        setUpgradeRequired(true);
-        toast.error("Upgrade required", {
-          description:
-            "Upgrade to Professional for 10 projects or Enterprise for unlimited.",
-        });
-      } else {
-        setError(errorMessage);
-        toast.error("Failed to regenerate documentation", {
-          description: errorMessage,
-        });
-      }
-    } finally {
-      setIsRegenerating(false);
-    }
+    void docsBgJob.start();
   };
 
-  const handleQnaSubmit = async (questionValue: string): Promise<boolean> => {
-    if (!selectedProjectId || !questionValue.trim()) return false;
+  const handleQnaSubmit = (questionValue: string): Promise<boolean> => {
+    if (!selectedProjectId || !questionValue.trim())
+      return Promise.resolve(false);
 
     setIsProcessingQna(true);
     setError(null);
     setUpgradeRequired(false);
 
-    try {
-      const result = await modifyDocsWithQna(selectedProjectId, questionValue);
-      setDocsData(result.docs);
-      if (result.docs.content) {
-        setMetadata(parseDocsMetadata(result.docs.content));
-      }
-
-      setQnaHistory((prev) => [result.qnaRecord, ...prev]);
-      setActiveTab("preview");
-
-      toast.success("Documentation updated successfully!", {
-        description:
-          "Your request has been processed and the documentation has been modified.",
-      });
-      return true;
-    } catch (err) {
-      console.error("Error processing Q&A:", err);
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to modify documentation";
-
-      if (errorMessage.includes("UPGRADE_REQUIRED")) {
-        setUpgradeRequired(true);
-        toast.error("Upgrade required", {
+    return (async () => {
+      try {
+        const result = await modifyDocsWithQna(
+          selectedProjectId,
+          questionValue
+        );
+        toast.success("Documentation updated successfully!", {
           description:
-            "Upgrade to Professional for 10 projects or Enterprise for unlimited.",
+            "Your request has been processed and the documentation has been modified.",
         });
-      } else {
-        setError(errorMessage);
-        toast.error("Failed to modify documentation", {
-          description: errorMessage,
-        });
+        if (docsMountedRef.current) {
+          setDocsData(result.docs);
+          if (result.docs.content) {
+            setMetadata(parseDocsMetadata(result.docs.content));
+          }
+          setQnaHistory((prev) => [result.qnaRecord, ...prev]);
+          setActiveTab("preview");
+        }
+        return true;
+      } catch (err) {
+        console.error("Error processing Q&A:", err);
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to modify documentation";
+
+        if (errorMessage.includes("UPGRADE_REQUIRED")) {
+          if (docsMountedRef.current) setUpgradeRequired(true);
+          toast.error("Upgrade required", {
+            description:
+              "Upgrade to Professional for 10 projects or Enterprise for unlimited.",
+          });
+        } else {
+          if (docsMountedRef.current) setError(errorMessage);
+          toast.error("Failed to modify documentation", {
+            description: errorMessage,
+          });
+        }
+        return false;
+      } finally {
+        if (docsMountedRef.current) setIsProcessingQna(false);
       }
-      return false;
-    } finally {
-      setIsProcessingQna(false);
-    }
+    })();
   };
 
   const fetchQnaHistory = useCallback(async () => {
@@ -1586,7 +1573,8 @@ function DocsPage() {
         </div>
       )}
 
-      {error && (
+      <GitHubRateLimitNotice error={error} className="mb-6 mx-4" />
+      {error && !isRateLimitError(error) && (
         <Alert className="mb-6 mx-4 border-red-500/50 bg-red-500/10">
           <AlertCircle className="h-4 w-4 text-red-400" />
           <AlertDescription className="text-red-300">{error}</AlertDescription>
@@ -1625,26 +1613,58 @@ function DocsPage() {
         </div>
       )}
 
-      <Card className="flex-1 min-h-0 flex flex-col border border-white/20 shadow-xl mx-1 sm:mx-2 md:mx-4 mb-2 sm:mb-4 mobile-card">
-        <CardContent className="flex-1 min-h-0 p-0 mobile-card-content">
+      <Card className="flex-1 min-h-0 flex flex-col overflow-hidden border border-white/20 shadow-xl mx-1 sm:mx-2 md:mx-4 mb-2 sm:mb-4 mobile-card">
+        <CardContent className="flex flex-1 min-h-0 flex-col overflow-hidden p-0 mobile-card-content">
           {isLoading ? (
-            <div className="p-4 sm:p-8 space-y-6">
-              <div className="space-y-4">
-                <Skeleton className="h-12 w-1/2 bg-gray-700/50 rounded-lg" />
-                <div className="h-1 w-20 bg-gray-700/30 rounded-full"></div>
+            <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-6 sm:p-10 space-y-10">
+              <div className="space-y-3">
+                <Skeleton className="h-7 w-2/5" />
+                <Skeleton className="h-[3px] w-12" />
+              </div>
+              <div className="space-y-2.5">
+                <Skeleton className="h-[14px] w-full" />
+                <Skeleton className="h-[14px] w-[92%]" />
+                <Skeleton className="h-[14px] w-[78%]" />
+                <Skeleton className="h-[14px] w-[88%]" />
               </div>
               <div className="space-y-3">
-                <Skeleton className="h-4 w-full bg-gray-700/50 rounded" />
-                <Skeleton className="h-4 w-5/6 bg-gray-700/50 rounded" />
-                <Skeleton className="h-4 w-4/5 bg-gray-700/50 rounded" />
-              </div>
-              <div className="space-y-4 mt-8">
-                <Skeleton className="h-8 w-1/3 bg-gray-700/50 rounded-lg" />
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-full bg-gray-700/50 rounded" />
-                  <Skeleton className="h-4 w-3/4 bg-gray-700/50 rounded" />
-                  <Skeleton className="h-4 w-5/6 bg-gray-700/50 rounded" />
+                <Skeleton className="h-5 w-1/4" />
+                <div className="space-y-2.5">
+                  <Skeleton className="h-[14px] w-full" />
+                  <Skeleton className="h-[14px] w-[85%]" />
+                  <Skeleton className="h-[14px] w-[70%]" />
+                  <Skeleton className="h-[14px] w-[93%]" />
                 </div>
+              </div>
+              <div className="space-y-3">
+                <Skeleton className="h-5 w-1/3" />
+                <div className="space-y-2.5">
+                  <Skeleton className="h-[14px] w-[95%]" />
+                  <Skeleton className="h-[14px] w-full" />
+                  <Skeleton className="h-[14px] w-[60%]" />
+                </div>
+              </div>
+              <div className="space-y-3">
+                <Skeleton className="h-5 w-2/5" />
+                <div className="space-y-2.5">
+                  <Skeleton className="h-[14px] w-full" />
+                  <Skeleton className="h-[14px] w-[75%]" />
+                  <Skeleton className="h-[14px] w-[90%]" />
+                  <Skeleton className="h-[14px] w-[82%]" />
+                </div>
+              </div>
+              <div className="space-y-3">
+                <Skeleton className="h-5 w-1/5" />
+                <div className="space-y-2.5">
+                  <Skeleton className="h-[14px] w-[88%]" />
+                  <Skeleton className="h-[14px] w-full" />
+                  <Skeleton className="h-[14px] w-[65%]" />
+                </div>
+              </div>
+              <div className="space-y-2.5">
+                <Skeleton className="h-[14px] w-full" />
+                <Skeleton className="h-[14px] w-[80%]" />
+                <Skeleton className="h-[14px] w-[72%]" />
               </div>
             </div>
           ) : docsData ? (

@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { enhanceDatabaseUrl } from "./prisma-database-url";
 
 declare global {
   var prisma: PrismaClient | undefined;
@@ -6,7 +7,7 @@ declare global {
 
 let prisma: PrismaClient;
 
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = enhanceDatabaseUrl(process.env.DATABASE_URL);
 
 if (process.env.NODE_ENV === "production") {
   prisma = new PrismaClient(

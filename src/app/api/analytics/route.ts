@@ -59,8 +59,8 @@ export async function GET() {
       },
     });
 
-    const totalEmbeddings = await prisma.sourceCodeEmbiddings.count();
-    const embeddingsByProject = await prisma.sourceCodeEmbiddings.groupBy({
+    const totalEmbeddings = await prisma.sourceCodeEmbeddings.count();
+    const embeddingsByProject = await prisma.sourceCodeEmbeddings.groupBy({
       by: ["projectId"],
       _count: true,
     });
@@ -146,7 +146,7 @@ export async function GET() {
       });
     }
 
-    const topProjectsByFiles = await prisma.sourceCodeEmbiddings.groupBy({
+    const topProjectsByFiles = await prisma.sourceCodeEmbeddings.groupBy({
       by: ["projectId"],
       _count: true,
       orderBy: {
@@ -175,7 +175,7 @@ export async function GET() {
       })
     );
 
-    const allFiles = await prisma.sourceCodeEmbiddings.findMany({
+    const allFiles = await prisma.sourceCodeEmbeddings.findMany({
       select: { fileName: true },
     });
 

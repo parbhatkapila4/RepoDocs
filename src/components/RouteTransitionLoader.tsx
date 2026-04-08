@@ -1,39 +1,65 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "motion/react";
 
 export default function RouteTransitionLoader() {
   const pathname = usePathname();
-  const [isLoading, setIsLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [visible, setVisible] = useState(false);
   const prevPathnameRef = useRef<string | null>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isNavigatingRef = useRef(false);
+  const tickRef = useRef<NodeJS.Timeout | null>(null);
+  const hideRef = useRef<NodeJS.Timeout | null>(null);
+
+  const clearTimers = useCallback(() => {
+    if (tickRef.current) clearInterval(tickRef.current);
+    if (hideRef.current) clearTimeout(hideRef.current);
+    tickRef.current = null;
+    hideRef.current = null;
+  }, []);
+
+  const start = useCallback(() => {
+    clearTimers();
+    setProgress(12);
+    setVisible(true);
+    isNavigatingRef.current = true;
+
+    tickRef.current = setInterval(() => {
+      setProgress((p) => {
+        if (p >= 90) return p;
+        const step = p < 30 ? 8 : p < 60 ? 4 : 1.5;
+        return Math.min(p + step, 90);
+      });
+    }, 200);
+  }, [clearTimers]);
+
+  const finish = useCallback(() => {
+    clearTimers();
+    isNavigatingRef.current = false;
+    setProgress(100);
+    hideRef.current = setTimeout(() => {
+      setVisible(false);
+      setProgress(0);
+    }, 300);
+  }, [clearTimers]);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       const link = target.closest("a[href]");
-
       if (link) {
         const href = link.getAttribute("href");
         if (href && href.startsWith("/") && !href.startsWith("//")) {
-          const currentPath = window.location.pathname;
-          if (href !== currentPath) {
-            isNavigatingRef.current = true;
-            setIsLoading(true);
+          if (href !== window.location.pathname) {
+            start();
           }
         }
       }
     };
-
     document.addEventListener("click", handleClick, true);
-
-    return () => {
-      document.removeEventListener("click", handleClick, true);
-    };
-  }, []);
+    return () => document.removeEventListener("click", handleClick, true);
+  }, [start]);
 
   useEffect(() => {
     if (prevPathnameRef.current === null) {
@@ -42,58 +68,29 @@ export default function RouteTransitionLoader() {
     }
 
     if (pathname !== prevPathnameRef.current) {
-      setIsLoading(true);
-      isNavigatingRef.current = true;
-
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-
-      timeoutRef.current = setTimeout(() => {
-        setIsLoading(false);
-        prevPathnameRef.current = pathname;
-        isNavigatingRef.current = false;
-      }, 500);
-
-      return () => {
-        if (timeoutRef.current) {
-          clearTimeout(timeoutRef.current);
-        }
-      };
-    } else {
+      if (!isNavigatingRef.current) start();
       prevPathnameRef.current = pathname;
-
-      if (isNavigatingRef.current) {
-        if (timeoutRef.current) {
-          clearTimeout(timeoutRef.current);
-        }
-        timeoutRef.current = setTimeout(() => {
-          setIsLoading(false);
-          isNavigatingRef.current = false;
-        }, 300);
-      }
+      const t = setTimeout(finish, 150);
+      return () => clearTimeout(t);
+    } else if (isNavigatingRef.current) {
+      finish();
     }
-  }, [pathname]);
+    prevPathnameRef.current = pathname;
+  }, [pathname, start, finish]);
+
+  useEffect(() => clearTimers, [clearTimers]);
+
+  if (!visible) return null;
 
   return (
-    <AnimatePresence mode="wait">
-      {isLoading && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-9999 flex items-center justify-center bg-black/60 backdrop-blur-md min-h-screen w-full"
-        >
-          <div className="flex flex-col items-center justify-center gap-4 shrink-0">
-            <div
-              className="w-8 h-8 rounded-full border-2 border-[#333] border-t-[#8be9fd] animate-spin"
-              aria-hidden
-            />
-            <p className="text-sm font-mono text-[#666]">Loading…</p>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+    <div className="fixed top-0 left-0 right-0 z-[9999] h-[2px] pointer-events-none">
+      <div
+        className="h-full bg-white/70 transition-all ease-out"
+        style={{
+          width: `${progress}%`,
+          transitionDuration: progress === 100 ? "200ms" : "400ms",
+        }}
+      />
+    </div>
   );
 }

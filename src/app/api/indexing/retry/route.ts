@@ -1,31 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 import prisma from "@/lib/prisma";
-
-async function getDbUserId(clerkUserId: string): Promise<string | null> {
-  let dbUser = await prisma.user.findUnique({
-    where: { id: clerkUserId },
-    select: { id: true },
-  });
-
-  if (!dbUser) {
-    try {
-      const client = await clerkClient();
-      const clerkUser = await client.users.getUser(clerkUserId);
-      const email = clerkUser.emailAddresses[0]?.emailAddress;
-      if (email) {
-        dbUser = await prisma.user.findUnique({
-          where: { emailAddress: email },
-          select: { id: true },
-        });
-      }
-    } catch {
-      return null;
-    }
-  }
-
-  return dbUser?.id ?? null;
-}
+import { getDbUserId } from "@/lib/get-db-user-id";
 
 export async function POST(request: NextRequest) {
   try {

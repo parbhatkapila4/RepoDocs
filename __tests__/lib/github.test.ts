@@ -112,6 +112,12 @@ describe("GitHub Integration", () => {
   describe("loadGithubRepository", () => {
     it("successfully loads a repository", async () => {
       const repoUrl = "https://github.com/test/repo";
+      const { Octokit } = require("octokit");
+      const mockOctokit = new Octokit();
+      mockOctokit.rest.repos.get.mockResolvedValue({
+        data: { default_branch: "master" },
+      });
+
       const {
         GithubRepoLoader,
       } = require("@langchain/community/document_loaders/web/github");
@@ -133,13 +139,21 @@ describe("GitHub Integration", () => {
       expect(Array.isArray(result)).toBe(true);
       expect(GithubRepoLoader).toHaveBeenCalledWith(
         repoUrl,
-        expect.any(Object)
+        expect.objectContaining({
+          branch: "master",
+        })
       );
     });
 
     it("handles private repositories with token", async () => {
       const privateRepoUrl = "https://github.com/private/repo";
       const token = "test-token";
+      const { Octokit } = require("octokit");
+      const mockOctokit = new Octokit();
+      mockOctokit.rest.repos.get.mockResolvedValue({
+        data: { default_branch: "main" },
+      });
+
       const {
         GithubRepoLoader,
       } = require("@langchain/community/document_loaders/web/github");
@@ -156,6 +170,7 @@ describe("GitHub Integration", () => {
         privateRepoUrl,
         expect.objectContaining({
           accessToken: token,
+          branch: "main",
         })
       );
     });

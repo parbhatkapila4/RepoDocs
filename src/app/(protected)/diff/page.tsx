@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useMountedRef } from "@/hooks/useMountedRef";
 import Link from "next/link";
 import { useProjectsContext } from "@/context/ProjectsContext";
 import { motion } from "motion/react";
@@ -34,6 +35,7 @@ export default function DiffPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   const currentProject = projects.find((p) => p.id === selectedProjectId);
+  const mountedRef = useMountedRef();
 
   useEffect(() => {
     const main = document.querySelector('main[data-slot="sidebar-inset"]');
@@ -47,8 +49,10 @@ export default function DiffPage() {
     e.preventDefault();
     if (!currentProject || !diff.trim() || isLoading) return;
 
-    setIsLoading(true);
-    setAnalysis(null);
+    if (mountedRef.current) {
+      setIsLoading(true);
+      setAnalysis(null);
+    }
 
     try {
       const response = await fetch("/api/analyze-diff", {
@@ -67,7 +71,7 @@ export default function DiffPage() {
 
       const data = await response.json();
       if (data.success && data.analysis) {
-        setAnalysis(data.analysis);
+        if (mountedRef.current) setAnalysis(data.analysis);
         toast.success("Diff analyzed successfully");
       } else {
         throw new Error("Invalid response");
@@ -78,7 +82,7 @@ export default function DiffPage() {
         error instanceof Error ? error.message : "Failed to analyze diff"
       );
     } finally {
-      setIsLoading(false);
+      if (mountedRef.current) setIsLoading(false);
     }
   };
 
@@ -222,7 +226,7 @@ export default function DiffPage() {
                     Summary
                   </h3>
                   <p className="text-white text-sm leading-relaxed">
-                    {analysis.summary || "—"}
+                    {analysis.summary || "-"}
                   </p>
                 </section>
 

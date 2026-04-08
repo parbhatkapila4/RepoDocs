@@ -7,8 +7,14 @@ jest.mock("@clerk/nextjs/server", () => ({
 }));
 
 const mockQueryCodebase = jest.fn();
+const mockQueryCodebasePreindex = jest.fn();
 jest.mock("@/lib/rag", () => ({
   queryCodebase: mockQueryCodebase,
+  queryCodebasePreindex: mockQueryCodebasePreindex,
+}));
+
+jest.mock("@/lib/indexing-worker-kick", () => ({
+  kickIndexingWorker: jest.fn().mockResolvedValue(undefined),
 }));
 
 const mockPrisma = {
@@ -18,8 +24,11 @@ const mockPrisma = {
   project: {
     findFirst: jest.fn(),
   },
-  sourceCodeEmbiddings: {
+  sourceCodeEmbeddings: {
     count: jest.fn(),
+  },
+  queryMetrics: {
+    create: jest.fn().mockResolvedValue({}),
   },
   $executeRaw: jest.fn(),
 };
@@ -94,7 +103,7 @@ describe("/api/query", () => {
       name: "Test Project",
     });
 
-    mockPrisma.sourceCodeEmbiddings.count.mockResolvedValue(10);
+    mockPrisma.sourceCodeEmbeddings.count.mockResolvedValue(10);
     mockPrisma.$executeRaw.mockResolvedValue(undefined);
 
     const request = new NextRequest("http://localhost:3000/api/query", {
@@ -116,14 +125,25 @@ describe("/api/query", () => {
     expect(data.sources).toHaveLength(1);
   });
 
-  it("returns 400 if project is not indexed", async () => {
+  it("uses pre-index fallback when embeddings count is zero", async () => {
     mockPrisma.project.findFirst.mockResolvedValue({
       id: "proj1",
       userId: "user123",
       name: "Test Project",
+      repoUrl: "https://github.com/o/r",
+      githubToken: null,
     });
 
-    mockPrisma.sourceCodeEmbiddings.count.mockResolvedValue(0);
+    mockPrisma.sourceCodeEmbeddings.count.mockResolvedValue(0);
+
+    mockQueryCodebasePreindex.mockResolvedValue({
+      answer: "Pre-index answer",
+      sources: [{ fileName: "README.md", sourceCode: "", summary: "x", similarity: 0.5 }],
+      promptTokens: 1,
+      completionTokens: 2,
+      totalTokens: 3,
+      modelUsed: "google/gemini-2.5-flash",
+    });
 
     const request = new NextRequest("http://localhost:3000/api/query", {
       method: "POST",
@@ -134,10 +154,12 @@ describe("/api/query", () => {
     });
 
     const response = await POST(request);
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(200);
 
     const data = await response.json();
-    expect(data.error).toBe("Project not indexed yet");
+    expect(data.answer).toBe("Pre-index answer");
+    expect(data.metadata?.preindex).toBe(true);
+    expect(mockQueryCodebasePreindex).toHaveBeenCalled();
   });
 
   it("returns 404 if project is not found or unauthorized", async () => {

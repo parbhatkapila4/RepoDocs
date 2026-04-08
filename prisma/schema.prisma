@@ -10,16 +10,17 @@ datasource db {
 }
 
 model User {
-  id           String    @id @default(uuid())
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  imageUrl     String?
-  firstName    String?
-  lastName     String?
-  emailAddress String    @unique
-  credits      Int       @default(150)
-  plan         String    @default("starter")
-  projects     Project[]
+  id             String          @id @default(uuid())
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  imageUrl       String?
+  firstName      String?
+  lastName       String?
+  emailAddress   String          @unique
+  credits        Int             @default(150)
+  plan           String          @default("starter")
+  projects       Project[]
+  backgroundJobs BackgroundJob[]
 }
 
 model Project {
@@ -36,16 +37,17 @@ model Project {
   docs                  Docs?
   user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   readme                Readme?
-  sourceCodeEmbiddings  SourceCodeEmbiddings[]
+  sourceCodeEmbeddings  SourceCodeEmbeddings[]
   repoMemories          RepoMemory[]
   indexingJob           IndexingJob?
   queryMetrics          QueryMetrics[]
+  backgroundJobs        BackgroundJob[]
 
   @@index([userId, deletedAt])
   @@index([userId, createdAt(sort: Desc)])
 }
 
-model SourceCodeEmbiddings {
+model SourceCodeEmbeddings {
   id               String                 @id @default(uuid())
   createdAt        DateTime               @default(now())
   summaryEmbedding Unsupported("vector")?
@@ -139,16 +141,21 @@ model DocsShare {
 }
 
 model IndexingJob {
-  id        String            @id @default(uuid())
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
-  projectId String            @unique
-  project   Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  status    IndexingJobStatus @default(queued)
-  progress  Int               @default(0)
-  error     String?           @db.Text
-  lockedAt  DateTime?
-  lockedBy  String?
+  id             String            @id @default(uuid())
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  projectId      String            @unique
+  project        Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  status         IndexingJobStatus @default(queued)
+  progress       Int               @default(0)
+  error          String?           @db.Text
+  lockedAt       DateTime?
+  lockedBy       String?
+  phase          IndexingPhase     @default(fast)
+  filesTotal     Int               @default(0)
+  filesProcessed Int               @default(0)
+  lastCommitSha  String?
+  resumeAfter    String?           @db.Text
 
   @@index([status, lockedAt])
   @@index([projectId])
@@ -158,6 +165,39 @@ model IndexingJob {
 enum IndexingJobStatus {
   queued
   processing
+  completed
+  failed
+}
+
+enum IndexingPhase {
+  fast
+  full
+}
+
+model BackgroundJob {
+  id          String                @id @default(uuid())
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  completedAt DateTime?
+  userId      String
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId   String
+  project     Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  kind        BackgroundJobKind
+  status      BackgroundJobStatus   @default(running)
+  error       String?               @db.Text
+
+  @@index([userId, projectId, kind, createdAt(sort: Desc)])
+  @@index([projectId, kind, status])
+}
+
+enum BackgroundJobKind {
+  readme_regen
+  docs_regen
+}
+
+enum BackgroundJobStatus {
+  running
   completed
   failed
 }

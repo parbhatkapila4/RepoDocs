@@ -196,7 +196,7 @@ export default function ObservabilityPage() {
                 <p className="text-2xl font-bold text-white">
                   {data.avgMemorySimilarity != null
                     ? data.avgMemorySimilarity.toFixed(2)
-                    : "—"}
+                    : "-"}
                 </p>
               </div>
               <div className="bg-[#1a1a1a] border border-[#333] rounded-lg p-4">
@@ -328,7 +328,7 @@ export default function ObservabilityPage() {
                       <p className="text-white font-mono">
                         {(data.coldStartLatencyAvg ?? 0) > 0
                           ? `${(data.coldStartLatencyAvg ?? 0).toFixed(0)} ms`
-                          : "—"}
+                          : "-"}
                       </p>
                     </div>
                     <div>
@@ -336,7 +336,7 @@ export default function ObservabilityPage() {
                       <p className="text-white font-mono">
                         {(data.warmLatencyAvg ?? 0) > 0
                           ? `${(data.warmLatencyAvg ?? 0).toFixed(0)} ms`
-                          : "—"}
+                          : "-"}
                       </p>
                     </div>
                   </div>
@@ -357,7 +357,7 @@ export default function ObservabilityPage() {
                       <p className="text-white font-mono">
                         {data.cacheHitRate != null && data.totalQueries > 0
                           ? `${(data.cacheHitRate * 100).toFixed(1)}%`
-                          : "—"}
+                          : "-"}
                       </p>
                     </div>
                     <div>
@@ -367,7 +367,7 @@ export default function ObservabilityPage() {
                       <p className="text-white font-mono">
                         {(data.avgLatencyCacheHit ?? 0) > 0
                           ? `${(data.avgLatencyCacheHit ?? 0).toFixed(0)} ms`
-                          : "—"}
+                          : "-"}
                       </p>
                     </div>
                     <div>
@@ -377,7 +377,7 @@ export default function ObservabilityPage() {
                       <p className="text-white font-mono">
                         {(data.avgLatencyCacheMiss ?? 0) > 0
                           ? `${(data.avgLatencyCacheMiss ?? 0).toFixed(0)} ms`
-                          : "—"}
+                          : "-"}
                       </p>
                     </div>
                   </div>
@@ -420,7 +420,7 @@ export default function ObservabilityPage() {
                             {row.routeType}
                           </td>
                           <td className="px-4 py-3 text-[#888] text-sm max-w-md truncate" title={row.errorMessage ?? undefined}>
-                            {row.errorMessage ?? "—"}
+                            {row.errorMessage ?? "-"}
                           </td>
                         </tr>
                       ))}
