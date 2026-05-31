@@ -1,6 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { createGitHubOctokit } from "@/lib/github-octokit";
+import { z } from "zod";
+import {
+  rateLimit,
+  getRateLimitIdentifier,
+  rateLimitResponse,
+  RATE_LIMITS,
+} from "@/lib/rate-limiter";
+
+const SearchSchema = z.object({
+  query: z.string().trim().min(1),
+  backendLanguages: z.array(z.string()).optional().default([]),
+  frontendLanguages: z.array(z.string()).optional().default([]),
+  databases: z.array(z.string()).optional().default([]),
+  page: z.number().int().positive().optional().default(1),
+  perPage: z.number().int().positive().max(100).optional().default(10),
+});
 
 export interface SearchFilters {
   query: string;
@@ -36,22 +52,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body: SearchFilters = await request.json();
-    const {
-      query,
-      backendLanguages = [],
-      frontendLanguages = [],
-      databases = [],
-      page = 1,
-      perPage = 10,
-    } = body;
+    const rl = await rateLimit(
+      getRateLimitIdentifier(request, userId),
+      RATE_LIMITS.API
+    );
+    if (!rl.success) return rateLimitResponse(rl.resetTime);
 
-    if (!query || query.trim().length === 0) {
+    const parsed = SearchSchema.safeParse(
+      await request.json().catch(() => null)
+    );
+    if (!parsed.success) {
       return NextResponse.json(
         { error: "Search query is required" },
         { status: 400 }
       );
     }
+    const {
+      query,
+      backendLanguages,
+      frontendLanguages,
+      databases,
+      page,
+      perPage,
+    } = parsed.data;
 
     let searchQuery = query.trim();
 
@@ -139,7 +162,7 @@ export async function POST(request: NextRequest) {
           language: repo.language,
           stars: repo.stargazers_count,
           forks: repo.forks_count,
-          updatedAt: repo.updated_at,
+          updatedAt: repo.pushed_at ?? repo.updated_at,
           owner: {
             login: repo.owner!.login,
             avatarUrl: repo.owner!.avatar_url,

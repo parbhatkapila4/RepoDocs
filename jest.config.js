@@ -6,11 +6,14 @@ const createJestConfig = nextJest({
 
 const customJestConfig = {
   setupFilesAfterEnv: ["<rootDir>/jest.setup.js"],
-  testEnvironment: "jest-environment-jsdom",
+  testEnvironment: "jest-environment-node",
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
   },
   testPathIgnorePatterns: ["/node_modules/", "/.next/"],
+  transformIgnorePatterns: [
+    "/node_modules/(?!(?:octokit|@octokit|before-after-hook|universal-user-agent|@langchain|@google)/)",
+  ],
   collectCoverageFrom: [
     "src/**/*.{js,jsx,ts,tsx}",
     "!src/**/*.d.ts",

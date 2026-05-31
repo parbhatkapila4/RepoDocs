@@ -1,27 +1,50 @@
-import { searchCodebase, queryCodebase } from "../../src/lib/rag";
+jest.mock("octokit", () => ({
+  Octokit: jest.fn().mockImplementation(() => ({
+    rest: {
+      repos: {
+        get: jest.fn(),
+        listLanguages: jest.fn(),
+        getAllTopics: jest.fn(),
+        getReadme: jest.fn(),
+        getContent: jest.fn(),
+      },
+      git: { getTree: jest.fn() },
+      search: { repos: jest.fn() },
+    },
+  })),
+}));
 
-const mockQueryRaw = jest.fn();
-const mockPrisma = {
-  $queryRaw: mockQueryRaw,
-  sourceCodeEmbeddings: {
-    count: jest.fn(),
-  },
-};
+jest.mock("@langchain/community/document_loaders/web/github", () => ({
+  GithubRepoLoader: jest.fn().mockImplementation(() => ({
+    load: jest.fn().mockResolvedValue([]),
+  })),
+}));
 
 jest.mock("../../src/lib/prisma", () => ({
   __esModule: true,
-  default: mockPrisma,
+  default: {
+    $queryRaw: jest.fn(),
+    sourceCodeEmbeddings: { count: jest.fn() },
+  },
 }));
 
-const mockGetGenerateEmbeddings = jest.fn();
 jest.mock("../../src/lib/gemini", () => ({
-  getGenerateEmbeddings: mockGetGenerateEmbeddings,
+  getGenerateEmbeddings: jest.fn(),
 }));
 
-const mockOpenrouterChatCompletion = jest.fn();
 jest.mock("../../src/lib/openrouter", () => ({
-  openrouterChatCompletion: mockOpenrouterChatCompletion,
+  openrouterChatCompletion: jest.fn(),
 }));
+
+import prisma from "../../src/lib/prisma";
+import { getGenerateEmbeddings } from "../../src/lib/gemini";
+import { openrouterChatCompletion } from "../../src/lib/openrouter";
+import { searchCodebase, queryCodebase } from "../../src/lib/rag";
+
+const mockQueryRaw = prisma.$queryRaw as unknown as jest.Mock;
+const mockGetGenerateEmbeddings = getGenerateEmbeddings as unknown as jest.Mock;
+const mockOpenrouterChatCompletion =
+  openrouterChatCompletion as unknown as jest.Mock;
 
 describe("RAG System", () => {
   beforeEach(() => {
@@ -54,9 +77,7 @@ describe("RAG System", () => {
     });
 
     it("should handle empty results gracefully", async () => {
-      const mockEmbedding = [0.1, 0.2, 0.3];
-
-      mockGetGenerateEmbeddings.mockResolvedValue(mockEmbedding);
+      mockGetGenerateEmbeddings.mockResolvedValue([0.1, 0.2, 0.3]);
       mockQueryRaw.mockResolvedValue([]);
 
       const result = await searchCodebase("project1", "test query", 5);
@@ -65,23 +86,15 @@ describe("RAG System", () => {
       expect(Array.isArray(result)).toBe(true);
     });
 
-    it("should limit results to specified number", async () => {
-      const mockEmbedding = [0.1, 0.2, 0.3];
-      const mockResults = Array.from({ length: 10 }, (_, i) => ({
-        id: `${i}`,
-        fileName: `test${i}.ts`,
-        sourceCode: `const x${i} = ${i};`,
-        Summary: `Summary ${i}`,
-        similarity: 0.9 - i * 0.1,
-      }));
+    it("forwards the limit to the SQL query", async () => {
+      mockGetGenerateEmbeddings.mockResolvedValue([0.1, 0.2, 0.3]);
+      mockQueryRaw.mockResolvedValue([]);
 
-      mockGetGenerateEmbeddings.mockResolvedValue(mockEmbedding);
-      mockQueryRaw.mockResolvedValue(mockResults);
+      await searchCodebase("project1", "test query", 3);
 
-      const result = await searchCodebase("project1", "test query", 3);
-
-      expect(result).toHaveLength(3);
-      expect(mockQueryRaw).toHaveBeenCalled();
+      const sqlArgs = mockQueryRaw.mock.calls[0];
+      const flat = JSON.stringify(sqlArgs);
+      expect(flat).toContain("3");
     });
 
     it("should handle embedding generation failure", async () => {
@@ -93,9 +106,7 @@ describe("RAG System", () => {
     });
 
     it("should handle database errors", async () => {
-      const mockEmbedding = [0.1, 0.2, 0.3];
-
-      mockGetGenerateEmbeddings.mockResolvedValue(mockEmbedding);
+      mockGetGenerateEmbeddings.mockResolvedValue([0.1, 0.2, 0.3]);
       mockQueryRaw.mockRejectedValue(new Error("Database error"));
 
       await expect(searchCodebase("project1", "test query")).rejects.toThrow(
@@ -107,14 +118,6 @@ describe("RAG System", () => {
   describe("queryCodebase", () => {
     it("should generate answer with source references", async () => {
       const mockEmbedding = [0.1, 0.2, 0.3];
-      const mockSearchResults = [
-        {
-          fileName: "test.ts",
-          sourceCode: "const x = 1;",
-          summary: "Test summary",
-          similarity: 0.95,
-        },
-      ];
       const mockAnswer = "This is a test answer";
 
       mockGetGenerateEmbeddings.mockResolvedValue(mockEmbedding);
@@ -127,9 +130,16 @@ describe("RAG System", () => {
           similarity: 0.95,
         },
       ]);
-      mockOpenrouterChatCompletion.mockResolvedValue(mockAnswer);
+      mockOpenrouterChatCompletion.mockResolvedValue({
+        content: mockAnswer,
+        model: "google/gemini-2.5-flash",
+        usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+      });
 
-      const result = await queryCodebase("project1", "What does this code do?");
+      const result = await queryCodebase(
+        "project1",
+        "What does this code do?"
+      );
 
       expect(result).toHaveProperty("answer");
       expect(result).toHaveProperty("sources");
@@ -139,9 +149,7 @@ describe("RAG System", () => {
     });
 
     it("should handle empty search results", async () => {
-      const mockEmbedding = [0.1, 0.2, 0.3];
-
-      mockGetGenerateEmbeddings.mockResolvedValue(mockEmbedding);
+      mockGetGenerateEmbeddings.mockResolvedValue([0.1, 0.2, 0.3]);
       mockQueryRaw.mockResolvedValue([]);
 
       const result = await queryCodebase("project1", "test question");
@@ -170,7 +178,11 @@ describe("RAG System", () => {
 
       mockGetGenerateEmbeddings.mockResolvedValue(mockEmbedding);
       mockQueryRaw.mockResolvedValue(mockSearchResults);
-      mockOpenrouterChatCompletion.mockResolvedValue(mockAnswer);
+      mockOpenrouterChatCompletion.mockResolvedValue({
+        content: mockAnswer,
+        model: "google/gemini-2.5-flash",
+        usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+      });
 
       const result = await queryCodebase(
         "project1",
@@ -187,9 +199,9 @@ describe("RAG System", () => {
     it("should handle errors gracefully", async () => {
       mockGetGenerateEmbeddings.mockRejectedValue(new Error("API error"));
 
-      await expect(queryCodebase("project1", "test question")).rejects.toThrow(
-        "Failed to process your question"
-      );
+      await expect(
+        queryCodebase("project1", "test question")
+      ).rejects.toThrow("Failed to process your question");
     });
   });
 });

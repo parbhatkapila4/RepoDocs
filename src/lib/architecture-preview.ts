@@ -241,7 +241,7 @@ export function previewToCopyText(
   }
   const omit =
     gapHi >= gapLo
-      ? `\n\n// … lines ${gapLo}–${gapHi} omitted …\n\n`
+      ? `\n\n// … lines ${gapLo}-${gapHi} omitted …\n\n`
       : "\n\n";
   return `${a.code}${omit}${b.code}`;
 }

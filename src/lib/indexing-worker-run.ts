@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { indexGithubRepository } from "@/lib/github";
+import { decryptSecret } from "@/lib/secret-crypto";
 
 const JOB_LEASE_DURATION_MS = 5 * 60 * 1000;
 
@@ -45,9 +46,16 @@ async function findEligibleJob() {
   return candidates[0];
 }
 
-async function leaseJob(jobId: string, workerId: string) {
-  await prisma.indexingJob.update({
-    where: { id: jobId },
+async function claimJob(jobId: string, workerId: string): Promise<boolean> {
+  const leaseExpiry = new Date(Date.now() - JOB_LEASE_DURATION_MS);
+  const res = await prisma.indexingJob.updateMany({
+    where: {
+      id: jobId,
+      OR: [
+        { status: "queued", lockedAt: null },
+        { status: "processing", lockedAt: { lt: leaseExpiry } },
+      ],
+    },
     data: {
       status: "processing",
       progress: 1,
@@ -56,6 +64,7 @@ async function leaseJob(jobId: string, workerId: string) {
       updatedAt: new Date(),
     },
   });
+  return res.count === 1;
 }
 
 async function processIndexingJob(job: {
@@ -82,7 +91,7 @@ async function processIndexingJob(job: {
   return indexGithubRepository(
     projectId,
     project.repoUrl,
-    project.githubToken || undefined,
+    decryptSecret(project.githubToken) || undefined,
     onProgress
   );
 }
@@ -108,7 +117,16 @@ export async function runIndexingWorkerOnce(): Promise<IndexingWorkerHttpResult>
     console.log(
       `[Worker ${workerId}] Processing job ${job.id} for project ${job.projectId} (phase: ${job.phase})`
     );
-    await leaseJob(job.id, workerId);
+    const claimed = await claimJob(job.id, workerId);
+    if (!claimed) {
+      console.log(
+        `[Worker ${workerId}] Job ${job.id} was claimed by another worker; skipping`
+      );
+      return {
+        status: 200,
+        body: { status: "contended", message: "Job already claimed" },
+      };
+    }
 
     try {
       const result = await processIndexingJob(job, workerId);

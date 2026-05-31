@@ -7,6 +7,12 @@ import {
   extractCodePreview,
   inferPrismLanguage,
 } from "@/lib/architecture-preview";
+import {
+  rateLimit,
+  getRateLimitIdentifier,
+  rateLimitResponse,
+  RATE_LIMITS,
+} from "@/lib/rate-limiter";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -18,6 +24,12 @@ export async function GET(request: NextRequest) {
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const rl = await rateLimit(
+      getRateLimitIdentifier(request, userId),
+      RATE_LIMITS.API
+    );
+    if (!rl.success) return rateLimitResponse(rl.resetTime);
 
     const dbUserId = await getDbUserId(userId);
     if (!dbUserId) {

@@ -1,8 +1,7 @@
-
 function RGBColor(color) {
   this.ok = false;
-  
-  if (typeof color === 'string') {
+
+  if (typeof color === "string") {
     const hexMatch = color.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
     if (hexMatch) {
       this.r = parseInt(hexMatch[1], 16);
@@ -19,21 +18,23 @@ function RGBColor(color) {
       }
     }
   }
-  
+
   if (!this.ok) {
     this.r = this.g = this.b = 0;
   }
 }
 
-RGBColor.prototype.toRGB = function() {
-  return 'rgb(' + this.r + ',' + this.g + ',' + this.b + ')';
+RGBColor.prototype.toRGB = function () {
+  return "rgb(" + this.r + "," + this.g + "," + this.b + ")";
 };
 
-RGBColor.prototype.toHex = function() {
-  return '#' + 
-    ('0' + this.r.toString(16)).slice(-2) +
-    ('0' + this.g.toString(16)).slice(-2) +
-    ('0' + this.b.toString(16)).slice(-2);
+RGBColor.prototype.toHex = function () {
+  return (
+    "#" +
+    ("0" + this.r.toString(16)).slice(-2) +
+    ("0" + this.g.toString(16)).slice(-2) +
+    ("0" + this.b.toString(16)).slice(-2)
+  );
 };
 
 module.exports = RGBColor;

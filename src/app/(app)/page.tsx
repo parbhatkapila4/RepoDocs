@@ -4,17 +4,19 @@ import { useEffect, Suspense, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useUser } from "@/hooks/useUser";
-import { useAuth } from "@clerk/nextjs";
 import {
   Navigation,
-  Hero,
-  Features,
-  HowItWorks,
-  Demo,
-  SocialProof,
-  FinalCTA,
   Footer,
+  CommandPalette,
 } from "@/components/landing";
+
+import HeroRig from "@/components/landing/HeroRig";
+import RigProblem from "@/components/landing/rig/RigProblem";
+import RigIntro from "@/components/landing/rig/RigIntro";
+import RigSpotlight from "@/components/landing/rig/RigSpotlight";
+import RigApproach from "@/components/landing/rig/RigApproach";
+import RigCapabilities from "@/components/landing/rig/RigCapabilities";
+import RigEngineered from "@/components/landing/rig/RigEngineered";
 
 function PaymentStatusHandler() {
   const searchParams = useSearchParams();
@@ -39,24 +41,13 @@ function PaymentStatusHandler() {
 
       const syncAndRedirect = async () => {
         try {
-          const response = await fetch("/api/sync-plan", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ forcePlan: plan }),
-          });
-
-          const result = await response.json();
-
-          await new Promise((resolve) => setTimeout(resolve, 500));
-
+          await new Promise((resolve) => setTimeout(resolve, 800));
           await refreshUser();
-
-          setTimeout(() => {
-            router.push("/dashboard");
-          }, 500);
-        } catch (error) {
-          router.push("/dashboard");
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          await refreshUser();
+        } catch {
         }
+        router.push("/dashboard");
       };
 
       syncAndRedirect();
@@ -84,30 +75,19 @@ function PaymentStatusHandler() {
 
 function LandingPageContent() {
   return (
-    <div className="min-h-screen bg-[#0a0a0a]">
+    <div className="min-h-screen bg-[#040406]">
       <Navigation />
-      <Hero />
-      <Features />
-      <HowItWorks />
-      <Demo />
-      <SocialProof />
-      <FinalCTA />
+      <HeroRig />
+      <RigProblem />
+      <RigIntro />
+      <RigSpotlight />
+      <RigApproach />
+      <RigCapabilities />
+      <RigEngineered />
       <Footer />
+      <CommandPalette />
     </div>
   );
-}
-
-function SignedInRedirect() {
-  const { isLoaded, isSignedIn } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (isLoaded && isSignedIn) {
-      router.replace("/dashboard");
-    }
-  }, [isLoaded, isSignedIn, router]);
-
-  return null;
 }
 
 export default function LandingPage() {
@@ -121,7 +101,6 @@ export default function LandingPage() {
         </div>
       }
     >
-      <SignedInRedirect />
       <PaymentStatusHandler />
       <LandingPageContent />
     </Suspense>

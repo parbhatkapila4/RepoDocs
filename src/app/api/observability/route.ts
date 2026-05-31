@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import prisma from "@/lib/prisma";
 import { getDbUserId } from "@/lib/get-db-user-id";
+import {
+  rateLimit,
+  getRateLimitIdentifier,
+  rateLimitResponse,
+  RATE_LIMITS,
+} from "@/lib/rate-limiter";
 
 export const runtime = "nodejs";
 
@@ -17,6 +23,12 @@ export async function GET(request: NextRequest) {
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const rl = await rateLimit(
+    getRateLimitIdentifier(request, userId),
+    RATE_LIMITS.API
+  );
+  if (!rl.success) return rateLimitResponse(rl.resetTime);
 
   const dbUserId = await getDbUserId(userId);
   if (!dbUserId) {

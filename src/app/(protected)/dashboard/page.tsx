@@ -32,6 +32,8 @@ import { toast } from "sonner";
 import GitHubRateLimitNotice, {
   isRateLimitError,
 } from "@/components/GitHubRateLimitNotice";
+import Image from "next/image";
+import { LoadingButton } from "@/components/LoadingButton";
 
 const terminalColors = {
   green: "#50fa7b",
@@ -51,6 +53,7 @@ function ReposPage() {
     currentRepository: repoInfo,
     isLoading: loading,
     error,
+    lastFetched,
     fetchRepository,
     refreshRepository,
   } = useRepository();
@@ -60,20 +63,15 @@ function ReposPage() {
 
   const currentProject = projects.find((p) => p.id === selectedProjectId);
 
-  const fetchRepoInfo = useCallback(async () => {
-    if (!currentProject?.repoUrl) {
-      return;
-    }
+  const REPO_CACHE_TTL_MS = 10 * 60 * 1000;
 
-    try {
-      const info = await fetchRepository(currentProject.repoUrl);
-      if (info) {
-        toast.success("Repository information loaded successfully");
-      }
-    } catch (err) {
-      console.error("Error fetching repo info:", err);
-    }
-  }, [currentProject?.repoUrl, fetchRepository]);
+  const isCachedFresh = useCallback(() => {
+    if (!currentProject?.repoUrl) return false;
+    if (!repoInfo || repoInfo.htmlUrl !== currentProject.repoUrl) return false;
+    if (!lastFetched) return false;
+    const ageMs = Date.now() - new Date(lastFetched).getTime();
+    return ageMs < REPO_CACHE_TTL_MS;
+  }, [currentProject?.repoUrl, repoInfo, lastFetched]);
 
   const handleRefresh = useCallback(async () => {
     if (!currentProject?.repoUrl) {
@@ -91,22 +89,12 @@ function ReposPage() {
   }, [currentProject?.repoUrl, refreshRepository]);
 
   useEffect(() => {
-    if (currentProject?.repoUrl) {
-      fetchRepoInfo();
-    }
-  }, [currentProject?.repoUrl, fetchRepoInfo]);
-
-  useEffect(() => {
-    const mainElement = document.querySelector('main[data-slot="sidebar-inset"]');
-    if (mainElement) {
-      (mainElement as HTMLElement).style.backgroundColor = '#000000';
-    }
-    return () => {
-      if (mainElement) {
-        (mainElement as HTMLElement).style.backgroundColor = '';
-      }
-    };
-  }, []);
+    if (!currentProject?.repoUrl) return;
+    if (isCachedFresh()) return;
+    void fetchRepository(currentProject.repoUrl).catch((err) => {
+      console.error("Error fetching repo info:", err);
+    });
+  }, [currentProject?.repoUrl, fetchRepository, isCachedFresh]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -184,14 +172,15 @@ function ReposPage() {
           <p className="text-[#b8b8b8] text-sm leading-relaxed mb-4">
             {loadError}
           </p>
-          <button
+          <LoadingButton
             type="button"
             onClick={() => void loadProjects()}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm font-medium transition-colors"
+            loading={loading}
+            className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm font-medium transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
             Retry
-          </button>
+          </LoadingButton>
         </motion.div>
       </div>
     );
@@ -230,17 +219,7 @@ function ReposPage() {
   }
 
   return (
-    <div
-      className="bg-black relative w-full min-h-screen"
-      style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        minHeight: "100%",
-      }}
-    >
+    <div className="bg-black relative w-full min-h-screen md:absolute md:inset-0 md:min-h-full">
       <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-[#333] to-transparent z-10" />
 
       <div className="relative max-w-6xl mx-auto px-6 py-12 z-10 pb-20">
@@ -258,16 +237,14 @@ function ReposPage() {
                 {currentProject.name}
               </h1>
             </div>
-            <button
+            <LoadingButton
               onClick={handleRefresh}
-              disabled={loading}
-              className="group px-4 py-2 bg-[#1a1a1a] text-white font-medium rounded-lg flex items-center gap-2 hover:bg-[#252525] transition-colors border border-[#333] hover:border-[#444] disabled:opacity-50"
+              loading={loading}
+              className="group px-4 py-2 bg-[#1a1a1a] text-white font-medium rounded-lg hover:bg-[#252525] transition-colors border border-[#333] hover:border-[#444] disabled:opacity-50"
             >
-              <RefreshCw
-                className={`w-4 h-4 ${loading ? "animate-spin" : "group-hover:rotate-180 transition-transform duration-500"}`}
-              />
-              {loading ? "Loading..." : "Refresh"}
-            </button>
+              <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
+              Refresh
+            </LoadingButton>
           </div>
         </motion.div>
 
@@ -467,10 +444,13 @@ function ReposPage() {
                   Owner
                 </span>
                 <div className="flex items-center gap-3 mt-3">
-                  <img
+                  <Image
                     src={repoInfo.owner.avatarUrl}
                     alt={repoInfo.owner.login}
+                    width={40}
+                    height={40}
                     className="w-10 h-10 rounded-full border border-[#333]"
+                    unoptimized
                   />
                   <div>
                     <p className="text-white font-medium text-sm">
@@ -555,8 +535,8 @@ function ReposPage() {
                     <div
                       key={feature.label}
                       className={`flex items-center gap-2 p-3 rounded-lg ${feature.enabled
-                          ? "bg-green-500/10 border border-green-500/20"
-                          : "bg-[#252525] border border-[#333]"
+                        ? "bg-green-500/10 border border-green-500/20"
+                        : "bg-[#252525] border border-[#333]"
                         }`}
                     >
                       <feature.icon

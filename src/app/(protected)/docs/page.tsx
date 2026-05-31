@@ -52,8 +52,6 @@ import {
   Check,
   MessageSquare,
   Send,
-  History,
-  Bot,
   Share2,
   Link,
   X,
@@ -65,39 +63,37 @@ import {
   ChevronLeft,
   ChevronRight,
   Trash2,
-  MoreVertical,
   Crown,
   Lock,
   Download,
 } from "lucide-react";
 import NextLink from "next/link";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import GitHubRateLimitNotice, {
   isRateLimitError,
 } from "@/components/GitHubRateLimitNotice";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { exportMarkdownToPdf } from "@/lib/export-pdf";
+import {
+  exportMarkdownToDocx,
+  exportMarkdownToFile,
+} from "@/lib/export-docx";
+import {
+  fetchProjectRepositoryInfo,
+  type RepositoryInfoResult,
+} from "@/lib/repository-info";
+import {
+  DeleteQnaDialog,
+  DeleteAllQnaDialog,
+} from "@/components/docs-readme/QnaDialogs";
+import { QnaPanel } from "@/components/docs-readme/QnaPanel";
 
 interface DocsData {
   id: string;
@@ -128,201 +124,6 @@ interface DocsWithQna extends DocsData {
   qnaHistory?: QnaRecord[];
 }
 
-interface DocsQnaPanelProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  isProcessingQna: boolean;
-  qnaHistory: QnaRecord[];
-  onSubmit: (question: string) => Promise<boolean>;
-  onDelete: (qnaId: string) => void;
-  onDeleteAll: () => void;
-}
-
-function DocsQnaPanel({
-  open,
-  onOpenChange,
-  isProcessingQna,
-  qnaHistory,
-  onSubmit,
-  onDelete,
-  onDeleteAll,
-}: DocsQnaPanelProps) {
-  const [questionValue, setQuestionValue] = useState("");
-
-  const handleSubmit = async () => {
-    const q = questionValue.trim();
-    if (!q) return;
-    const success = await onSubmit(q);
-    if (success) setQuestionValue("");
-  };
-
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        className="min-w-[300px] sm:min-w-[400px] md:min-w-[500px] w-[90vw] sm:w-[400px] md:w-[500px] bg-black/30 border-l border-white/10 backdrop-blur-md px-2 sm:px-4"
-      >
-        <SheetHeader className="pb-4 sm:pb-6">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="p-1.5 sm:p-2 bg-blue-500/20 border border-blue-500/30 rounded-lg w-8 h-8 sm:w-10 sm:h-10 shrink-0">
-              <Bot className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <SheetTitle className="text-lg sm:text-xl md:text-2xl font-semibold text-white leading-tight mobile-no-truncate">
-                Ask a question
-              </SheetTitle>
-              <SheetDescription className="text-white/60 text-xs sm:text-sm mt-1 mobile-no-truncate">
-                Modify your documentation
-              </SheetDescription>
-            </div>
-          </div>
-        </SheetHeader>
-
-        <div className="pb-4 sm:pb-6 border-b border-white/10">
-          <div className="space-y-4 sm:space-y-6">
-            <textarea
-              value={questionValue}
-              onChange={(e) => setQuestionValue(e.target.value)}
-              placeholder="Which file contains authentication logic?"
-              className="w-full h-[60px] sm:h-[80px] p-2 sm:p-3 bg-black/30 border border-white/20 rounded-lg resize-none text-sm sm:text-base text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent mobile-no-truncate"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && e.ctrlKey) {
-                  e.preventDefault();
-                  handleSubmit();
-                }
-              }}
-              autoComplete="off"
-              autoCorrect="off"
-              autoCapitalize="off"
-              spellCheck="false"
-            />
-            <Button
-              onClick={handleSubmit}
-              disabled={isProcessingQna || !questionValue.trim()}
-              className="w-full bg-red-600 hover:bg-red-700 text-white py-2 sm:py-3 rounded-lg transition-colors h-[40px] sm:h-[48px] text-sm sm:text-base font-medium"
-            >
-              {isProcessingQna ? (
-                <>
-                  <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin shrink-0" />
-                  <span className="mobile-no-truncate">Processing...</span>
-                </>
-              ) : (
-                <span className="mobile-no-truncate">Ask RepoDocs</span>
-              )}
-            </Button>
-          </div>
-        </div>
-
-        <div className="flex-1 mt-4 sm:mt-6 overflow-hidden">
-          <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <div className="flex items-center gap-1 sm:gap-2">
-              <History className="h-3 w-3 sm:h-4 sm:w-4 text-white/60 shrink-0" />
-              <h4 className="text-sm sm:text-base font-medium text-white/80 mobile-no-truncate">
-                Recent Questions
-              </h4>
-            </div>
-            {qnaHistory.length > 0 && (
-              <Button
-                onClick={onDeleteAll}
-                variant="outline"
-                size="sm"
-                className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/30 text-xs px-2 sm:px-3 py-1 h-6 sm:h-7"
-              >
-                <Trash2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1 shrink-0" />
-                <span className="mobile-no-truncate">Clear All</span>
-              </Button>
-            )}
-          </div>
-
-          <ScrollArea className="h-full max-h-[400px]">
-            <div className="pr-4">
-              {qnaHistory.length > 0 ? (
-                <div className="space-y-3 sm:space-y-4">
-                  {qnaHistory.map((qna) => (
-                    <div
-                      key={qna.id}
-                      className="bg-black/30 border border-white/10 rounded-lg p-3 sm:p-4"
-                    >
-                      <div className="space-y-2 sm:space-y-3">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-white/90 text-sm sm:text-base font-medium mb-1 mobile-no-truncate">
-                              Your Question:
-                            </p>
-                            <p className="text-white/70 text-sm sm:text-base wrap-break-word mobile-no-truncate">
-                              {qna.question}
-                            </p>
-                          </div>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-5 w-5 sm:h-6 sm:w-6 p-0 text-white/50 hover:text-white/80 hover:bg-white/10 ml-1 sm:ml-2 shrink-0"
-                              >
-                                <MoreVertical className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent
-                              align="end"
-                              className="bg-gray-800 border-white/20"
-                            >
-                              <DropdownMenuItem
-                                onClick={() => onDelete(qna.id)}
-                                className="text-red-400 hover:bg-red-500/10 focus:bg-red-500/10"
-                              >
-                                <Trash2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1 sm:mr-2" />
-                                <span className="mobile-no-truncate">Delete</span>
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-
-                        <div>
-                          <p className="text-white/90 text-sm sm:text-base font-medium mb-1 mobile-no-truncate">
-                            AI Response:
-                          </p>
-                          <p className="text-white/70 text-sm sm:text-base wrap-break-word mobile-no-truncate">
-                            {qna.answer}
-                          </p>
-                        </div>
-
-                        <div className="flex items-center gap-1 sm:gap-2 text-xs text-white/50 pt-1 sm:pt-2 border-t border-white/10">
-                          <Clock className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />
-                          <span className="mobile-no-truncate">
-                            {new Date(qna.createdAt).toLocaleString()}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-6 sm:py-8">
-                  <div className="p-3 sm:p-4 bg-black/30 border border-white/20 rounded-2xl mb-3 sm:mb-4 inline-block">
-                    <MessageSquare className="h-6 w-6 sm:h-8 sm:w-8 text-white/50" />
-                  </div>
-                  <h4 className="text-sm sm:text-base font-semibold text-white mb-2 mobile-no-truncate">
-                    No questions yet
-                  </h4>
-                  <p className="text-white/60 text-xs sm:text-sm mb-3 sm:mb-4 mobile-no-truncate">
-                    Ask questions to modify your documentation
-                  </p>
-                  <div className="space-y-1 text-xs text-white/50">
-                    <p className="mobile-no-truncate">Try asking:</p>
-                    <p className="mobile-no-truncate">&quot;Add API examples&quot;</p>
-                    <p className="mobile-no-truncate">&quot;Update installation guide&quot;</p>
-                    <p className="mobile-no-truncate">&quot;Add troubleshooting section&quot;</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-        </div>
-      </SheetContent>
-    </Sheet>
-  );
-}
 
 function DocsPage() {
   const { selectedProjectId, projects } = useProjectsContext();
@@ -464,7 +265,10 @@ function DocsPage() {
   );
 
   const parseDocsMetadata = useCallback(
-    (content: string, repositoryInfo?: any): DocsMetadata => {
+    (
+      content: string,
+      repositoryInfo?: RepositoryInfoResult | null
+    ): DocsMetadata => {
       const lines = content.split("\n");
       let title = "Technical Documentation";
       let description = "";
@@ -486,9 +290,12 @@ function DocsPage() {
 
       let stars = repositoryInfo?.stars ?? repositoryInfo?.stargazersCount ?? 0;
       let forks = repositoryInfo?.forks ?? repositoryInfo?.forksCount ?? 0;
-      let language = repositoryInfo?.language || null;
-      let license =
-        repositoryInfo?.license?.name || repositoryInfo?.license || null;
+      let language: string | null = repositoryInfo?.language || null;
+      const rawLicense = repositoryInfo?.license;
+      let license: string | null =
+        (typeof rawLicense === "object" && rawLicense?.name) ||
+        (typeof rawLicense === "string" ? rawLicense : null) ||
+        null;
 
       const hasValidRepoInfo =
         repositoryInfo &&
@@ -549,115 +356,8 @@ function DocsPage() {
   };
 
   const fetchRepositoryInfo = useCallback(
-    async (
-      projectId: string,
-      repoUrl: string | null | undefined
-    ): Promise<any> => {
-      if (!repoUrl) return null;
-
-      const strategies = [
-        async () => {
-          try {
-            const { getProjectWithToken } = await import("@/lib/actions");
-            const projectData = await getProjectWithToken(projectId);
-            if (projectData?.githubToken && projectData?.repoUrl) {
-              const { getGitHubRepositoryInfo } = await import("@/lib/github");
-              const info = await getGitHubRepositoryInfo(
-                projectData.repoUrl,
-                projectData.githubToken
-              );
-              if (
-                info &&
-                (info.stars > 0 ||
-                  info.stargazersCount > 0 ||
-                  info.language ||
-                  info.license)
-              ) {
-                return info;
-              }
-            }
-          } catch {
-          }
-          return null;
-        },
-
-        async () => {
-          try {
-            const { getProjectWithToken } = await import("@/lib/actions");
-            const projectData = await getProjectWithToken(projectId);
-            if (projectData?.githubToken) {
-              const { getGitHubRepositoryInfo } = await import("@/lib/github");
-              const info = await getGitHubRepositoryInfo(
-                repoUrl,
-                projectData.githubToken
-              );
-              if (
-                info &&
-                (info.stars > 0 ||
-                  info.stargazersCount > 0 ||
-                  info.language ||
-                  info.license)
-              ) {
-                return info;
-              }
-            }
-          } catch {
-          }
-          return null;
-        },
-
-        async () => {
-          try {
-            const { getGitHubRepositoryInfo } = await import("@/lib/github");
-            const info = await getGitHubRepositoryInfo(repoUrl, undefined);
-            if (
-              info &&
-              (info.stars > 0 ||
-                info.stargazersCount > 0 ||
-                info.language ||
-                info.license)
-            ) {
-              return info;
-            }
-          } catch {
-          }
-          return null;
-        },
-
-        async () => {
-          try {
-            const { fetchRepositoryInfo } = await import("@/lib/actions");
-            const result = await fetchRepositoryInfo(repoUrl);
-            if ("error" in result) return null;
-            const info = result.data;
-            if (
-              info &&
-              (info.stars > 0 ||
-                info.stargazersCount > 0 ||
-                info.language ||
-                info.license)
-            ) {
-              return info;
-            }
-          } catch {
-          }
-          return null;
-        },
-      ];
-
-      for (const strategy of strategies) {
-        try {
-          const result = await strategy();
-          if (result) {
-            return result;
-          }
-        } catch {
-          continue;
-        }
-      }
-
-      return null;
-    },
+    (projectId: string, repoUrl: string | null | undefined) =>
+      fetchProjectRepositoryInfo(projectId, repoUrl),
     []
   );
 
@@ -952,317 +652,40 @@ function DocsPage() {
 
   const handleDownloadMarkdown = () => {
     if (!docsData?.content) return;
-
-    const blob = new Blob([docsData.content], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${selectedProject?.name || "documentation"}-docs.md`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-
-    toast.success("Documentation downloaded as Markdown!");
+    exportMarkdownToFile({
+      markdown: docsData.content,
+      fileName: `${selectedProject?.name || "documentation"}-docs.md`,
+    });
+    toast.success("Documentation downloaded as Markdown");
   };
 
   const handleDownloadPDF = async () => {
     if (!docsData?.content) return;
-
-    let iframe: HTMLIFrameElement | null = null;
-
     try {
-      const html2canvas = (await import("html2canvas")).default;
-      const { jsPDF } = await import("jspdf");
-
-      iframe = document.createElement("iframe");
-      iframe.style.position = "absolute";
-      iframe.style.left = "-9999px";
-      iframe.style.width = "794px";
-      iframe.style.height = "1123px";
-      iframe.style.border = "none";
-      document.body.appendChild(iframe);
-
-      const iframeDoc =
-        iframe.contentDocument || iframe.contentWindow?.document;
-      if (!iframeDoc) {
-        throw new Error("Could not access iframe document. PDF export may be blocked in this environment.");
-      }
-
-      const markdownToHtml = (md: string): string => {
-        let html = md
-
-          .replace(
-            /^#### (.*$)/gim,
-            '<h4 style="font-size: 14pt; font-weight: bold; margin: 10pt 0 6pt 0; color: rgb(0, 0, 0);">$1</h4>'
-          )
-          .replace(
-            /^### (.*$)/gim,
-            '<h3 style="font-size: 16pt; font-weight: bold; margin: 12pt 0 8pt 0; color: rgb(0, 0, 0);">$1</h3>'
-          )
-          .replace(
-            /^## (.*$)/gim,
-            '<h2 style="font-size: 20pt; font-weight: bold; margin: 14pt 0 10pt 0; color: rgb(0, 0, 0);">$1</h2>'
-          )
-          .replace(
-            /^# (.*$)/gim,
-            '<h1 style="font-size: 24pt; font-weight: bold; margin: 16pt 0 12pt 0; border-bottom: 1px solid rgb(204, 204, 204); padding-bottom: 8pt; color: rgb(0, 0, 0);">$1</h1>'
-          )
-
-          .replace(/```(\w+)?\n([\s\S]*?)```/gim, (match, lang, code) => {
-            return `<pre style="background-color: rgb(245, 245, 245); padding: 12pt; border-radius: 4pt; font-family: monospace; font-size: 10pt; border: 1px solid rgb(221, 221, 221); margin: 8pt 0; overflow-x: auto;"><code style="color: rgb(0, 0, 0);">${code.trim()}</code></pre>`;
-          })
-
-          .replace(
-            /`([^`\n]+)`/gim,
-            '<code style="background-color: rgb(245, 245, 245); padding: 2pt 4pt; border-radius: 3pt; font-family: monospace; font-size: 11pt; color: rgb(0, 0, 0);">$1</code>'
-          )
-
-          .replace(
-            /\*\*(.*?)\*\*/gim,
-            '<strong style="font-weight: bold;">$1</strong>'
-          )
-
-          .replace(
-            /(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/gim,
-            '<em style="font-style: italic;">$1</em>'
-          )
-
-          .replace(
-            /\[([^\]]+)\]\(([^)]+)\)/gim,
-            '<a href="$2" style="color: rgb(0, 102, 204); text-decoration: underline;">$1</a>'
-          )
-
-          .replace(
-            /^---$/gim,
-            '<hr style="border: none; border-top: 1px solid rgb(204, 204, 204); margin: 16pt 0;">'
-          )
-
-          .replace(
-            /^> (.*$)/gim,
-            '<blockquote style="border-left: 4px solid rgb(204, 204, 204); padding-left: 12pt; margin: 8pt 0; color: rgb(102, 102, 102); font-style: italic;">$1</blockquote>'
-          )
-
-          .replace(
-            /^[\*\-\+] (.+)$/gim,
-            '<li style="margin: 4pt 0; color: rgb(0, 0, 0);">$1</li>'
-          )
-
-          .replace(
-            /^\d+\. (.+)$/gim,
-            '<li style="margin: 4pt 0; color: rgb(0, 0, 0);">$1</li>'
-          )
-
-          .replace(
-            /\n\n+/gim,
-            '</p><p style="margin: 8pt 0; color: rgb(0, 0, 0);">'
-          )
-          .replace(/\n/gim, "<br>");
-
-        html = html.replace(/(<li[^>]*>.*?<\/li>)/gim, (match, content) => {
-          if (!content.includes("<ul") && !content.includes("<ol")) {
-            return `<ul style="margin: 8pt 0; padding-left: 24pt; color: rgb(0, 0, 0);">${content}</ul>`;
-          }
-          return content;
-        });
-
-        if (!html.trim().startsWith("<")) {
-          html = `<p style="margin: 8pt 0; color: rgb(0, 0, 0);">${html}</p>`;
-        }
-
-        return html;
-      };
-
-      const htmlContent = markdownToHtml(docsData.content);
-
-      iframeDoc.open();
-      iframeDoc.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <style>
-            * {
-              margin: 0;
-              padding: 0;
-              box-sizing: border-box;
-            }
-            body {
-              width: 794px;
-              padding: 40px;
-              font-family: Arial, Helvetica, sans-serif;
-              font-size: 12pt;
-              line-height: 1.6;
-              color: rgb(0, 0, 0);
-              background-color: rgb(255, 255, 255);
-            }
-            h1, h2, h3, h4, h5, h6 {
-              color: rgb(0, 0, 0);
-            }
-            p {
-              color: rgb(0, 0, 0);
-              margin: 8pt 0;
-            }
-            code {
-              color: rgb(0, 0, 0);
-            }
-            pre {
-              color: rgb(0, 0, 0);
-            }
-            a {
-              color: rgb(0, 102, 204);
-            }
-            li {
-              color: rgb(0, 0, 0);
-            }
-            table {
-              border-collapse: collapse;
-              width: 100%;
-              margin: 8pt 0;
-            }
-            th, td {
-              border: 1px solid rgb(221, 221, 221);
-              padding: 6pt;
-              color: rgb(0, 0, 0);
-            }
-            th {
-              background-color: rgb(245, 245, 245);
-              font-weight: bold;
-            }
-          </style>
-        </head>
-        <body>
-          ${htmlContent}
-        </body>
-        </html>
-      `);
-      iframeDoc.close();
-
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      const bodyHeight = iframeDoc.body.scrollHeight;
-      const maxHeight = 15000;
-      const captureHeight = Math.min(bodyHeight, maxHeight);
-
-      const canvas = await html2canvas(iframeDoc.body, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: "#ffffff",
-        width: 794,
-        height: captureHeight,
-        windowHeight: captureHeight,
+      await exportMarkdownToPdf({
+        markdown: docsData.content,
+        fileName: `${selectedProject?.name || "documentation"}-docs.pdf`,
       });
-
-      if (iframe?.parentNode) document.body.removeChild(iframe);
-      iframe = null;
-
-      let imgData: string;
-      try {
-        imgData = canvas.toDataURL("image/png");
-      } catch (taintErr) {
-        throw new Error("PDF export failed: canvas export not allowed. Try downloading as Markdown.");
-      }
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-      });
-
-      const imgWidth = 210;
-      const pageHeight = 295;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
-      pdf.save(`${selectedProject?.name || "documentation"}-docs.pdf`);
-      toast.success("Documentation downloaded as PDF!");
+      toast.success("Documentation downloaded as PDF");
     } catch (error) {
       console.error("Error generating PDF:", error);
       const msg = error instanceof Error ? error.message : String(error);
       toast.error("Failed to generate PDF", {
-        description: msg.includes("Markdown") ? msg : "Please try downloading as Markdown instead.",
+        description: msg.includes("Markdown")
+          ? msg
+          : "Please try downloading as Markdown instead.",
       });
-    } finally {
-      if (iframe?.parentNode) {
-        try {
-          document.body.removeChild(iframe);
-        } catch {
-          // ignore
-        }
-      }
     }
   };
 
   const handleDownloadDOCX = async () => {
     if (!docsData?.content) return;
-
     try {
-      const { Document, Packer, Paragraph, TextRun, HeadingLevel } =
-        await import("docx");
-
-      const paragraphs: any[] = [];
-      const lines = docsData.content.split("\n");
-
-      for (const line of lines) {
-        if (line.startsWith("# ")) {
-          paragraphs.push(
-            new Paragraph({
-              text: line.replace("# ", ""),
-              heading: HeadingLevel.HEADING_1,
-            })
-          );
-        } else if (line.startsWith("## ")) {
-          paragraphs.push(
-            new Paragraph({
-              text: line.replace("## ", ""),
-              heading: HeadingLevel.HEADING_2,
-            })
-          );
-        } else if (line.startsWith("### ")) {
-          paragraphs.push(
-            new Paragraph({
-              text: line.replace("### ", ""),
-              heading: HeadingLevel.HEADING_3,
-            })
-          );
-        } else if (line.trim() === "") {
-          paragraphs.push(new Paragraph({ text: "" }));
-        } else {
-          paragraphs.push(new Paragraph({ text: line }));
-        }
-      }
-
-      const doc = new Document({
-        sections: [
-          {
-            properties: {},
-            children: paragraphs,
-          },
-        ],
+      await exportMarkdownToDocx({
+        markdown: docsData.content,
+        fileName: `${selectedProject?.name || "documentation"}-docs.docx`,
       });
-
-      const blob = await Packer.toBlob(doc);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${selectedProject?.name || "documentation"}-docs.docx`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-      toast.success("Documentation downloaded as DOCX!");
+      toast.success("Documentation downloaded as DOCX");
     } catch (error) {
       console.error("Error generating DOCX:", error);
       toast.error("Failed to generate DOCX", {
@@ -2020,6 +1443,7 @@ function DocsPage() {
                                     </div>
                                   ),
                                   img: ({ src, alt, ...props }) => (
+                                    // eslint-disable-next-line @next/next/no-img-element
                                     <img
                                       src={src}
                                       alt={alt}
@@ -2067,11 +1491,11 @@ function DocsPage() {
                 </div>
               </div>
 
-              <DocsQnaPanel
+              <QnaPanel
                 open={isQnaPanelOpen}
                 onOpenChange={setIsQnaPanelOpen}
-                isProcessingQna={isProcessingQna}
-                qnaHistory={qnaHistory}
+                isProcessing={isProcessingQna}
+                history={qnaHistory}
                 onSubmit={handleQnaSubmit}
                 onDelete={openDeleteDialog}
                 onDeleteAll={openDeleteAllDialog}
@@ -2199,83 +1623,19 @@ function DocsPage() {
         </div>
       )}
 
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="bg-gray-900 border-white/20">
-          <DialogHeader>
-            <DialogTitle className="text-white">Delete Q&A Record</DialogTitle>
-            <DialogDescription className="text-white/60">
-              Are you sure you want to delete this conversation? This action
-              cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowDeleteDialog(false)}
-              className="bg-white/10 hover:bg-white/20 text-white border-white/20"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => qnaToDelete && handleDeleteQnaRecord(qnaToDelete)}
-              disabled={isDeletingQna}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              {isDeletingQna ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteQnaDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        loading={isDeletingQna}
+        onConfirm={() => qnaToDelete && handleDeleteQnaRecord(qnaToDelete)}
+      />
 
-      <Dialog open={showDeleteAllDialog} onOpenChange={setShowDeleteAllDialog}>
-        <DialogContent className="bg-gray-900 border-white/20">
-          <DialogHeader>
-            <DialogTitle className="text-white">
-              Delete All Q&A History
-            </DialogTitle>
-            <DialogDescription className="text-white/60">
-              Are you sure you want to delete all conversation history? This
-              action cannot be undone and will remove all Q&A records.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowDeleteAllDialog(false)}
-              className="bg-white/10 hover:bg-white/20 text-white border-white/20"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleDeleteAllQnaHistory}
-              disabled={isDeletingAllQna}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              {isDeletingAllQna ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Deleting All...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete All
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteAllQnaDialog
+        open={showDeleteAllDialog}
+        onOpenChange={setShowDeleteAllDialog}
+        loading={isDeletingAllQna}
+        onConfirm={handleDeleteAllQnaHistory}
+      />
     </div>
   );
 }

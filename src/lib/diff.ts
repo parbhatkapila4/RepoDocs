@@ -229,22 +229,31 @@ export async function analyzeDiff(
       ? memories.map((m) => `[${m.type}] ${m.content}`).join("\n")
       : "(No relevant repository memory)";
 
-  const systemPrompt = `You are a senior engineer analyzing a git/PR diff. You will receive:
+  const systemPrompt = `You are a senior engineer reviewing a git/PR diff against the rest of the codebase. You receive three inputs:
 1) The parsed diff (file paths and hunks)
-2) Related code from the codebase (for context)
-3) Relevant repository memory (decisions, concepts, relationships)
+2) Related files retrieved from the indexed codebase by semantic similarity (for grounding)
+3) Repository memory (durable facts, decisions, relationships) retrieved from prior conversations
 
-Analyze the diff and return a single JSON object with exactly these keys (use empty arrays or omit optional keys if not applicable):
-- summary: string (brief overall summary)
-- whatChanged: string[] (bullet-point list of what changed)
-- impactedFiles: string[] (file paths impacted)
-- impactedModules: string[] (optional; logical modules/areas affected)
-- architecturalImpact: string (optional; short description of architectural side effects)
-- riskLevel: "low" | "medium" | "high"
-- testsToUpdate: string[] (optional; tests or test files that should be updated)
-- possibleRegressions: string[] (optional; areas that might regress)
+Use the related code and repo memory to ground your analysis. Do not reason about the diff in isolation. If a function's callers appear in the related code, your analysis must consider them.
 
-Return only valid JSON. No markdown code fence, no extra text.`;
+Return a single JSON object with these exact keys. Output JSON only. No prose, no markdown fences, no leading or trailing text. Use empty arrays for empty list fields. Omit optional keys entirely (do not return null) when they don't apply.
+
+Schema:
+- summary (string, required): 1-2 sentence overall summary of what the diff does and why it matters.
+- whatChanged (string[], required): bullet points of concrete changes. One sentence each.
+- impactedFiles (string[], required): file paths that the diff modifies. Use the paths from the diff verbatim.
+- impactedModules (string[], optional): logical modules or domains affected (e.g. "auth", "billing", "rag"). Only include when the change spans more than one file in the same area.
+- architecturalImpact (string, optional): only populate if the diff touches module boundaries, shared utilities, infrastructure (queues, caches, schedulers), or cross-cutting concerns. For trivial within-file changes, OMIT this key entirely.
+- riskLevel ("low" | "medium" | "high", required): assess based on:
+    * Surface area: how many files and lines changed.
+    * Public API: does the diff change exported function signatures, route shapes, or response contracts that external callers depend on?
+    * Database schema: does the diff alter migrations, Prisma schema, or raw SQL?
+    * Security-sensitive paths: does the diff touch auth, session, token handling, rate-limiting, or input validation code?
+  Use "high" if any of: schema migration, public API breaking change, or auth/security code is touched. Use "medium" if surface area is large or the change crosses module boundaries. Otherwise "low".
+- testsToUpdate (string[], optional): specific test files or test names that should be updated to cover this change. Only include when the related code or repo memory shows existing tests that touch the impacted code.
+- possibleRegressions (string[], optional): reason about what could break DOWNSTREAM. Each entry should describe a specific failure mode (e.g. "callers of X passing the old signature will receive undefined") rather than restating what changed. Use the related code to find downstream callers; if none are visible, list known integration points (the chat endpoint, the indexing worker, the architecture extractor) that could be affected.
+
+Return ONLY the JSON object.`;
 
   const userPrompt = `## Diff to analyze
 

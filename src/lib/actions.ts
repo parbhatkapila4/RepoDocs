@@ -7,6 +7,7 @@ import { auth } from "@clerk/nextjs/server";
 import { Prisma } from "@prisma/client";
 import prisma from "./prisma";
 import { withPrismaRetry } from "./prisma-retry";
+import { decryptSecret } from "./secret-crypto";
 import { getDbUserId } from "./get-db-user-id";
 import { isLikelyGitHubRateLimitMessage } from "./github-rate-limit-message";
 import { githubCoreQuotaRecovered } from "./github-rate-limit-status";
@@ -183,10 +184,18 @@ export async function checkProjectLimit() {
       };
     }
 
-    let dbUser = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true },
-    });
+    const [userRow, countByClerkId] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, plan: true },
+      }),
+      prisma.project.count({
+        where: { userId, deletedAt: null },
+      }),
+    ]);
+
+    let dbUser = userRow;
+    let projectCount = countByClerkId;
 
     if (!dbUser) {
       try {
@@ -197,8 +206,13 @@ export async function checkProjectLimit() {
         if (clerkUser.emailAddresses[0]?.emailAddress) {
           dbUser = await prisma.user.findUnique({
             where: { emailAddress: clerkUser.emailAddresses[0].emailAddress },
-            select: { id: true },
+            select: { id: true, plan: true },
           });
+          if (dbUser && dbUser.id !== userId) {
+            projectCount = await prisma.project.count({
+              where: { userId: dbUser.id, deletedAt: null },
+            });
+          }
         }
       } catch {
         return {
@@ -221,26 +235,11 @@ export async function checkProjectLimit() {
       };
     }
 
-    let plan: keyof typeof PLAN_LIMITS = "starter";
-    try {
-      const result = await prisma.$queryRaw<
-        { plan: string }[]
-      >`SELECT plan FROM "User" WHERE id = ${dbUser.id} LIMIT 1`;
-      if (result && result[0]?.plan) {
-        plan = normalizePlanName(result[0].plan);
-      }
-    } catch {
-      plan = "starter";
-    }
+    const plan: keyof typeof PLAN_LIMITS = dbUser.plan
+      ? normalizePlanName(dbUser.plan)
+      : "starter";
 
     const maxProjects = PLAN_LIMITS[plan]?.maxProjects ?? 3;
-
-    const projectCount = await prisma.project.count({
-      where: {
-        userId: dbUser.id,
-        deletedAt: null,
-      },
-    });
 
     if (maxProjects === Infinity) {
       return {
@@ -622,7 +621,7 @@ export async function regenerateProjectReadme(projectId: string) {
       try {
         repoInfo = await getGitHubRepositoryInfo(
           project.repoUrl,
-          project.githubToken || undefined
+          decryptSecret(project.githubToken) || undefined
         );
         if (!repoInfo) {
           repoInfo = await getGitHubRepositoryInfo(project.repoUrl);
@@ -676,7 +675,7 @@ export async function regenerateProjectReadme(projectId: string) {
     try {
       repoInfo = await getGitHubRepositoryInfo(
         project.repoUrl,
-        project.githubToken || undefined
+        decryptSecret(project.githubToken) || undefined
       );
 
       if (!repoInfo) {
@@ -1139,7 +1138,10 @@ export async function getProjectWithToken(projectId: string) {
       throw new Error("Project not found or unauthorized");
     }
 
-    return { repoUrl: project.repoUrl, githubToken: project.githubToken };
+    return {
+      repoUrl: project.repoUrl,
+      githubToken: decryptSecret(project.githubToken),
+    };
   } catch (error) {
     console.error("Error fetching project with token:", error);
     return null;
@@ -1242,7 +1244,9 @@ export async function checkEmbeddingsStatus(projectId: string) {
 
       if (job?.error && isLikelyGitHubRateLimitMessage(job.error)) {
         const ghAuth =
-          project.githubToken || process.env.GITHUB_TOKEN || undefined;
+          decryptSecret(project.githubToken) ||
+          process.env.GITHUB_TOKEN ||
+          undefined;
         const recovered = await githubCoreQuotaRecovered(ghAuth);
         if (recovered) {
           const prevStatus = job.status;
@@ -1469,7 +1473,7 @@ export async function regenerateProjectDocs(projectId: string) {
       try {
         repoInfo = await getGitHubRepositoryInfo(
           project.repoUrl,
-          project.githubToken || undefined
+          decryptSecret(project.githubToken) || undefined
         );
         if (!repoInfo) {
           repoInfo = await getGitHubRepositoryInfo(project.repoUrl);
@@ -1523,7 +1527,7 @@ export async function regenerateProjectDocs(projectId: string) {
     try {
       repoInfo = await getGitHubRepositoryInfo(
         project.repoUrl,
-        project.githubToken || undefined
+        decryptSecret(project.githubToken) || undefined
       );
 
       if (!repoInfo) {

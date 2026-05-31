@@ -6,17 +6,34 @@ import {
   buildDependencyGraph,
   buildQuickDependencyGraphFromGitTree,
 } from "@/lib/architecture";
+import {
+  rateLimit,
+  getRateLimitIdentifier,
+  rateLimitResponse,
+  RATE_LIMITS,
+} from "@/lib/rate-limiter";
+import { recordQueryMetrics } from "@/lib/query-metrics";
+import { estimateCostUsd } from "@/lib/cost";
+import { kickIndexingWorker } from "@/lib/indexing-worker-kick";
+import { decryptSecret } from "@/lib/secret-crypto";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function GET(request: NextRequest) {
+  const startMs = Date.now();
   try {
     const { userId } = await auth();
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const rl = await rateLimit(
+      getRateLimitIdentifier(request, userId),
+      RATE_LIMITS.API
+    );
+    if (!rl.success) return rateLimitResponse(rl.resetTime);
 
     const dbUserId = await getDbUserId(userId);
     if (!dbUserId) {
@@ -75,15 +92,15 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      const origin = request.nextUrl.origin;
-      void fetch(`${origin}/api/indexing-worker`).catch(() => {
-      });
+      void kickIndexingWorker();
 
       try {
         const quickGraph = (await Promise.race([
           buildQuickDependencyGraphFromGitTree(
             project.repoUrl,
-            project.githubToken || process.env.GITHUB_TOKEN || undefined
+            decryptSecret(project.githubToken) ||
+              process.env.GITHUB_TOKEN ||
+              undefined
           ),
           new Promise<null>((resolve) => setTimeout(() => resolve(null), 3500)),
         ])) as
@@ -101,6 +118,22 @@ export async function GET(request: NextRequest) {
         select: { status: true, progress: true, error: true, updatedAt: true },
       });
     }
+
+    const latencyMs = Date.now() - startMs;
+    void recordQueryMetrics(prisma, {
+      projectId,
+      routeType: "architecture",
+      modelUsed: "static-analysis",
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+      retrievalCount: result.nodes.length,
+      memoryHitCount: 0,
+      latencyMs,
+      estimatedCostUsd: estimateCostUsd(0, 0, "static-analysis"),
+      success: true,
+      cacheHit: false,
+    }).catch((err) => console.error("[QueryMetrics]", err));
 
     return NextResponse.json({
       success: true,

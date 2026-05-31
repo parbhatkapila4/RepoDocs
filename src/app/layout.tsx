@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/provider/ThemeProvider";
 import { ReduxProvider } from "@/provider/ReduxProvider";
+import { MotionProvider } from "@/provider/MotionProvider";
 import { ConsoleFilter } from "@/components/ConsoleFilter";
 
 const geistSans = Geist({
@@ -18,26 +19,27 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RepoDocs-Auto-generate README & Docs from any GitHub repo",
+  title: "RepoDoc  -  AI infrastructure for understanding code",
   description:
-    "Paste a GitHub URL and generate professional README, architecture diagrams, and shareable docs. Sign in with GitHub. Built with Next.js, Clerk, Prisma.",
+    "Connect any GitHub repository. Ask questions in plain English. Every answer cites the source files it was drawn from. Built with Next.js, Clerk, pgvector.",
   keywords: [
     "GitHub",
     "README",
     "documentation",
     "developer tools",
-    "open source",
-    "repo analysis",
+    "RAG",
+    "code search",
+    "pgvector",
   ],
-  authors: [{ name: "RepoDocs Team" }],
-  creator: "RepoDocs",
-  publisher: "RepoDocs",
+  authors: [{ name: "Parbhat Kapila" }],
+  creator: "Parbhat Kapila",
+  publisher: "RepoDoc",
   formatDetection: {
     email: false,
     address: false,
     telephone: false,
   },
-  metadataBase: new URL("https://repodoc.dev"),
+  metadataBase: new URL("https://repodoc.parbhat.dev"),
   alternates: {
     canonical: "/",
   },
@@ -47,29 +49,20 @@ export const metadata: Metadata = {
   },
   manifest: "/site.webmanifest",
   openGraph: {
-    title: "RepoDocs-Auto-generate README & Docs from any GitHub repo",
+    title: "RepoDoc  -  AI infrastructure for understanding code",
     description:
-      "Paste a GitHub URL and generate professional README, architecture diagrams, and shareable docs. Sign in with GitHub.",
-    url: "https://repodoc.dev",
+      "Connect any GitHub repository. Ask questions in plain English. Every answer cites the source files it was drawn from.",
+    url: "https://repodoc.parbhat.dev",
     siteName: "RepoDoc",
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "RepoDocs - Generate docs from GitHub repos",
-      },
-    ],
     locale: "en_US",
     type: "website",
   },
   twitter: {
-    card: "summary_large_image",
-    title: "RepoDocs-Auto-generate README & Docs from any GitHub repo",
+    card: "summary",
+    title: "RepoDoc  -  AI infrastructure for understanding code",
     description:
-      "Paste a GitHub URL and generate professional README, architecture diagrams, and shareable docs.",
-    images: ["/og-image.png"],
-    creator: "@repodoc",
+      "Connect any GitHub repository. Ask questions in plain English. Every answer cites the source files it was drawn from.",
+    creator: "@Parbhat03",
   },
   robots: {
     index: true,
@@ -92,6 +85,8 @@ export default function RootLayout({
   return (
     <ClerkProvider
       publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+      signInUrl="/sign-in"
+      signUpUrl="/sign-in"
       signInForceRedirectUrl="/dashboard"
       signInFallbackRedirectUrl="/dashboard"
     >
@@ -112,7 +107,7 @@ export default function RootLayout({
               enableSystem
               disableTransitionOnChange
             >
-              {children}
+              <MotionProvider>{children}</MotionProvider>
             </ThemeProvider>
             <Toaster />
           </ReduxProvider>

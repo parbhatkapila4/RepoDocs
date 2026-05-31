@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Redis } from "@upstash/redis";
 
 interface RateLimitConfig {
   windowMs: number;
@@ -11,6 +12,22 @@ interface RateLimitEntry {
 }
 
 const rateLimitStore = new Map<string, RateLimitEntry>();
+
+let redis: Redis | null = null;
+if (
+  process.env.UPSTASH_REDIS_REST_URL &&
+  process.env.UPSTASH_REDIS_REST_TOKEN
+) {
+  try {
+    redis = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    });
+  } catch (error) {
+    console.error("[rate-limiter] Failed to init Upstash client:", error);
+    redis = null;
+  }
+}
 
 export const RATE_LIMITS = {
   FREE: {
@@ -31,10 +48,10 @@ export const RATE_LIMITS = {
   },
 };
 
-export async function rateLimit(
+function inMemoryRateLimit(
   identifier: string,
-  config: RateLimitConfig = RATE_LIMITS.FREE
-): Promise<{ success: boolean; remaining: number; resetTime: number }> {
+  config: RateLimitConfig
+): { success: boolean; remaining: number; resetTime: number } {
   const now = Date.now();
   const entry = rateLimitStore.get(identifier);
 
@@ -44,7 +61,6 @@ export async function rateLimit(
       resetTime: now + config.windowMs,
     };
     rateLimitStore.set(identifier, newEntry);
-
     return {
       success: true,
       remaining: config.maxRequests - 1,
@@ -53,21 +69,49 @@ export async function rateLimit(
   }
 
   if (entry.count >= config.maxRequests) {
-    return {
-      success: false,
-      remaining: 0,
-      resetTime: entry.resetTime,
-    };
+    return { success: false, remaining: 0, resetTime: entry.resetTime };
   }
 
   entry.count++;
   rateLimitStore.set(identifier, entry);
-
   return {
     success: true,
     remaining: config.maxRequests - entry.count,
     resetTime: entry.resetTime,
   };
+}
+
+export async function rateLimit(
+  identifier: string,
+  config: RateLimitConfig = RATE_LIMITS.FREE
+): Promise<{ success: boolean; remaining: number; resetTime: number }> {
+  if (redis) {
+    try {
+      const now = Date.now();
+      const windowSec = Math.ceil(config.windowMs / 1000);
+      const bucket = Math.floor(now / config.windowMs);
+      const key = `rl:${identifier}:${bucket}`;
+      const resetTime = (bucket + 1) * config.windowMs;
+
+      const count = await redis.incr(key);
+      if (count === 1) {
+        await redis.expire(key, windowSec);
+      }
+
+      if (count > config.maxRequests) {
+        return { success: false, remaining: 0, resetTime };
+      }
+      return {
+        success: true,
+        remaining: Math.max(0, config.maxRequests - count),
+        resetTime,
+      };
+    } catch (error) {
+      console.error("[rate-limiter] Redis error, falling back:", error);
+    }
+  }
+
+  return inMemoryRateLimit(identifier, config);
 }
 
 export function getRateLimitIdentifier(
@@ -78,9 +122,11 @@ export function getRateLimitIdentifier(
     return `user:${userId}`;
   }
 
+  const realIp = request.headers.get("x-real-ip");
+  const forwarded = request.headers.get("x-forwarded-for");
   const ip =
-    request.headers.get("x-forwarded-for") ||
-    request.headers.get("x-real-ip") ||
+    (realIp && realIp.trim()) ||
+    (forwarded ? forwarded.split(",")[0].trim() : "") ||
     "unknown";
 
   return `ip:${ip}`;

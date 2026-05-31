@@ -16,6 +16,14 @@ import {
   deleteReadmeQnaRecord,
   deleteAllReadmeQnaHistory,
 } from "@/lib/actions";
+import {
+  fetchProjectRepositoryInfo,
+  type RepositoryInfoResult,
+} from "@/lib/repository-info";
+import {
+  DeleteQnaDialog,
+  DeleteAllQnaDialog,
+} from "@/components/docs-readme/QnaDialogs";
 import { useBackgroundRegenJob } from "@/hooks/useBackgroundRegenJob";
 import {
   Card,
@@ -38,14 +46,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   FileText,
   RefreshCw,
@@ -111,6 +111,38 @@ interface ReadmeWithQna extends ReadmeData {
   qnaHistory?: QnaRecord[];
 }
 
+function readCachedRepoInfo(
+  projectId: string | null | undefined
+): RepositoryInfoResult | null {
+  if (!projectId || typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(`repoInfo:${projectId}`);
+    return raw ? (JSON.parse(raw) as RepositoryInfoResult) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedRepoInfo(
+  projectId: string | null | undefined,
+  info: RepositoryInfoResult | null | undefined
+): void {
+  if (!projectId || typeof window === "undefined" || !info) return;
+  try {
+    localStorage.setItem(`repoInfo:${projectId}`, JSON.stringify(info));
+  } catch {
+  }
+}
+
+function hasUsefulRepoInfo(
+  info: RepositoryInfoResult | null | undefined
+): boolean {
+  if (!info) return false;
+  const stars = info.stars ?? info.stargazersCount ?? 0;
+  const forks = info.forks ?? info.forksCount ?? 0;
+  return stars > 0 || forks > 0 || !!info.language || !!info.license;
+}
+
 function ReadmePage() {
   const { selectedProjectId, projects } = useProjectsContext();
   const { user } = useUser();
@@ -164,7 +196,7 @@ function ReadmePage() {
 
   const parseReadmeMetadata = (
     content: string,
-    repositoryInfo?: any
+    repositoryInfo?: RepositoryInfoResult | null
   ): ReadmeMetadata => {
     const lines = content.split("\n");
     let title = "README";
@@ -172,8 +204,12 @@ function ReadmePage() {
 
     let stars = repositoryInfo?.stars ?? repositoryInfo?.stargazersCount ?? 0;
     let forks = repositoryInfo?.forks ?? repositoryInfo?.forksCount ?? 0;
-    let language = repositoryInfo?.language || "Unknown";
-    let license = repositoryInfo?.license?.name || "Unknown";
+    let language: string = repositoryInfo?.language || "Unknown";
+    const rawLicense = repositoryInfo?.license;
+    let license: string =
+      (typeof rawLicense === "object" && rawLicense?.name) ||
+      (typeof rawLicense === "string" ? rawLicense : null) ||
+      "Unknown";
 
     if (!repositoryInfo || stars === 0) {
       for (let i = 0; i < lines.length; i++) {
@@ -228,115 +264,10 @@ function ReadmePage() {
     }
   };
 
-  const fetchRepositoryInfo = async (
+  const fetchRepositoryInfo = (
     projectId: string,
     repoUrl: string | null | undefined
-  ): Promise<any> => {
-    if (!repoUrl) return null;
-
-    const strategies = [
-      async () => {
-        try {
-          const { getProjectWithToken } = await import("@/lib/actions");
-          const projectData = await getProjectWithToken(projectId);
-          if (projectData?.githubToken && projectData?.repoUrl) {
-            const { getGitHubRepositoryInfo } = await import("@/lib/github");
-            const info = await getGitHubRepositoryInfo(
-              projectData.repoUrl,
-              projectData.githubToken
-            );
-            if (
-              info &&
-              (info.stars > 0 ||
-                info.stargazersCount > 0 ||
-                info.language ||
-                info.license)
-            ) {
-              return info;
-            }
-          }
-        } catch {
-        }
-        return null;
-      },
-
-      async () => {
-        try {
-          const { getProjectWithToken } = await import("@/lib/actions");
-          const projectData = await getProjectWithToken(projectId);
-          if (projectData?.githubToken) {
-            const { getGitHubRepositoryInfo } = await import("@/lib/github");
-            const info = await getGitHubRepositoryInfo(
-              repoUrl,
-              projectData.githubToken
-            );
-            if (
-              info &&
-              (info.stars > 0 ||
-                info.stargazersCount > 0 ||
-                info.language ||
-                info.license)
-            ) {
-              return info;
-            }
-          }
-        } catch {
-        }
-        return null;
-      },
-
-      async () => {
-        try {
-          const { getGitHubRepositoryInfo } = await import("@/lib/github");
-          const info = await getGitHubRepositoryInfo(repoUrl, undefined);
-          if (
-            info &&
-            (info.stars > 0 ||
-              info.stargazersCount > 0 ||
-              info.language ||
-              info.license)
-          ) {
-            return info;
-          }
-        } catch {
-        }
-        return null;
-      },
-
-      async () => {
-        try {
-          const { fetchRepositoryInfo } = await import("@/lib/actions");
-          const result = await fetchRepositoryInfo(repoUrl);
-          if ("error" in result) return null;
-          const info = result.data;
-          if (
-            info &&
-            (info.stars > 0 ||
-              info.stargazersCount > 0 ||
-              info.language ||
-              info.license)
-          ) {
-            return info;
-          }
-        } catch {
-        }
-        return null;
-      },
-    ];
-
-    for (const strategy of strategies) {
-      try {
-        const result = await strategy();
-        if (result) {
-          return result;
-        }
-      } catch {
-        continue;
-      }
-    }
-
-    return null;
-  };
+  ) => fetchProjectRepositoryInfo(projectId, repoUrl);
 
   const fetchReadme = async () => {
     if (!selectedProjectId) return;
@@ -350,12 +281,21 @@ function ReadmePage() {
       const project = projects.find((p) => p.id === selectedProjectId);
       const repoUrl = project?.repoUrl;
 
-      let fetchedRepoInfo = null;
+      const cached = readCachedRepoInfo(selectedProjectId);
+      if (cached && readmeMountedRef.current) {
+        setRepositoryInfo(cached);
+      }
+
+      let fetchedRepoInfo: RepositoryInfoResult | null = null;
       if (repoUrl) {
         fetchedRepoInfo = await fetchRepositoryInfo(selectedProjectId, repoUrl);
-
-        if (fetchedRepoInfo && readmeMountedRef.current) {
+        if (
+          fetchedRepoInfo &&
+          hasUsefulRepoInfo(fetchedRepoInfo) &&
+          readmeMountedRef.current
+        ) {
           setRepositoryInfo(fetchedRepoInfo);
+          writeCachedRepoInfo(selectedProjectId, fetchedRepoInfo);
         }
       }
 
@@ -364,7 +304,11 @@ function ReadmePage() {
 
       setReadmeData(readme);
 
-      const repoInfoToUse = fetchedRepoInfo || repositoryInfo;
+      const usefulFetched =
+        fetchedRepoInfo && hasUsefulRepoInfo(fetchedRepoInfo)
+          ? fetchedRepoInfo
+          : null;
+      const repoInfoToUse = usefulFetched || cached || repositoryInfo;
       if (readme?.content) {
         setMetadata(parseReadmeMetadata(readme.content, repoInfoToUse));
       }
@@ -983,6 +927,7 @@ function ReadmePage() {
                               </pre>
                             ),
                             img: ({ src, alt, ...props }) => (
+                              // eslint-disable-next-line @next/next/no-img-element
                               <img
                                 src={src}
                                 alt={alt}
@@ -1041,8 +986,8 @@ function ReadmePage() {
                             )}
                           </Button>
                         </div>
-                        <pre className="bg-gray-900/50 border border-white/10 rounded-lg p-6 overflow-x-auto">
-                          <code className="text-white/90 text-sm font-mono whitespace-pre-wrap">
+                        <pre className="bg-gray-900/50 border border-white/10 rounded-lg p-3 sm:p-6 overflow-x-auto">
+                          <code className="block text-white/90 text-sm font-mono whitespace-pre-wrap break-words">
                             {readmeData.content}
                           </code>
                         </pre>
@@ -1341,83 +1286,19 @@ function ReadmePage() {
         </div>
       )}
 
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="bg-gray-900 border-white/20">
-          <DialogHeader>
-            <DialogTitle className="text-white">Delete Q&A Record</DialogTitle>
-            <DialogDescription className="text-white/60">
-              Are you sure you want to delete this conversation? This action
-              cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowDeleteDialog(false)}
-              className="bg-white/10 hover:bg-white/20 text-white border-white/20"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => qnaToDelete && handleDeleteQnaRecord(qnaToDelete)}
-              disabled={isDeletingQna}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              {isDeletingQna ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteQnaDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        loading={isDeletingQna}
+        onConfirm={() => qnaToDelete && handleDeleteQnaRecord(qnaToDelete)}
+      />
 
-      <Dialog open={showDeleteAllDialog} onOpenChange={setShowDeleteAllDialog}>
-        <DialogContent className="bg-gray-900 border-white/20">
-          <DialogHeader>
-            <DialogTitle className="text-white">
-              Delete All Q&A History
-            </DialogTitle>
-            <DialogDescription className="text-white/60">
-              Are you sure you want to delete all conversation history? This
-              action cannot be undone and will remove all Q&A records.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowDeleteAllDialog(false)}
-              className="bg-white/10 hover:bg-white/20 text-white border-white/20"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleDeleteAllQnaHistory}
-              disabled={isDeletingAllQna}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              {isDeletingAllQna ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Deleting All...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete All
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteAllQnaDialog
+        open={showDeleteAllDialog}
+        onOpenChange={setShowDeleteAllDialog}
+        loading={isDeletingAllQna}
+        onConfirm={handleDeleteAllQnaHistory}
+      />
     </div>
   );
 }

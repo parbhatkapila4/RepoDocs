@@ -5,9 +5,22 @@ import { getDbUserId } from "@/lib/get-db-user-id";
 import { analyzeDiff } from "@/lib/diff";
 import { estimateCostUsd } from "@/lib/cost";
 import { recordQueryMetrics } from "@/lib/query-metrics";
+import {
+  rateLimit,
+  getRateLimitIdentifier,
+  rateLimitResponse,
+  RATE_LIMITS,
+} from "@/lib/rate-limiter";
+import { z } from "zod";
+import { isProjectOverBudget, BUDGET_EXCEEDED_MESSAGE } from "@/lib/budget";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
+
+const DiffSchema = z.object({
+  projectId: z.string().min(1),
+  diff: z.string().trim().min(1),
+});
 
 export async function POST(request: NextRequest) {
   let startMs = 0;
@@ -20,27 +33,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const rl = await rateLimit(
+      getRateLimitIdentifier(request, userId),
+      RATE_LIMITS.API
+    );
+    if (!rl.success) return rateLimitResponse(rl.resetTime);
+
     const dbUserId = await getDbUserId(userId);
     if (!dbUserId) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const body = await request.json();
-    const { projectId, diff } = body;
-
-    if (!projectId || typeof projectId !== "string" || projectId.trim() === "") {
+    const parsed = DiffSchema.safeParse(
+      await request.json().catch(() => null)
+    );
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Project ID is required" },
+        { error: "Project ID and non-empty diff content are required" },
         { status: 400 }
       );
     }
-
-    if (!diff || typeof diff !== "string" || diff.trim().length === 0) {
-      return NextResponse.json(
-        { error: "Diff content is required and must be a non-empty string" },
-        { status: 400 }
-      );
-    }
+    const { projectId, diff } = parsed.data;
 
     projectIdForMetrics = projectId;
 
@@ -56,6 +69,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Project not found or unauthorized" },
         { status: 404 }
+      );
+    }
+
+    if (await isProjectOverBudget(projectId, project.monthlyCostLimitUsd)) {
+      return NextResponse.json(
+        { error: "Budget exceeded", message: BUDGET_EXCEEDED_MESSAGE },
+        { status: 402 }
       );
     }
 

@@ -1,553 +1,146 @@
 <div align="center">
-
-<img src="./header.svg" alt="RepoDoc: AI infrastructure for understanding code" width="920" />
-
-<br />
-<br />
-
-## RepoDoc
-
-### The AI infrastructure for understanding code.
-
-**Connect any GitHub repository. Ask questions in plain English. Get answers with exact file and line references.**
-
-[Live Demo](https://repodoc.parbhat.dev/) • [Get Started](https://repodoc.parbhat.dev/sign-up) • [Pricing](https://repodoc.parbhat.dev/pricing)
-
-<br />
-
+  <img src="./header.svg" alt="RepoDoc — Codebase RAG, built as infrastructure" width="100%" />
 </div>
 
----
+<br />
 
-## The Problem
+# RepoDoc
 
-Developers spend **~80% of their time** reading and understanding code rather than writing it.
+**Codebase RAG built as infrastructure: retrieval runs over what each file *means*, indexing is a durable Postgres lease queue, and every token is metered against a per-project budget.**
 
-Onboarding to new codebases takes weeks. Finding where specific logic lives means grep-ing through thousands of files. Documentation is always outdated.
-
-## The Solution
-
-RepoDoc indexes your entire codebase into a vector database, then lets you query it conversationally with AI.
-
-- Ask _"How does authentication work?"_ → Get the answer with links to `src/lib/auth.ts:45-89`
-- Ask _"Where are API rate limits configured?"_ → Instantly see the relevant files
-- Generate production-ready READMEs and technical docs in one click
-
-**No more digging through files. No more outdated wikis. Just ask.**
+[Live](https://repodoc.parbhat.dev) · [Source](https://github.com/parbhatkapila4/repodoc)
 
 ---
 
-## Design Philosophy
+## The problem
 
-RepoDoc is engineering infrastructure for understanding code, not just an AI chatbot. A few principles shape how it works:
+Most of the work in understanding a codebase isn't reading the file you have open — it's finding the three files you didn't know to open. Onboarding to an unfamiliar repo means reconstructing a mental model that lives nowhere: which module owns auth, where the rate limit is configured, what actually runs on a cron. Grep finds strings; it doesn't find concepts. Documentation, when it exists, drifts from the code the day after it's written.
 
-- **Retrieval before generation**: Relevant code is retrieved first; the LLM answers from that context to reduce hallucination.
-- **Structured semantic memory**: Repo memory stores durable knowledge (concepts, decisions, relationships) with embeddings, instead of relying only on raw chat history.
-- **Operational observability**: Every AI request is recorded (route, model, tokens, retrieval/memory counts, latency, cost, success/failure) so the system is auditable and debuggable.
-- **Explicit cost awareness**: Token usage and estimated cost are tracked per request; optional per-project budget limits and threshold alerts keep cost predictable.
-- **Deterministic model fallback**: A clear strategy for which model is used (e.g. primary vs fallback) so behavior is predictable under rate limits or outages.
-- **Layered separation**: Indexing (ingestion, summarization, embedding), retrieval (vector search, memory search), and reasoning (LLM) are separate; each layer can be understood and evolved independently.
+"RAG over a codebase" is the obvious answer and the obvious trap. The demo is easy: chunk the files, embed the chunks, retrieve top-k, call an LLM. It falls apart on contact with real repos for reasons that have nothing to do with prompting. Raw code embeds *lexically* — variable names and syntax — so a query like "how does authentication work" retrieves whatever file happens to share tokens with the question, not the file that implements the concept. And ingesting a whole repository is a systems problem, not a model problem: it has to survive serverless time limits, partial failures, and the fact that an LLM call per file turns "index this repo" into an unbounded bill.
 
----
+## The thesis
 
-## How It Works
+RepoDoc takes four opinionated positions, and they're the reason it behaves differently from a generic RAG wrapper.
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                                                                         │
-│   1. CONNECT          2. INDEX              3. QUERY                    │
-│   ───────────         ─────────             ─────────                   │
-│   Paste your          Every file gets       Ask anything.               │
-│   GitHub URL          summarized, embedded  RAG retrieves relevant      │
-│                       and stored in         code + LLM generates        │
-│                       PostgreSQL/pgvector   answers with citations      │
-│                                                                         │
-└─────────────────────────────────────────────────────────────────────────┘
-```
+**Embed what a file means, not what it says.** During indexing, each file is summarized by an LLM into a ≤100-word description of its purpose (`getSummariseCode`), and *that summary* is embedded — `gemini-embedding-001` at 768 dimensions — not the raw source. Retrieval is then a cosine search over intent (`1 - (embedding <=> query)` against pgvector, top-5). The alternative — chunking source by lines or AST nodes — embeds the wrong signal and ranks by surface similarity. The cost of this choice is an extra LLM call per file at index time and a hard dependency on summary quality; the payoff is that "where are rate limits configured" retrieves the rate limiter even when the query shares no tokens with it.
 
-**Under the hood:**
+**The database is the queue.** Indexing is not a request; it's a job. RepoDoc models it as an `IndexingJob` row in Postgres with a lease, not as a call to SQS or Redis or BullMQ. A worker claims a job with an atomic compare-and-swap, holds a five-minute lease, and releases it on completion or failure. One datastore, transactional with the data it indexes, no extra infrastructure to operate. The tradeoff is that work is pulled (cron + on-demand kicks) rather than pushed, and this isn't built for tens of thousands of jobs per minute — but at this scale, a queue service would be operational overhead with no payoff.
 
-1. **Ingestion** → LangChain's `GithubRepoLoader` pulls all files from your repo
-2. **Summarization** → Each file is summarized by Gemini to capture its purpose
-3. **Embedding** → Summaries are converted to 768-dim vectors using `text-embedding-004`
-4. **Storage** → Vectors stored in PostgreSQL with pgvector extension for similarity search
-5. **Retrieval** → When you ask a question, we embed your query and find the top 5 most similar code chunks
-6. **Generation** → Retrieved context + your question → Gemini 2.5 Flash generates a detailed answer
+**Cost is a runtime constraint, not a dashboard.** Every AI request writes a `QueryMetrics` row (model, prompt/completion tokens, latency, estimated USD, retrieval and memory counts, cold-start and cache flags, success/error). A project can set `monthlyCostLimitUsd`; when it's exceeded, a query returns `402` and **in-flight indexing pauses itself and requeues**. Spend is bounded in the hot path, not reconciled after the bill arrives.
 
----
+**Durable repo memory, separate from retrieval.** RepoDoc extracts facts from each Q&A exchange into a `RepoMemory` store and pulls the top matches back as secondary context on later questions — capturing intent and decisions that live in conversations, not in any file. It's labeled distinctly from code in the prompt, under one rule: when memory and code conflict, the code wins.
 
-## Features
-
-### Intelligence Layer
-
-**💬 Conversational Code Search**: Chat with your codebase like you'd chat with a senior engineer who knows every line. Ask follow-up questions. Get code snippets with syntax highlighting. See exactly which files informed each answer.
-
-**📄 One-Click Documentation**: Generate comprehensive technical documentation from your codebase automatically. The AI analyzes your code structure, patterns, and architecture to produce docs that actually reflect your implementation.
-
-**📝 README Generation**: Get professional README files generated from your code. Includes proper sections for installation, usage, API references, and more, all inferred from your actual implementation.
-
-**📊 Repository Analytics**: Visualize your codebase at a glance:
-
-- Language distribution with percentages
-- File counts and project metrics
-- Stars, forks, and activity from GitHub
-- Dependency insights
-
-**🔗 Shareable Documentation**: Generate public links to share your documentation with teammates, contributors, or the world. Each link is tokenized and can be revoked anytime.
-
-**🔄 Iterative Refinement**: Don't like something in the generated docs? Ask the AI to modify it. _"Add a troubleshooting section"_ or _"Update the API examples"_ , the docs evolve through conversation.
-
-**🏗️ Architecture View**: Explore your codebase as a high-level architecture map. The AI analyzes your repo structure and surfaces modules, dependencies, and entry points so you can understand how the system is organized at a glance.
-
-**📋 Diff Analysis**: Paste or upload a diff and get AI-powered analysis: what changed, impact, and suggestions. Supports query, diff, and architecture route types with token and cost tracking.
-
-**🧠 Repo Memory**: RAG can use stored repo memories (semantic chunks with embeddings) for better context. Memory hit counts and retrieval counts are tracked for observability.
-
-### Operational Layer
-
-**📊 Query Metrics (Observability)**: AI query observability is stored per request: route type (query / diff / architecture), model used, token counts, retrieval and memory hits, latency, estimated cost, and success/error. Indexed by project and time for analytics.
-
-**Cost tracking**: Token usage and estimated cost per request; 7-day cost breakdown by route type and 30-day rolling view.
-
-**Budget guardrails**: Optional per-project budget limits and threshold alerts (warning / limit exceeded).
-
-**Health status**: Per-project status (healthy / warning / critical) for monitoring.
-
-**Cold start detection**: First query or long idle gap is flagged so latency spikes are explainable.
-
-**Cache metrics**: Cache-hit detection when a cached answer is served; visibility into cache effectiveness.
-
-### Infrastructure Layer
-
-**⚙️ Background Indexing**: Indexing runs as a serverless job queue (Vercel cron + Postgres leasing). No blocking on project create or regenerate: jobs are queued, processed by a worker, and report progress. Retry and cancel from the UI.
-
-**Model fallback**: Primary model (e.g. Gemini) with deterministic fallback (e.g. OpenRouter) under rate limits or outages so behavior is predictable.
-
----
-
-## Tech Stack
-
-| Layer          | Technology                          |
-| -------------- | ----------------------------------- |
-| **Framework**  | Next.js 16 (App Router, React 18)   |
-| **Language**   | TypeScript 5                        |
-| **Styling**    | Tailwind CSS 4.1, Radix UI          |
-| **State**      | Redux Toolkit                       |
-| **Database**   | PostgreSQL + pgvector               |
-| **ORM**        | Prisma 6                            |
-| **AI/LLM**     | Google Gemini 2.5 Flash, OpenRouter |
-| **Embeddings** | text-embedding-004 (768 dimensions) |
-| **Auth**       | Clerk                               |
-| **Payments**   | Stripe                              |
-| **Forms**      | React Hook Form + Zod               |
-| **Animation**  | Motion (Framer Motion)              |
-| **Testing**    | Jest, React Testing Library         |
-| **Deployment** | Vercel                              |
-
----
+One more thing, stated precisely because precision is the point: all generation goes through OpenRouter, with the model picked per route — `gemini-2.5-flash` for chat (temperature 0.3), `gemini-2.5-pro` for README generation, Claude Haiku for docs. Gemini's API is called directly only for embeddings. This keeps model selection a one-line change. To be exact about what *isn't* here: there is no automatic cross-provider failover. The codebase earns the word "fallback" only in the cost model, which defaults unpriced models to the Gemini Flash rate so a request is never silently billed at zero.
 
 ## Architecture
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                              NEXT.JS APP ROUTER                              │
-│                                                                              │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │    Chat     │  │  Dashboard  │  │    Docs     │  │      README         │  │
-│  │   Page      │  │    Page     │  │    Page     │  │    Generation       │  │
-│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └──────────┬──────────┘  │
-│  ┌──────┴──────┐  ┌──────┴──────┐                                            │
-│  │ Architecture│  │    Diff     │  ← Architecture view, diff analysis        │
-│  │   Page      │  │   Page      │                                            │
-│  └──────┬──────┘  └──────┬──────┘                                            │
-│         └────────────────┴───────────────────────────────────────────────────┘
-│                                    │                                         │
-│                           ┌────────▼──────────────┐                          │
-│                           │   API Routes          │                          │
-│                           │                       │                          │
-│                           │  /api/query           │ ← RAG Pipeline           │
-│                           │  /api/search          │ ← Vector Search          │
-│                           │  /api/analytics       │ ← Metrics Aggregation    │
-│                           │  /api/architecture    │ ← Architecture extraction│
-│                           │  /api/analyze-diff    │ ← Diff analysis          │
-│                           │  /api/indexing-worker │ ← Cron job (indexing)    │
-│                           └────────┬──────────────┘                          │
-└────────────────────────────────────┼─────────────────────────────────────────┘
-                                     │
-          ┌──────────────────────────┼──────────────────────────┐
-          │                          │                          │
-          ▼                          ▼                          ▼
-┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────────┐
-│    PostgreSQL       │  │    GitHub API       │  │      AI Services        │
-│    + pgvector       │  │    (Octokit)        │  │                         │
-│                     │  │                     │  │  • Gemini 2.5 Flash     │
-│  • Users            │  │  • Repo metadata    │  │  • text-embedding-004   │
-│  • Projects         │  │  • File contents    │  │  • OpenRouter fallback  │
-│  • Embeddings       │  │  • Languages        │  │                         │
-│  • Docs/READMEs     │  │  • Stats            │  │                         │
-│  • Share tokens     │  │                     │  │                         │
-│  • RepoMemory       │  │                     │  │                         │
-│  • IndexingJob      │  │                     │  │                         │
-│  • QueryMetrics     │  │                     │  │                         │
-└─────────────────────┘  └─────────────────────┘  └─────────────────────────┘
+  Connect              Index (background)                    Query
+  ───────              ──────────────────                    ─────
+  GitHub URL  ──▶  IndexingJob (queued)            POST /api/query
+       │            │                                    │
+       │            ▼  triggers:                          ▼  auth → rate-limit → ownership → budget
+       │      • on project create                        │
+       │      • on query vs unindexed project       embeddings == 0 ?
+       │      • daily Vercel cron (0 6 * * *)            ├── yes ─▶ pre-index: live-fetch ≤22
+       ▼            │                                    │          high-value files from GitHub
+  worker claims ◀───┘                                    │          (answer now, kick worker)
+  job via lease (CAS)                                    └── no  ─▶ pgvector top-5  +  RepoMemory top-3
+       │                                                            │
+       ▼  per file: summarize → embed → store                       ▼
+  LangChain GithubRepoLoader                            OpenRouter (gemini-2.5-flash)
+       │  summary → gemini-embedding-001 (768d)         grounded answer + cited sources
+       ▼                                                            │
+  Postgres + pgvector (HNSW, cosine)  ◀──────────────────────────────┘
+       │                                                  write QueryMetrics, cache, extract memory
+       ▼
+  IndexingJob.progress / status (retry, cancel, resume in UI)
 ```
 
----
+The connect step stores the repo and an (optionally encrypted) GitHub token and enqueues a job. The worker — invoked on demand and by a daily cron backstop — claims a job, walks the repo with LangChain's `GithubRepoLoader`, and for each file summarizes then embeds then writes a pgvector row. Querying guards the request, then either answers from the index or, if indexing hasn't produced embeddings yet, live-fetches a curated set of files from GitHub so the project is useful immediately.
 
-## Operational Model
+## Why this is hard
 
-AI is treated as a production system. Each AI request is recorded with: route type (query / diff / architecture), model used, prompt and completion tokens, retrieval count and memory hit count, latency, estimated cost, success or failure, cold-start detection (first query or long idle gap), and cache-hit detection when a cached answer is served.
+These are the parts that took real engineering, each tied to where it lives:
 
-Per-project observability (via the observability API and UI) includes: 7-day cost breakdown by route type, 30-day rolling cost and budget tracking, budget threshold alerts (warning / limit exceeded), error-rate monitoring, health status (healthy / warning / critical), and memory quality metrics (e.g. hit rate, average similarity). This is how the system is run and debugged, not a sales pitch.
+- **Claiming a job exactly once under concurrent workers.** `claimJob` (`indexing-worker-run.ts`) is a conditional `updateMany` — it flips `queued`/`stale-processing` → `processing` and trusts the claim only when `res.count === 1`. Two workers that wake on the same job can't both win; it's a compare-and-swap on the row, no advisory locks.
+- **Surviving the serverless 60-second wall.** Indexing a large repo can't finish in one invocation. The worker time-boxes itself (`WORKER_BUDGET_MS`), and when it runs out it writes a `resumeAfter` cursor, requeues the job, and re-kicks — so indexing makes forward progress across many short runs instead of dying at the platform timeout.
+- **Recovering a dead worker without double-processing.** A lease is five minutes. A job stuck in `processing` with `lockedAt` older than that is reclaimable; `@@index([status, lockedAt])` makes finding it cheap. A crashed worker's job is picked up by the next one and resumed from its cursor.
+- **Being useful before indexing finishes.** `queryCodebasePreindex` fetches up to 22 high-value files (READMEs, configs, entrypoints) straight from the GitHub tree and answers from those, flagging the response `preindex: true`, while kicking the indexer in the background.
+- **Bounding spend mid-flight.** `isProjectOverBudget` short-circuits queries to `402`, and the indexer checks budget between files — a job that would blow the limit pauses (`needsResume`) rather than running the meter up.
 
----
+## Design decisions & tradeoffs
 
-## Database Schema
+- **Decision:** Embed LLM summaries, not raw code. **Why:** code embeds lexically; intent is what you query by. **Tradeoff accepted:** an LLM call per file at index time, and retrieval is only as good as the summaries.
+- **Decision:** Postgres as the job queue (lease + CAS), no queue service. **Why:** one transactional datastore, nothing extra to run. **Tradeoff accepted:** polling, not push; not built for very high job throughput.
+- **Decision:** OpenRouter as the single chat gateway. **Why:** swap or route models per task without SDK churn, one billing surface. **Tradeoff accepted:** an extra network hop and no native multi-provider failover.
+- **Decision:** Budget enforced in the request path (`402`) and mid-index (pause/resume). **Why:** AI cost is unbounded by default; a ceiling has to be live to matter. **Tradeoff accepted:** a hard limit can interrupt indexing, which is why jobs are resumable.
+- **Decision:** Rate limiting and secret encryption both **fail open**. **Why:** for a single-operator product, a Redis blip or an unset key shouldn't 500 every request. **Tradeoff accepted:** a deliberately weaker posture under those failures — documented below, not hidden.
 
-```prisma
-model User {
-  id           String    @id @default(uuid())
-  emailAddress String    @unique
-  credits      Int       @default(150)
-  plan         String    @default("starter") 
-  projects     Project[]
-}
+## Failure modes
 
-model Project {
-  id                   String                 @id @default(uuid())
-  name                 String
-  repoUrl              String
-  userId               String
-  sourceCodeEmbeddings SourceCodeEmbeddings[]
-  docs                 Docs?
-  readme               Readme?
-}
+- **Worker dies mid-index.** Its lease expires after five minutes; the next worker reclaims the job and resumes from the `resumeAfter` cursor. No stuck jobs, no re-embedding from scratch.
+- **Serverless invocation times out.** The time-box requeues with a cursor before the platform kills the function; indexing continues on the next invocation.
+- **Project queried before it's indexed.** The pre-index path answers from live GitHub fetches and marks the result `preindex: true`, so the user isn't blocked.
+- **Project exceeds its budget.** Queries return `402` with a clear message; running indexing pauses and requeues instead of overspending.
+- **Redis unavailable / provider error.** The rate limiter falls back to a per-instance in-memory window (weaker across instances, but never a 500). During indexing, each summary and embedding is retried twice with backoff; a persistent failure marks the job `failed` with the error string, surfaced in the UI for retry.
 
-model SourceCodeEmbeddings {
-  id               String                  @id @default(uuid())
-  fileName         String
-  sourceCode       String
-  Summary          String
-  summaryEmbedding Unsupported("vector")? 
-  projectId        String
-}
+## Security model
 
-model Docs {
-  id          String      @id @default(uuid())
-  content     String
-  projectId   String      @unique
-  qnaHistory  DocsQna[]
-  publicShare DocsShare?
-}
+- **Auth.** Clerk middleware guards everything except an explicit public allow-list (`middleware.ts`); each API route re-checks the session and returns `401`. Project access is scoped by owner and `deletedAt: null` on every query.
+- **Input & SQL.** Zod validates request bodies; Prisma parameterizes all queries, and the only raw SQL is the pgvector similarity search and embedding writes — both parameter-bound.
+- **Secrets at rest.** Stored GitHub tokens are encrypted with **AES-256-GCM** in an envelope format `enc:v1:<base64(iv|tag|ciphertext)>` (`secret-crypto.ts`), keyed by `ENCRYPTION_KEY`. Honest caveat: if `ENCRYPTION_KEY` is unset, the code falls back to storing plaintext so the app keeps working — set the key in every environment to actually get encryption.
+- **Webhooks.** The Clerk webhook verifies the **svix HMAC signature** and rejects on mismatch (fail-closed). The cron worker route authorizes with a constant-time (`timingSafeEqual`) shared-secret check.
+- **Billing webhook.** The Gumroad billing webhook authenticates with a constant-time shared-secret check, maps a product permalink to a plan, and auto-downgrades to Starter on refund, chargeback, or cancellation.
+- **Rate limiting.** Per-identity fixed-window limiting, preferring the platform-set `x-real-ip` over the spoofable `x-forwarded-for`, returning `429` with `Retry-After`; it fails open under store failure — a deliberate availability-over-strictness tradeoff.
 
-model Readme {
-  id          String       @id @default(uuid())
-  content     String
-  projectId   String       @unique
-  qnaHistory  ReadmeQna[]
-  publicShare ReadmeShare?
-}
+Not claimed because it isn't built: there is no documented data-retention or training-data policy in the codebase, and no key rotation beyond the `enc:v1:` version prefix that makes it possible later.
 
-// Additional models: RepoMemory (RAG memory + embeddings), IndexingJob (queue + status),
-// QueryMetrics (per-request observability: routeType, tokens, latency, cost, success).
-```
+## Tech stack
 
----
+Next.js 16.0.7 (App Router, React 19.2) · TypeScript 5 · Tailwind 4.1 · PostgreSQL + pgvector (HNSW, cosine) via Prisma 6.16 · Clerk 6.31 (auth) · OpenRouter for generation, Google `gemini-embedding-001` for embeddings · Redux Toolkit · Zod 4 · `@xyflow/react` (architecture graph) · Upstash Redis (locking/limits) · svix (webhooks) · Gumroad (billing) · Jest 29 · Vercel.
 
-## Tradeoffs & Constraints
+## What's intentionally not built yet
 
-Embedding similarity has limitations: semantic match is not perfect, and very similar phrasing can rank higher than conceptually relevant but differently worded code. Context window and retrieval depth are limited, we send a bounded number of chunks. There is a latency vs retrieval-depth tradeoff: more chunks improve coverage but increase latency and cost. Repo memory can drift after major refactors (stale facts until re-indexing or new Q&A). Cost vs model quality is a tradeoff (e.g. cheaper vs more capable models). Architecture inference is best-effort (e.g. static import analysis; dynamic or runtime behavior may be missed).
+- **Automatic cross-provider LLM failover** — a single OpenRouter gateway today; model selection is per-task, not failover. Deferred until provider outages are a real operational problem.
+- **Multi-tenant / team seats** — projects are single-owner today. Multi-seat lands when there's a multi-seat customer, not before.
+- **Async, batched embedding pipeline + dedicated vector store** — one Postgres+pgvector instance handles ingestion and retrieval today. Sharded or batched embedding when a single database is the bottleneck.
+- **Integration / e2e tests against a live database** — the suite is unit-level (below). End-to-end coverage waits until the data layer's shape stabilizes.
 
-Mitigations in place: top-k retrieval caps, similarity-based ranking, explicit labeling of memory vs code context in prompts, in-memory query cache for repeated questions, and budget guardrails.
-
----
-
-## Known Failure Modes
-
-Stale or misleading memory after large refactors. Architecture view missing dynamically loaded or generated imports. Diff analysis is advisory, impact and risk are suggestions, not authoritative. Cold starts after indexing or long idle periods cause higher latency. Model rate limiting can lead to fallback or errors. Heavy indexing of large repos can increase latency or load. Observability (query metrics, error rate, health status, cold-start and cache metrics) is in place to surface these conditions.
-
----
-
-## Scaling Strategy
-
-Evolution path at higher scale: async embedding pipelines so indexing does not block requests; batched embedding jobs for efficiency; sharded or dedicated vector storage if one database becomes a bottleneck; horizontal scaling of indexing workers; background memory compaction or pruning; more aggressive or distributed caching; model tiering (e.g. cheaper models for simple queries, premium for complex ones). This is an evolution path; not all of it is implemented today.
-
----
-
-## RAG Pipeline
-
-The core intelligence lives in `src/lib/rag.ts`:
-
-```typescript
-// 1. Embed the user's question
-const queryEmbedding = await getGenerateEmbeddings(query);
-
-// 2. Vector similarity search with pgvector
-const results = await prisma.$queryRaw`
-  SELECT 
-    "fileName",
-    "sourceCode",
-    "Summary",
-    1 - ("summaryEmbedding" <=> ${queryEmbedding}::vector) as similarity
-  FROM "SourceCodeEmbeddings"
-  WHERE "projectId" = ${projectId}
-  ORDER BY "summaryEmbedding" <=> ${queryEmbedding}::vector
-  LIMIT 5
-`;
-
-// 3. Build context from retrieved chunks
-const codeContext = results
-  .map(
-    (code, idx) => `
-  [Source ${idx + 1}: ${code.fileName}] (Relevance: ${(code.similarity * 100).toFixed(1)}%)
-  Summary: ${code.summary}
-  Code: ${code.sourceCode.slice(0, 1000)}
-`,
-  )
-  .join("\n\n");
-
-// 4. Generate answer with Gemini
-const answer = await openrouterChatCompletion({
-  model: "google/gemini-2.5-flash",
-  messages: [
-    { role: "system", content: systemPrompt + codeContext },
-    ...conversationHistory,
-    { role: "user", content: question },
-  ],
-  temperature: 0.3,
-});
-```
-
----
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 20+
-- PostgreSQL with pgvector extension
-- GitHub account
-- Clerk account
-- Google AI API key (Gemini)
-
-### Installation
+## Run locally
 
 ```bash
-# Clone the repository
 git clone https://github.com/parbhatkapila4/repodoc.git
 cd repodoc
-
-# Install dependencies
 npm install
-
-# Set up environment variables
-cp .env.example .env
+cp .env.example .env   # then fill in the values below
+npm run db:generate
+npm run db:migrate
+npm run dev            # http://localhost:3000
 ```
 
-### Environment Variables
+Requires Node 20+ and a PostgreSQL instance with the `pgvector` extension. Environment variables actually read by the code:
 
 ```env
-# Database
-DATABASE_URL="postgresql://user:password@localhost:5432/repodoc"
-
-# Clerk Authentication
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_...
-CLERK_SECRET_KEY=sk_...
-CLERK_WEBHOOK_SECRET=whsec_...
-
-# AI Services
-GOOGLE_API_KEY=your_gemini_api_key
-OPENROUTER_API_KEY=your_openrouter_key
-
-# GitHub
-GITHUB_TOKEN=ghp_...
-
-# Stripe (Optional)
-STRIPE_SECRET_KEY=sk_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-
-# App
+DATABASE_URL=            # Postgres (pooled)
+DIRECT_URL=              # Postgres (direct, for migrations)
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
+CLERK_WEBHOOK_SECRET=
+GEMINI_API_KEY=          # embeddings
+OPENROUTER_API_KEY=      # all generation
+ENCRYPTION_KEY=          # 32-byte key; without it, stored tokens are NOT encrypted
+CRON_SECRET=             # authorizes the indexing-worker cron route
+GITHUB_TOKEN=            # optional; raises rate limits and enables private repos
+UPSTASH_REDIS_REST_URL=  # optional; distributed rate limiting/locking
+UPSTASH_REDIS_REST_TOKEN=
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-### Database Setup
+## Tests
 
-```bash
-# Generate Prisma client
-npm run db:generate
+20 unit tests across three suites (`npm run test:ci`), fully mocked — route guards on `/api/query` (401/400/404/200 and the pre-index path), RAG retrieval and answer generation, and the GitHub loader. They cover behavior and error handling at the function and route-handler level; there is no live-DB integration or end-to-end coverage yet (see "not built yet").
 
-# Run migrations
-npm run db:migrate
+## About
 
-# (Optional) Open Prisma Studio
-npm run db:studio
-```
-
-### Development
-
-```bash
-# Start development server
-npm run dev
-
-# Run tests
-npm test
-
-# Type check
-npm run type-check
-
-# Lint
-npm run lint
-```
-
----
-
-## Project Structure
-
-```
-repodoc/
-├── src/
-│   ├── app/
-│   │   ├── (app)/              # Landing page
-│   │   ├── (auth)/             # Sign in/up, user sync
-│   │   ├── (protected)/        # Authenticated routes
-│   │   │   ├── chat/           # AI chat interface
-│   │   │   ├── dashboard/      # Project management
-│   │   │   ├── docs/           # Documentation viewer
-│   │   │   ├── readme/         # README editor
-│   │   │   ├── analytics/      # Platform analytics
-│   │   │   ├── search/         # Semantic search
-│   │   │   ├── architecture/   # Architecture view
-│   │   │   └── diff/           # Diff analysis
-│   │   └── api/
-│   │       ├── query/          # RAG endpoint
-│   │       ├── search/         # Vector search
-│   │       ├── analytics/      # Metrics API
-│   │       ├── architecture/   # Architecture extraction
-│   │       ├── analyze-diff/   # Diff analysis
-│   │       ├── indexing-worker/# Cron-triggered indexing job
-│   │       ├── create-checkout/# Stripe checkout
-│   │       └── webhooks/       # Clerk & Stripe webhooks
-│   ├── components/
-│   │   ├── ui/                 # Radix-based primitives
-│   │   └── landing/            # Marketing components
-│   ├── lib/
-│   │   ├── rag.ts              # RAG implementation
-│   │   ├── github.ts           # GitHub integration
-│   │   ├── gemini.ts           # AI embeddings & generation
-│   │   ├── openrouter.ts       # LLM fallback
-│   │   ├── prisma.ts           # Database client
-│   │   ├── actions.ts          # Server actions
-│   │   ├── actions-indexing.ts # Indexing job actions (status, retry, cancel)
-│   │   ├── rate-limiter.ts     # API protection
-│   │   ├── memory.ts           # Repo memory (RAG)
-│   │   ├── architecture.ts    # Architecture extraction
-│   │   ├── diff.ts             # Diff analysis
-│   │   └── redis.ts            # Upstash Redis (locking utilities)
-│   └── hooks/                  # Custom React hooks
-├── prisma/
-│   ├── schema.prisma           # Database schema
-│   └── migrations/             # Migration history
-└── __tests__/                  # Jest test suites
-```
-
----
-
-## Pricing
-
-| Plan             | Price  | Projects  | Features                                                                   |
-| ---------------- | ------ | --------- | -------------------------------------------------------------------------- |
-| **Starter**      | $10/mo | 3         | AI chat, README generation, docs generation, basic analytics               |
-| **Professional** | $20/mo | 10        | Everything in Starter + public sharing, priority processing, email support |
-| **Enterprise**   | $49/mo | Unlimited | Everything in Professional + team features, SLA, custom integrations       |
-
----
-
-## API Reference
-
-### POST `/api/query`
-
-Query your codebase with natural language.
-
-```typescript
-// Request
-{
-  "projectId": "uuid",
-  "question": "How does authentication work?",
-  "conversationHistory": [
-    { "role": "user", "content": "previous question" },
-    { "role": "assistant", "content": "previous answer" }
-  ]
-}
-
-// Response
-{
-  "answer": "Authentication in this codebase is handled by...",
-  "sources": [
-    {
-      "fileName": "src/lib/auth.ts",
-      "similarity": 0.89,
-      "summary": "Handles user authentication..."
-    }
-  ]
-}
-```
-
-### POST `/api/search`
-
-Semantic search across your codebase.
-
-```typescript
-// Request
-{
-  "projectId": "uuid",
-  "query": "rate limiting",
-  "limit": 10
-}
-
-// Response
-{
-  "results": [
-    {
-      "fileName": "src/lib/rate-limiter.ts",
-      "sourceCode": "...",
-      "summary": "...",
-      "similarity": 0.92
-    }
-  ]
-}
-```
-
----
-
-## Security
-
-- **Authentication**: All routes protected by Clerk middleware
-- **Input validation**: Zod schemas on all API inputs
-- **SQL injection**: Prevented by Prisma parameterized queries
-- **Rate limiting**: Token bucket algorithm on API endpoints
-- **XSS protection**: Next.js built-in escaping
-- **CSRF protection**: Same-origin verification
-
----
-
-## Contributing
-
-Contributions are welcome. Please open an issue first to discuss what you'd like to change.
-
-```bash
-# Fork the repo
-git checkout -b feature/your-feature
-git commit -m "Add your feature"
-git push origin feature/your-feature
-# Open a PR
-```
-
----
-
-<div align="center">
-
-**Built by [Parbhat Kapila](https://github.com/parbhatkapila4)**
-
-[Website](https://www.parbhat.dev/) • [Twitter](https://x.com/Parbhat03) • [Email](mailto:parbhat@parbhat.dev)
-
-</div>
+Built by Parbhat Kapila — a full-stack engineer focused on production AI systems. More work at [parbhat.dev](https://parbhat.dev).

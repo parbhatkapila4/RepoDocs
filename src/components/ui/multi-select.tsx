@@ -94,6 +94,8 @@ export function MultiSelect({
         <div
           role="combobox"
           aria-expanded={open}
+          aria-controls="multi-select-listbox"
+          tabIndex={0}
           className={cn(
             "min-h-10 w-full rounded-md border border-gray-700 bg-gray-900/50 text-sm text-white",
             "flex items-center gap-1 p-2",

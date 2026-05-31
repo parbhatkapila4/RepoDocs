@@ -15,17 +15,15 @@ import {
   Loader2,
   CheckCircle2,
   Circle,
-  Code2,
-  FileText,
   Sparkles,
   AlertTriangle,
   Crown,
-  ArrowLeft,
   Terminal,
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
+import { LoadingButton } from "@/components/LoadingButton";
 
 const colors = {
   green: "#50fa7b",
@@ -89,26 +87,9 @@ function CreatePage() {
   const isSubmittingRef = useRef(false);
   const mountedRef = useMountedRef();
   const [loadingSteps, setLoadingSteps] = useState<LoadingStep[]>([
-    { id: 1, label: "Creating project...", status: "pending", icon: Plus },
-    {
-      id: 2,
-      label: "Loading repository files...",
-      status: "pending",
-      icon: Github,
-    },
-    { id: 3, label: "Analyzing code...", status: "pending", icon: Code2 },
-    {
-      id: 4,
-      label: "Generating embeddings...",
-      status: "pending",
-      icon: Sparkles,
-    },
-    {
-      id: 5,
-      label: "Creating documentation...",
-      status: "pending",
-      icon: FileText,
-    },
+    { id: 1, label: "Validating repository", status: "pending", icon: Github },
+    { id: 2, label: "Creating project", status: "pending", icon: Plus },
+    { id: 3, label: "Queueing indexer", status: "pending", icon: Sparkles },
   ]);
   const [progress, setProgress] = useState(0);
   const [projectLimit, setProjectLimit] = useState<ProjectLimitStatus | null>(
@@ -131,20 +112,6 @@ function CreatePage() {
     };
     void checkLimit();
   }, [mountedRef]);
-
-  useEffect(() => {
-    const mainElement = document.querySelector(
-      'main[data-slot="sidebar-inset"]'
-    );
-    if (mainElement) {
-      (mainElement as HTMLElement).style.backgroundColor = "#000000";
-    }
-    return () => {
-      if (mainElement) {
-        (mainElement as HTMLElement).style.backgroundColor = "";
-      }
-    };
-  }, []);
 
   const form = useForm<CreateProjectForm>({
     resolver: zodResolver(createProjectSchema),
@@ -179,13 +146,13 @@ function CreatePage() {
     try {
       if (mountedRef.current) {
         updateStep(1, "loading");
-        setProgress(10);
+        setProgress(20);
       }
 
       const newProject = await createNewProject(
         data.name,
         data.githubUrl,
-        process.env.GITHUB_TOKEN
+        data.githubToken || undefined
       );
 
       if (!mountedRef.current) {
@@ -194,57 +161,23 @@ function CreatePage() {
       }
 
       updateStep(1, "completed");
-      setProgress(20);
-
       updateStep(2, "loading");
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      if (!mountedRef.current) {
-        finishCreateInBackground(newProject);
-        return;
-      }
-      updateStep(2, "completed");
-      setProgress(40);
-
-      updateStep(3, "loading");
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      if (!mountedRef.current) {
-        finishCreateInBackground(newProject);
-        return;
-      }
-      updateStep(3, "completed");
       setProgress(60);
 
-      updateStep(4, "loading");
-      await new Promise((resolve) => setTimeout(resolve, 1200));
-      if (!mountedRef.current) {
-        finishCreateInBackground(newProject);
-        return;
-      }
-      updateStep(4, "completed");
-      setProgress(80);
+      await loadProjects();
+      if (newProject?.id) selectProject(newProject.id);
 
-      updateStep(5, "loading");
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      if (!mountedRef.current) {
-        finishCreateInBackground(newProject);
-        return;
-      }
-      updateStep(5, "completed");
+      if (!mountedRef.current) return;
+
+      updateStep(2, "completed");
+      updateStep(3, "completed");
       setProgress(100);
 
-      await loadProjects();
-
-      if (newProject?.id) {
-        selectProject(newProject.id);
-      }
-
-      toast.success("Project created successfully!", {
-        description: `${data.name} is being indexed in the background. It will be ready shortly!`,
+      toast.success("Project created", {
+        description: `${data.name} is indexing in the background. You'll see progress on your dashboard.`,
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      if (mountedRef.current) router.push("/dashboard");
+      router.push("/dashboard");
     } catch (error) {
       console.error("Error creating project:", error);
 
@@ -285,37 +218,29 @@ function CreatePage() {
   const isFormDisabled =
     form.formState.isSubmitting ||
     isLoading ||
-    isCheckingLimit ||
     (projectLimit !== null && !projectLimit.canCreate);
 
   return (
     <div className="min-h-screen bg-black relative">
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#333] to-transparent" />
 
-      <div className="relative max-w-2xl mx-auto px-6 py-12">
-        <motion.button
-          onClick={() => router.back()}
-          className="flex items-center gap-2 text-[#666] hover:text-white transition-colors mb-8 group"
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-        >
-          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          <span className="text-sm font-medium">Back</span>
-        </motion.button>
-
+      <div className="relative max-w-3xl mx-auto px-6 sm:px-8 py-10 lg:py-14">
         <motion.div
-          className="mb-10"
+          className="mb-10 text-center"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          <span className="text-[#666] text-xs font-mono tracking-wide uppercase mb-3 block">
-            New Project
+          <span className="text-[#888] text-[10.5px] font-mono tracking-[0.22em] uppercase mb-4 block">
+            New project
           </span>
-          <h1 className="text-4xl font-bold text-white mb-3">Create Project</h1>
-          <p className="text-[#888] text-sm max-w-md">
-            Connect a GitHub repository to start asking questions about your
-            codebase.
+          <h1 className="text-4xl sm:text-5xl font-semibold text-white mb-4 tracking-[-0.025em] leading-[1.1]">
+            Create a project
+          </h1>
+          <p className="text-[#a0a0a0] text-[15px] max-w-xl mx-auto leading-[1.6]">
+            Connect a GitHub repository. RepoDoc indexes every file, traces
+            module relationships, and turns the codebase into something you
+            can interrogate.
           </p>
         </motion.div>
 
@@ -414,42 +339,44 @@ function CreatePage() {
           )}
 
         <motion.div
-          className="bg-[#1a1a1a] border border-[#333] rounded-lg overflow-hidden"
+          className="bg-[#101012] border border-[#2a2a2e] rounded-xl overflow-hidden"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <div className="flex items-center gap-2 px-4 py-3 bg-[#252525] border-b border-[#333]">
+          <div className="flex items-center gap-2 px-5 py-3.5 bg-[#1a1a1d] border-b border-[#2a2a2e]">
             <div className="w-3 h-3 rounded-full bg-[#ff5f57]" />
             <div className="w-3 h-3 rounded-full bg-[#febc2e]" />
             <div className="w-3 h-3 rounded-full bg-[#28c840]" />
-            <span className="ml-3 text-[#666] text-sm font-mono">
+            <span className="ml-3 text-[#888] text-[13px] font-mono">
               new-project
             </span>
           </div>
 
-          <div className="p-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-lg bg-[#252525] border border-[#333] flex items-center justify-center">
+          <div className="p-7 lg:p-9">
+            <div className="flex items-center gap-3.5 mb-8">
+              <div className="w-11 h-11 rounded-lg bg-[#1a1a1d] border border-[#2a2a2e] flex items-center justify-center shrink-0">
                 <Terminal className="w-5 h-5" style={{ color: colors.green }} />
               </div>
               <div>
-                <h2 className="text-white font-semibold">Project Details</h2>
-                <p className="text-[#666] text-xs">
+                <h2 className="text-white font-semibold text-lg">
+                  Project details
+                </h2>
+                <p className="text-[#888] text-sm">
                   Enter repository information
                 </p>
               </div>
             </div>
 
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="space-y-2">
-                <label className="text-sm text-[#888] font-medium">
-                  Project Name
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-7">
+              <div className="space-y-2.5">
+                <label className="text-[13px] text-white/80 font-medium block">
+                  Project name
                 </label>
                 <input
                   type="text"
                   placeholder="my-awesome-project"
-                  className="w-full px-4 py-3 bg-[#0a0a0a] border border-[#333] rounded-lg text-white placeholder:text-[#555] focus:border-[#50fa7b] focus:outline-none transition-colors font-mono text-sm"
+                  className="w-full px-4 py-3.5 bg-[#0a0a0a] border border-[#2a2a2e] rounded-lg text-white placeholder:text-[#555] focus:border-[#50fa7b] focus:outline-none transition-colors font-mono text-[15px]"
                   {...form.register("name")}
                   disabled={isFormDisabled}
                 />
@@ -460,15 +387,15 @@ function CreatePage() {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm text-[#888] font-medium flex items-center gap-2">
-                  <Github className="w-4 h-4" />
-                  GitHub Repository URL
+              <div className="space-y-2.5">
+                <label className="text-[13px] text-white/80 font-medium flex items-center gap-2">
+                  <Github className="w-3.5 h-3.5" />
+                  GitHub repository URL
                 </label>
                 <input
                   type="url"
                   placeholder="https://github.com/username/repository"
-                  className="w-full px-4 py-3 bg-[#0a0a0a] border border-[#333] rounded-lg text-white placeholder:text-[#555] focus:border-[#50fa7b] focus:outline-none transition-colors font-mono text-sm"
+                  className="w-full px-4 py-3.5 bg-[#0a0a0a] border border-[#2a2a2e] rounded-lg text-white placeholder:text-[#555] focus:border-[#50fa7b] focus:outline-none transition-colors font-mono text-[15px]"
                   {...form.register("githubUrl")}
                   disabled={isFormDisabled}
                 />
@@ -567,39 +494,30 @@ function CreatePage() {
                 </motion.div>
               )}
 
-              <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                <button
+              <div className="flex flex-col sm:flex-row gap-3 pt-3">
+                <LoadingButton
                   type="submit"
                   disabled={isFormDisabled}
-                  className="flex-1 px-6 py-3 bg-white text-black font-medium rounded-lg flex items-center justify-center gap-2 hover:bg-[#eee] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  loading={form.formState.isSubmitting || isLoading}
+                  className="flex-1 h-12 px-6 bg-white text-black font-medium text-[14px] rounded-lg hover:bg-[#eee] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isCheckingLimit ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Checking...
-                    </>
-                  ) : form.formState.isSubmitting || isLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Creating...
-                    </>
-                  ) : projectLimit !== null && !projectLimit.canCreate ? (
+                  {projectLimit !== null && !projectLimit.canCreate ? (
                     <>
                       <AlertTriangle className="w-4 h-4" />
-                      Upgrade Required
+                      Upgrade required
                     </>
                   ) : (
                     <>
                       <Plus className="w-4 h-4" />
-                      Create Project
+                      Create project
                     </>
                   )}
-                </button>
+                </LoadingButton>
                 <button
                   type="button"
                   onClick={() => router.back()}
                   disabled={form.formState.isSubmitting || isLoading}
-                  className="px-6 py-3 text-[#888] font-medium rounded-lg flex items-center justify-center gap-2 hover:text-white transition-colors border border-[#333] hover:border-[#555] disabled:opacity-50"
+                  className="h-12 px-6 text-[#888] font-medium text-[14px] rounded-lg flex items-center justify-center gap-2 hover:text-white transition-colors border border-[#2a2a2e] hover:border-[#444] disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -607,56 +525,111 @@ function CreatePage() {
             </form>
           </div>
         </motion.div>
-
         <motion.div
-          className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
+          className="mt-10"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
         >
-          <div className="p-4 bg-[#1a1a1a] border border-[#333] rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
-              <Github className="w-4 h-4" style={{ color: colors.purple }} />
-              <span className="text-white text-sm font-medium">
-                Public Repos
-              </span>
-            </div>
-            <p className="text-[#666] text-xs">
-              Works best with public repositories. Private repos require
-              authentication.
-            </p>
-          </div>
-          <div className="p-4 bg-[#1a1a1a] border border-[#333] rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="w-4 h-4" style={{ color: colors.yellow }} />
-              <span className="text-white text-sm font-medium">AI-Powered</span>
-            </div>
-            <p className="text-[#666] text-xs">
-              We analyze your code structure and create embeddings for accurate
-              answers.
-            </p>
+          <span className="text-[#888] text-[10.5px] font-mono tracking-[0.22em] uppercase mb-5 block text-center">
+            What happens next
+          </span>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {[
+              {
+                step: "01",
+                title: "Clone & parse",
+                body: "We pull the file tree, scoped to the default branch.",
+              },
+              {
+                step: "02",
+                title: "Summarize & embed",
+                body: "Each file is summarized with Gemini and stored in pgvector.",
+              },
+              {
+                step: "03",
+                title: "Chat goes live",
+                body: "Once indexing finishes, every answer cites its source files.",
+              },
+            ].map((item) => (
+              <div
+                key={item.step}
+                className="rounded-xl border border-[#2a2a2e] bg-[#101012] p-5"
+              >
+                <span
+                  className="font-mono text-[10.5px] tracking-[0.22em] block mb-2.5"
+                  style={{ color: colors.cyan }}
+                >
+                  {item.step}
+                </span>
+                <div className="text-white font-medium text-[14px] tracking-[-0.005em]">
+                  {item.title}
+                </div>
+                <p className="mt-2 text-[#888] text-[13px] leading-[1.6]">
+                  {item.body}
+                </p>
+              </div>
+            ))}
           </div>
         </motion.div>
 
         <motion.div
-          className="mt-12 pt-8 border-t border-[#222]"
+          className="mt-6 grid grid-cols-3 gap-px overflow-hidden rounded-xl bg-[#2a2a2e] border border-[#2a2a2e]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
+          transition={{ delay: 0.5 }}
         >
-          <div className="grid grid-cols-3 gap-8">
-            {[
-              { value: "30s", label: "Average indexing time" },
-              { value: "RAG", label: "Retrieval augmented" },
-              { value: "∞", label: "Questions to ask" },
-            ].map((stat) => (
-              <div key={stat.label} className="text-center">
-                <div className="text-xl font-bold text-white mb-1 font-mono">
-                  {stat.value}
-                </div>
-                <div className="text-xs text-[#666]">{stat.label}</div>
+          {[
+            { value: "30s", label: "Avg indexing" },
+            { value: "RAG", label: "Retrieval" },
+            { value: "∞", label: "Questions" },
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              className="bg-[#101012] px-5 py-5 text-center"
+            >
+              <div className="text-2xl font-semibold text-white font-mono tracking-[-0.02em]">
+                {stat.value}
               </div>
-            ))}
+              <div className="text-[10.5px] text-[#888] mt-1.5 font-mono uppercase tracking-[0.22em]">
+                {stat.label}
+              </div>
+            </div>
+          ))}
+        </motion.div>
+
+        <motion.div
+          className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.55 }}
+        >
+          <div className="p-4 bg-[#101012] border border-[#2a2a2e] rounded-xl">
+            <div className="flex items-center gap-2 mb-2">
+              <Github className="w-3.5 h-3.5" style={{ color: colors.purple }} />
+              <span className="text-white text-[13.5px] font-medium">
+                Public repos
+              </span>
+            </div>
+            <p className="text-[#888] text-[12.5px] leading-[1.55]">
+              Works best with public repositories. Private repos need a
+              personal access token.
+            </p>
+          </div>
+          <div className="p-4 bg-[#101012] border border-[#2a2a2e] rounded-xl">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles
+                className="w-3.5 h-3.5"
+                style={{ color: colors.yellow }}
+              />
+              <span className="text-white text-[13.5px] font-medium">
+                AI-grounded
+              </span>
+            </div>
+            <p className="text-[#888] text-[12.5px] leading-[1.55]">
+              Embeddings are produced from real source code. Answers cite the
+              files they came from.
+            </p>
           </div>
         </motion.div>
       </div>

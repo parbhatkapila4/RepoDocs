@@ -1,4 +1,3 @@
-
 if (typeof window !== 'undefined') {
   module.exports = function raf(callback) {
     return window.requestAnimationFrame(callback);

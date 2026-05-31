@@ -166,9 +166,12 @@ export default function SearchPage() {
           );
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Search error:", error);
-      const msg = error.message || "Failed to search repositories";
+      const msg =
+        error instanceof Error
+          ? error.message
+          : "Failed to search repositories";
       const isRate =
         msg.toLowerCase().includes("rate limit") ||
         msg.toLowerCase().includes("quota") ||
@@ -452,7 +455,7 @@ export default function SearchPage() {
                               </div>
 
                               <div className="text-gray-500 text-xs">
-                                Updated{" "}
+                                Last commit{" "}
                                 {new Date(repo.updatedAt).toLocaleDateString()}
                               </div>
                             </div>

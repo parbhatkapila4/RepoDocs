@@ -23,9 +23,6 @@ export default async function PublicDocsPage({ params }: PublicDocsPageProps) {
   const { token } = await params;
   const decodedToken = decodeURIComponent(token);
 
-  console.log("Fetching public docs with token:", decodedToken);
-  console.log("Token length:", decodedToken.length);
-
   try {
     const share = await getPublicDocs(decodedToken);
 
@@ -174,6 +171,7 @@ export default async function PublicDocsPage({ params }: PublicDocsPageProps) {
                             </div>
                           ),
                           img: ({ src, alt, ...props }) => (
+                            // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src={src}
                               alt={alt}
@@ -243,7 +241,6 @@ export default async function PublicDocsPage({ params }: PublicDocsPageProps) {
     );
   } catch (error) {
     console.error("Error fetching public docs:", error);
-    console.error("Token received:", decodedToken);
 
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">

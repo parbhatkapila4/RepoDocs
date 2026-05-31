@@ -9,14 +9,9 @@ export const useProjects = () => {
   const { projects, currentProject, isLoading, error } = useSelector(
     (state: RootState) => state.project
   );
-  const { currentUser } = useSelector((state: RootState) => state.user);
 
   const createNewProject = useCallback(
     async (name: string, githubUrl: string, githubToken?: string) => {
-      if (!currentUser) {
-        throw new Error("User not authenticated");
-      }
-
       try {
         dispatch(setLoading(true));
         dispatch(setError(null));
@@ -52,7 +47,7 @@ export const useProjects = () => {
         dispatch(setLoading(false));
       }
     },
-    [currentUser, dispatch]
+    [dispatch]
   );
 
   return {

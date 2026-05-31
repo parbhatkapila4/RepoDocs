@@ -1,623 +1,399 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  FileText,
-  BookOpen,
-  Mail,
-  Clock,
-  Users,
-  Shield,
-  ArrowLeft,
-  AlertTriangle,
-  CheckCircle,
-  Scale,
-  Gavel,
-  Settings,
-  Database,
-} from "lucide-react";
+import React from "react";
 import Link from "next/link";
+import Image from "next/image";
+import { ArrowLeft } from "lucide-react";
+
+export const metadata = {
+  title: "Terms of Service - RepoDoc",
+  description:
+    "The terms governing your use of RepoDoc.",
+};
 
 export default function TermsOfServicePage() {
   return (
-    <div className="min-h-screen black-bg relative overflow-hidden">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/3 rounded-full blur-2xl"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-white/2 rounded-full blur-2xl"></div>
-      </div>
+    <main className="relative min-h-screen overflow-hidden bg-[#040406]">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[60vh]"
+        style={{
+          background:
+            "radial-gradient(ellipse 50% 35% at 50% 0%, rgba(245,158,11,0.04), transparent 70%)",
+        }}
+      />
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="mb-8">
-          <Button
-            variant="outline"
-            className="border-subtle text-white/70 hover:text-white hover:bg-white/5 glass-card"
-            asChild
+      <TopBar />
+
+      <section className="relative mx-auto max-w-[1800px] px-6 sm:px-10 lg:px-20 pt-20 pb-12">
+        <Eyebrow>terms of service</Eyebrow>
+        <h1 className="mt-6 text-[clamp(2rem,4.4vw,3.2rem)] font-medium leading-[1.08] tracking-[-0.03em] text-white">
+          The terms of using RepoDoc.
+          <br />
+          <span className="text-white/45">Plain language. No traps.</span>
+        </h1>
+        <p className="mt-6 max-w-2xl text-[15px] leading-[1.6] text-white/55">
+          The rules of the road for using RepoDoc: what we provide, what
+          you&apos;re responsible for, who owns what, and what happens when
+          either side wants out.
+        </p>
+        <p className="mt-4 font-mono text-[10.5px] uppercase tracking-[0.22em] text-white/35">
+          last updated · May 2026
+        </p>
+      </section>
+
+      <Section label="01 / acceptance" title="Acceptance of terms">
+        <p className="text-[14.5px] leading-[1.7] text-white/65">
+          By accessing or using RepoDoc you agree to be bound by these Terms
+          of Service and all applicable laws and regulations. If you do not
+          agree, do not use the service.
+        </p>
+        <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <Surface label="agreement">
+            The materials on this platform are protected by applicable
+            copyright and trademark law. Unauthorized use may violate those
+            laws and these terms.
+          </Surface>
+          <Surface label="updates">
+            We may modify these terms. Continued use after changes constitutes
+            acceptance of the updated version. Material changes are announced
+            by email or in-product notice.
+          </Surface>
+        </div>
+      </Section>
+
+      <Section label="02 / service" title="What RepoDoc does">
+        <p className="text-[14.5px] leading-[1.7] text-white/65">
+          RepoDoc transforms GitHub repositories into queryable knowledge
+          bases: code search, documentation generation, and grounded chat.
+        </p>
+        <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <Surface label="what we provide">
+            <BulletList
+              items={[
+                "Codebase indexing and embeddings storage",
+                "Natural-language Q&A grounded in retrieved files",
+                "README and documentation generation",
+                "Architecture and dependency graph extraction",
+              ]}
+            />
+          </Surface>
+          <Surface label="availability">
+            <BulletList
+              items={[
+                "We aim for 99.9% monthly uptime; not contractually guaranteed at the free tier",
+                "Scheduled maintenance is announced in advance when possible",
+                "Email support during business hours",
+              ]}
+            />
+          </Surface>
+        </div>
+      </Section>
+
+      <Section label="03 / accounts" title="Your account">
+        <p className="text-[14.5px] leading-[1.7] text-white/65">
+          You must create an account and provide accurate information to use
+          RepoDoc. You are responsible for activity that occurs under your
+          account.
+        </p>
+        <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <Surface label="requirements">
+            <BulletList
+              items={[
+                "A valid email address",
+                "Connection of a GitHub identity for OAuth or repo access",
+                "Accurate registration information",
+                "Age 13 or older",
+              ]}
+            />
+          </Surface>
+          <Surface label="security">
+            <BulletList
+              items={[
+                "Keep credentials confidential",
+                "Notify us immediately of any unauthorized access",
+                "Use strong, unique passwords",
+                "Two-factor authentication where supported",
+              ]}
+            />
+          </Surface>
+        </div>
+        <Surface label="responsibility">
+          You are responsible for everything that happens under your account.
+          Suspected misuse should be reported via the contact email below.
+        </Surface>
+      </Section>
+
+      <Section label="04 / acceptable use" title="What you can and can't do">
+        <p className="text-[14.5px] leading-[1.7] text-white/65">
+          Use RepoDoc only for lawful purposes and in accordance with these
+          terms.
+        </p>
+        <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <Surface label="permitted">
+            <BulletList
+              items={[
+                "Indexing and querying repositories you own or are authorized to access",
+                "Generating documentation and READMEs for your projects",
+                "Sharing knowledge with your team through tokenized public links",
+                "Improving your team's codebase understanding and onboarding",
+              ]}
+            />
+          </Surface>
+          <Surface label="prohibited">
+            <BulletList
+              items={[
+                "Violating laws, regulations, or third-party rights",
+                "Infringing intellectual property or licensing terms",
+                "Reverse engineering or scraping the platform",
+                "Using the service to facilitate harm or abuse",
+                "Sharing credentials or distributing unauthorized access",
+                "Spamming, automating heavy load, or evading rate limits",
+              ]}
+            />
+          </Surface>
+        </div>
+      </Section>
+
+      <Section label="05 / intellectual property" title="Who owns what">
+        <p className="text-[14.5px] leading-[1.7] text-white/65">
+          You keep the rights to your code. We keep the rights to our
+          platform.
+        </p>
+        <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <Surface label="your content">
+            <BulletList
+              items={[
+                "You retain ownership of your code and documentation",
+                "We do not claim ownership of repository content you index",
+                "You can delete your data at any time",
+                "We respect the licenses under which your repositories are published",
+              ]}
+            />
+          </Surface>
+          <Surface label="our platform">
+            <BulletList
+              items={[
+                "Our retrieval pipeline, prompts, and ranking logic",
+                "Platform UI, design system, and code",
+                "Indexing and observability infrastructure",
+                "Service architecture and integrations",
+              ]}
+            />
+          </Surface>
+        </div>
+      </Section>
+
+      <Section label="06 / privacy" title="Privacy and data protection">
+        <p className="text-[14.5px] leading-[1.7] text-white/65">
+          Privacy practices are described in detail in the Privacy Policy.
+          Highlights below.
+        </p>
+        <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <Surface label="data handling">
+            <BulletList
+              items={[
+                "Encrypted storage and TLS in transit",
+                "Limited retention; you can delete on request",
+                "Repository content is not used to train external models",
+                "We do not sell your data",
+              ]}
+            />
+          </Surface>
+          <Surface label="your rights">
+            <BulletList
+              items={[
+                "Access a copy of your data",
+                "Correct inaccuracies",
+                "Delete your data",
+                "Port your data to another provider",
+              ]}
+            />
+          </Surface>
+        </div>
+        <Surface label="full policy">
+          For details, see the{" "}
+          <Link
+            href="/privacy"
+            className="text-white underline underline-offset-4 hover:text-white/75"
           >
-            <Link href="/">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Home
-            </Link>
-          </Button>
+            Privacy Policy
+          </Link>
+          .
+        </Surface>
+      </Section>
+
+      <Section label="07 / limitations" title="Limitations and disclaimers">
+        <p className="text-[14.5px] leading-[1.7] text-white/65">
+          Read the limits below before relying on the service for anything
+          high-stakes.
+        </p>
+        <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <Surface label="service limits">
+            <BulletList
+              items={[
+                "AI responses may be incorrect or incomplete",
+                "Service availability is not guaranteed",
+                "Indexing latency depends on repo size and load",
+                "Repository size and rate limits apply",
+                "Third-party providers (LLM, GitHub) introduce upstream risk",
+              ]}
+            />
+          </Surface>
+          <Surface label="disclaimer">
+            RepoDoc is provided &quot;as is,&quot; without warranties of any
+            kind, express or implied. We do not guarantee the accuracy or
+            completeness of AI-generated answers. Use at your own risk.
+          </Surface>
         </div>
+      </Section>
 
-        <div className="text-center mb-16">
-          <Badge
-            variant="secondary"
-            className="mb-6 px-4 py-2 text-sm glass-card text-white/90 border-subtle"
-          >
-            <FileText className="w-4 h-4 mr-2 text-white/80" />
-            Terms of Service
-          </Badge>
-
-          <h1 className="text-4xl sm:text-5xl font-bold text-white mb-6 leading-tight">
-            Terms of Service
-          </h1>
-
-          <p className="text-xl text-white/70 max-w-3xl mx-auto mb-8">
-            The terms and conditions governing your use of RepoDoc's RAG-powered
-            codebase intelligence platform.
-          </p>
+      <Section label="08 / termination" title="Ending the relationship">
+        <p className="text-[14.5px] leading-[1.7] text-white/65">
+          Either side can end this agreement at any time.
+        </p>
+        <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <Surface label="your rights">
+            <BulletList
+              items={[
+                "Cancel your account at any time",
+                "Delete all your data on request",
+                "Export your data before deletion",
+                "No cancellation fees",
+                "Changes take effect immediately",
+              ]}
+            />
+          </Surface>
+          <Surface label="our rights">
+            <BulletList
+              items={[
+                "Suspend or terminate accounts that violate these terms",
+                "Suspend accounts engaged in illegal activity",
+                "Suspend accounts engaged in service abuse",
+                "Suspend accounts for non-payment, where applicable",
+                "Discontinue features or the service with notice",
+              ]}
+            />
+          </Surface>
         </div>
+      </Section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-16">
-          <div className="lg:col-span-1">
-            <Card className="glass-card border-subtle sticky top-8">
-              <CardHeader>
-                <CardTitle className="text-white">Table of Contents</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <a
-                  href="#acceptance"
-                  className="block text-white/60 hover:text-white transition-colors text-sm"
-                >
-                  Acceptance of Terms
-                </a>
-                <a
-                  href="#description"
-                  className="block text-white/60 hover:text-white transition-colors text-sm"
-                >
-                  Service Description
-                </a>
-                <a
-                  href="#user-accounts"
-                  className="block text-white/60 hover:text-white transition-colors text-sm"
-                >
-                  User Accounts
-                </a>
-                <a
-                  href="#acceptable-use"
-                  className="block text-white/60 hover:text-white transition-colors text-sm"
-                >
-                  Acceptable Use
-                </a>
-                <a
-                  href="#intellectual-property"
-                  className="block text-white/60 hover:text-white transition-colors text-sm"
-                >
-                  Intellectual Property
-                </a>
-                <a
-                  href="#privacy"
-                  className="block text-white/60 hover:text-white transition-colors text-sm"
-                >
-                  Privacy & Data
-                </a>
-                <a
-                  href="#limitations"
-                  className="block text-white/60 hover:text-white transition-colors text-sm"
-                >
-                  Limitations
-                </a>
-                <a
-                  href="#termination"
-                  className="block text-white/60 hover:text-white transition-colors text-sm"
-                >
-                  Termination
-                </a>
-                <a
-                  href="#contact"
-                  className="block text-white/60 hover:text-white transition-colors text-sm"
-                >
-                  Contact
-                </a>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="lg:col-span-3 space-y-12">
-            <section id="acceptance">
-              <Card className="glass-card border-subtle">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <Gavel className="w-6 h-6 mr-3 text-white/80" />
-                    Acceptance of Terms
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <p className="text-white/70 text-lg leading-relaxed">
-                    By accessing or using RepoDoc, you agree to be bound by
-                    these Terms of Service and all applicable laws and
-                    regulations.
-                  </p>
-
-                  <div className="glass-card p-6 rounded-lg border-subtle">
-                    <h4 className="text-white font-semibold mb-3">
-                      Agreement to Terms
-                    </h4>
-                    <p className="text-white/70">
-                      If you do not agree with any of these terms, you are
-                      prohibited from using or accessing this site. The
-                      materials contained in this website are protected by
-                      applicable copyright and trademark law.
-                    </p>
-                  </div>
-
-                  <div className="glass-card p-6 rounded-lg border-subtle bg-white/5">
-                    <h4 className="text-white font-semibold mb-3">
-                      Updates to Terms
-                    </h4>
-                    <p className="text-white/70 text-sm">
-                      We reserve the right to modify these terms at any time.
-                      Continued use of the service after changes constitutes
-                      acceptance of the new terms.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </section>
-
-            <section id="description">
-              <Card className="glass-card border-subtle">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <Database className="w-6 h-6 mr-3 text-white/80" />
-                    Service Description
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <p className="text-white/70 text-lg leading-relaxed">
-                    RepoDoc is a RAG-powered platform that transforms your
-                    GitHub repositories into queryable knowledge bases.
-                  </p>
-
-                  <div className="space-y-6">
-                    <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-4 flex items-center">
-                        <CheckCircle className="w-5 h-5 mr-2 text-green-400" />
-                        What We Provide
-                      </h4>
-                      <ul className="space-y-3 text-white/70">
-                        <li className="flex items-start">
-                          <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 shrink-0"></div>
-                          <div>
-                            <strong className="text-white">
-                              Codebase Analysis:
-                            </strong>{" "}
-                            AI-powered analysis of your repository structure and
-                            content
-                          </div>
-                        </li>
-                        <li className="flex items-start">
-                          <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 shrink-0"></div>
-                          <div>
-                            <strong className="text-white">
-                              Intelligent Queries:
-                            </strong>{" "}
-                            Natural language questions about your codebase
-                          </div>
-                        </li>
-                        <li className="flex items-start">
-                          <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 shrink-0"></div>
-                          <div>
-                            <strong className="text-white">
-                              Knowledge Base:
-                            </strong>{" "}
-                            Searchable repository documentation and insights
-                          </div>
-                        </li>
-                        <li className="flex items-start">
-                          <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 shrink-0"></div>
-                          <div>
-                            <strong className="text-white">
-                              Code References:
-                            </strong>{" "}
-                            Direct links to relevant code sections and files
-                          </div>
-                        </li>
-                      </ul>
-                    </div>
-
-                    <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-4 flex items-center">
-                        <Settings className="w-5 h-5 mr-2 text-blue-400" />
-                        Service Availability
-                      </h4>
-                      <ul className="space-y-3 text-white/70">
-                        <li className="flex items-start">
-                          <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 shrink-0"></div>
-                          <div>
-                            <strong className="text-white">Uptime:</strong> We
-                            strive for 99.9% service availability
-                          </div>
-                        </li>
-                        <li className="flex items-start">
-                          <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 shrink-0"></div>
-                          <div>
-                            <strong className="text-white">Maintenance:</strong>{" "}
-                            Scheduled maintenance with advance notice
-                          </div>
-                        </li>
-                        <li className="flex items-start">
-                          <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 shrink-0"></div>
-                          <div>
-                            <strong className="text-white">Support:</strong>{" "}
-                            Technical support during business hours
-                          </div>
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </section>
-
-            <section id="user-accounts">
-              <Card className="glass-card border-subtle">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <Users className="w-6 h-6 mr-3 text-white/80" />
-                    User Accounts
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <p className="text-white/70 text-lg leading-relaxed">
-                    To use RepoDoc, you must create an account and provide
-                    accurate information.
-                  </p>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3">
-                        Account Requirements
-                      </h4>
-                      <ul className="space-y-2 text-white/70 text-sm">
-                        <li>• Valid email address</li>
-                        <li>• GitHub account connection</li>
-                        <li>• Accurate personal information</li>
-                        <li>• Secure password</li>
-                        <li>• Age 13 or older</li>
-                      </ul>
-                    </div>
-
-                    <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3">
-                        Account Security
-                      </h4>
-                      <ul className="space-y-2 text-white/70 text-sm">
-                        <li>• Keep credentials secure</li>
-                        <li>• Notify us of breaches</li>
-                        <li>• Regular password updates</li>
-                        <li>• Two-factor authentication</li>
-                        <li>• Account monitoring</li>
-                      </ul>
-                    </div>
-                  </div>
-
-                  <div className="glass-card p-6 rounded-lg border-subtle bg-white/5">
-                    <h4 className="text-white font-semibold mb-3">
-                      Account Responsibilities
-                    </h4>
-                    <p className="text-white/70 text-sm">
-                      You are responsible for all activities that occur under
-                      your account. You must notify us immediately of any
-                      unauthorized use of your account.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </section>
-
-            <section id="acceptable-use">
-              <Card className="glass-card border-subtle">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <Shield className="w-6 h-6 mr-3 text-white/80" />
-                    Acceptable Use
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <p className="text-white/70 text-lg leading-relaxed">
-                    You agree to use RepoDoc only for lawful purposes and in
-                    accordance with these terms.
-                  </p>
-
-                  <div className="space-y-4">
-                    <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3 flex items-center">
-                        <CheckCircle className="w-5 h-5 mr-2 text-green-400" />
-                        Permitted Uses
-                      </h4>
-                      <ul className="space-y-2 text-white/70 text-sm">
-                        <li>• Analyze your own code repositories</li>
-                        <li>• Generate documentation for your projects</li>
-                        <li>• Query your codebase for development insights</li>
-                        <li>• Share knowledge with your development team</li>
-                        <li>• Improve code understanding and onboarding</li>
-                      </ul>
-                    </div>
-
-                    <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3 flex items-center">
-                        <AlertTriangle className="w-5 h-5 mr-2 text-red-400" />
-                        Prohibited Uses
-                      </h4>
-                      <ul className="space-y-2 text-white/70 text-sm">
-                        <li>• Violate any applicable laws or regulations</li>
-                        <li>• Infringe on intellectual property rights</li>
-                        <li>• Attempt to reverse engineer our platform</li>
-                        <li>• Use for malicious or harmful purposes</li>
-                        <li>• Share unauthorized access to repositories</li>
-                        <li>• Spam or abuse our systems</li>
-                      </ul>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </section>
-
-            <section id="intellectual-property">
-              <Card className="glass-card border-subtle">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <Scale className="w-6 h-6 mr-3 text-white/80" />
-                    Intellectual Property
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <p className="text-white/70 text-lg leading-relaxed">
-                    Respect for intellectual property is fundamental to our
-                    service.
-                  </p>
-
-                  <div className="space-y-6">
-                    <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3">
-                        Your Content
-                      </h4>
-                      <p className="text-white/70 text-sm mb-3">
-                        You retain all rights to your code and repository
-                        content. We only process and analyze your content to
-                        provide our services.
-                      </p>
-                      <ul className="space-y-2 text-white/70 text-sm">
-                        <li>• You own your code and documentation</li>
-                        <li>• We don't claim ownership of your content</li>
-                        <li>• You can delete your data at any time</li>
-                        <li>• We respect your repository licenses</li>
-                      </ul>
-                    </div>
-
-                    <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3">
-                        Our Platform
-                      </h4>
-                      <p className="text-white/70 text-sm mb-3">
-                        RepoDoc's platform, algorithms, and technology are
-                        protected by intellectual property laws.
-                      </p>
-                      <ul className="space-y-2 text-white/70 text-sm">
-                        <li>• Our AI models and algorithms</li>
-                        <li>• Platform interface and design</li>
-                        <li>• Processing methodologies</li>
-                        <li>• Service architecture</li>
-                      </ul>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </section>
-
-            <section id="privacy">
-              <Card className="glass-card border-subtle">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <Shield className="w-6 h-6 mr-3 text-white/80" />
-                    Privacy & Data Protection
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <p className="text-white/70 text-lg leading-relaxed">
-                    Your privacy and data protection are our top priorities.
-                  </p>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3">
-                        Data Handling
-                      </h4>
-                      <ul className="space-y-2 text-white/70 text-sm">
-                        <li>• Secure data processing</li>
-                        <li>• Encrypted data storage</li>
-                        <li>• Limited data retention</li>
-                        <li>• No data selling</li>
-                        <li>• User data control</li>
-                      </ul>
-                    </div>
-
-                    <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3">
-                        Your Rights
-                      </h4>
-                      <ul className="space-y-2 text-white/70 text-sm">
-                        <li>• Access your data</li>
-                        <li>• Correct inaccuracies</li>
-                        <li>• Delete your data</li>
-                        <li>• Data portability</li>
-                        <li>• Processing objections</li>
-                      </ul>
-                    </div>
-                  </div>
-
-                  <div className="glass-card p-6 rounded-lg border-subtle bg-white/5">
-                    <h4 className="text-white font-semibold mb-3">
-                      Privacy Policy
-                    </h4>
-                    <p className="text-white/70 text-sm">
-                      For detailed information about how we collect, use, and
-                      protect your data, please review our{" "}
-                      <Link
-                        href="/privacy"
-                        className="text-white hover:underline"
-                      >
-                        Privacy Policy
-                      </Link>
-                      .
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </section>
-
-            <section id="limitations">
-              <Card className="glass-card border-subtle">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <AlertTriangle className="w-6 h-6 mr-3 text-white/80" />
-                    Service Limitations
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <p className="text-white/70 text-lg leading-relaxed">
-                    Please understand the limitations and disclaimers of our
-                    service.
-                  </p>
-
-                  <div className="space-y-4">
-                    <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3">
-                        Service Limitations
-                      </h4>
-                      <ul className="space-y-2 text-white/70 text-sm">
-                        <li>• AI responses may not always be accurate</li>
-                        <li>• Service availability not guaranteed</li>
-                        <li>• Processing time may vary</li>
-                        <li>• Repository size limitations</li>
-                        <li>• Third-party dependency risks</li>
-                      </ul>
-                    </div>
-
-                    <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3">
-                        Disclaimers
-                      </h4>
-                      <p className="text-white/70 text-sm">
-                        RepoDoc is provided "as is" without warranties of any
-                        kind. We do not guarantee the accuracy, completeness, or
-                        reliability of AI-generated responses. Use our service
-                        at your own risk.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </section>
-
-            <section id="termination">
-              <Card className="glass-card border-subtle">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <Clock className="w-6 h-6 mr-3 text-white/80" />
-                    Termination
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <p className="text-white/70 text-lg leading-relaxed">
-                    Either party may terminate this agreement at any time.
-                  </p>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3">
-                        Your Termination Rights
-                      </h4>
-                      <ul className="space-y-2 text-white/70 text-sm">
-                        <li>• Cancel account anytime</li>
-                        <li>• Delete all your data</li>
-                        <li>• Export data before deletion</li>
-                        <li>• No cancellation fees</li>
-                        <li>• Immediate effect</li>
-                      </ul>
-                    </div>
-
-                    <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3">
-                        Our Termination Rights
-                      </h4>
-                      <ul className="space-y-2 text-white/70 text-sm">
-                        <li>• Violation of terms</li>
-                        <li>• Illegal activities</li>
-                        <li>• Service abuse</li>
-                        <li>• Non-payment (if applicable)</li>
-                        <li>• Platform discontinuation</li>
-                      </ul>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </section>
-
-            <section id="contact">
-              <Card className="glass-card border-subtle">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <Mail className="w-6 h-6 mr-3 text-white/80" />
-                    Contact Us
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <p className="text-white/70 text-lg leading-relaxed">
-                    Questions about these Terms of Service? We're here to help.
-                  </p>
-
-                  <div className="glass-card p-6 rounded-lg border-subtle">
-                    <h4 className="text-white font-semibold mb-3">
-                      Get in Touch
-                    </h4>
-                    <div className="space-y-3">
-                      <p className="text-white/70">
-                        <strong className="text-white">Email:</strong>{" "}
-                        help@productsolution.net
-                      </p>
-                      <p className="text-white/70">
-                        <strong className="text-white">Response Time:</strong>{" "}
-                        We respond to all legal inquiries within 48 hours
-                      </p>
-                      <p className="text-white/70">
-                        <strong className="text-white">Support:</strong>{" "}
-                        Available for technical and account issues
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="glass-card p-6 rounded-lg border-subtle bg-white/5">
-                    <h4 className="text-white font-semibold mb-3">
-                      Terms Updates
-                    </h4>
-                    <p className="text-white/70 text-sm mb-3">
-                      We may update these Terms of Service from time to time. We
-                      will notify you of any material changes by email or
-                      through our platform.
-                    </p>
-                    <p className="text-white/50 text-sm">
-                      Last Updated: October 2025
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </section>
-          </div>
+      <Section label="09 / contact" title="Questions about these terms">
+        <p className="text-[14.5px] leading-[1.7] text-white/65">
+          We respond to legal and account inquiries within two business days.
+        </p>
+        <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <Surface label="email">
+            <a
+              href="mailto:parbhat@parbhat.work"
+              className="text-white underline underline-offset-4 transition-colors hover:text-white/75"
+            >
+              parbhat@parbhat.work
+            </a>
+          </Surface>
+          <Surface label="updates">
+            We may update these terms. Material changes will be announced by
+            email or through the platform. The &quot;last updated&quot; date
+            at the top reflects the current version.
+          </Surface>
         </div>
+      </Section>
+    </main>
+  );
+}
+
+function TopBar() {
+  return (
+    <div className="border-b border-white/[0.05]">
+      <div className="flex items-center px-6 sm:px-8 lg:px-12 py-4">
+        <Link href="/" className="group inline-flex items-center gap-2">
+          <ArrowLeft className="h-3.5 w-3.5 text-white/40 transition-all group-hover:-translate-x-0.5 group-hover:text-white/70" />
+          <Image
+            src="/repodoc.png"
+            alt="RepoDoc"
+            width={20}
+            height={20}
+            className="rounded-[5px]"
+          />
+          <span className="text-[13.5px] font-medium tracking-[-0.01em] text-white/85 transition-colors group-hover:text-white">
+            RepoDoc
+          </span>
+        </Link>
       </div>
     </div>
+  );
+}
+
+function Eyebrow({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 font-mono text-[10.5px] uppercase tracking-[0.22em] text-white/45">
+      <span className="h-1 w-1 rounded-full bg-amber-400" />
+      {children}
+    </div>
+  );
+}
+
+function Section({
+  label,
+  title,
+  children,
+}: {
+  label: string;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section>
+      <div className="mx-auto max-w-[1800px] px-6 sm:px-10 lg:px-20 py-12 lg:py-16">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-12">
+          <div className="md:col-span-3">
+            <div className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-white/35">
+              {label}
+            </div>
+            <h2 className="mt-3 text-[22px] font-medium tracking-[-0.02em] text-white">
+              {title}
+            </h2>
+          </div>
+          <div className="md:col-span-9">{children}</div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Surface({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-lg border border-white/[0.06] bg-white/[0.015] p-5 transition-colors hover:border-white/[0.12]">
+      <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-white/35">
+        {label}
+      </div>
+      <div className="mt-3 text-[13.5px] leading-[1.65] text-white/65">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function BulletList({ items }: { items: React.ReactNode[] }) {
+  return (
+    <ul className="space-y-2.5">
+      {items.map((it, i) => (
+        <li
+          key={i}
+          className="flex items-start gap-3 text-[13.5px] leading-[1.6] text-white/65"
+        >
+          <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-white/30" />
+          <span>{it}</span>
+        </li>
+      ))}
+    </ul>
   );
 }

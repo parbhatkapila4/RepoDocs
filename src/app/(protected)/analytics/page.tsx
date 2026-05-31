@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useMountedRef } from "@/hooks/useMountedRef";
 import { motion } from "motion/react";
+import { LoadingButton } from "@/components/LoadingButton";
 import {
   Users,
   FolderOpen,
@@ -187,12 +188,13 @@ export default function AnalyticsPage() {
             Error Loading Analytics
           </h2>
           <p className="text-[#666] text-sm mb-4">{error}</p>
-          <button
+          <LoadingButton
             onClick={fetchAnalytics}
+            loading={loading}
             className="px-4 py-2 bg-white text-black font-medium rounded-lg hover:bg-[#eee] transition-colors"
           >
             Retry
-          </button>
+          </LoadingButton>
         </div>
       </div>
     );
@@ -220,16 +222,14 @@ export default function AnalyticsPage() {
                 Last updated: {lastUpdated.toLocaleTimeString()}
               </p>
             </div>
-            <button
+            <LoadingButton
               onClick={fetchAnalytics}
-              disabled={loading}
-              className="px-4 py-2 bg-[#1a1a1a] text-white font-medium rounded-lg flex items-center gap-2 hover:bg-[#252525] transition-colors border border-[#333] hover:border-[#444] disabled:opacity-50"
+              loading={loading}
+              className="px-4 py-2 bg-[#1a1a1a] text-white font-medium rounded-lg hover:bg-[#252525] transition-colors border border-[#333] hover:border-[#444] disabled:opacity-50"
             >
-              <Activity
-                className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
-              />
+              <Activity className="w-4 h-4" />
               Refresh
-            </button>
+            </LoadingButton>
           </div>
         </motion.div>
 

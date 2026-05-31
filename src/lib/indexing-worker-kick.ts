@@ -56,7 +56,14 @@ export async function kickIndexingWorker(): Promise<void> {
   const origin = origins[0];
   if (!origin) return;
 
-  void fetch(`${origin}/api/indexing-worker`, { cache: "no-store" }).catch(
-    (err) => console.warn("[kickIndexingWorker] HTTP kick failed:", err)
+  const headers: Record<string, string> = {};
+  if (process.env.CRON_SECRET) {
+    headers["authorization"] = `Bearer ${process.env.CRON_SECRET}`;
+  }
+  void fetch(`${origin}/api/indexing-worker`, {
+    cache: "no-store",
+    headers,
+  }).catch((err) =>
+    console.warn("[kickIndexingWorker] HTTP kick failed:", err)
   );
 }

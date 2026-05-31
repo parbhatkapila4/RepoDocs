@@ -3,20 +3,30 @@ import { openrouterSingleMessage } from "@/lib/openrouter";
 import { GoogleGenAI } from "@google/genai";
 import type { GitHubRepoInfo } from "@/lib/github";
 
-const geminiApiKey =
-  process.env.GEMINI_API_KEY || process.env.GOOGLE_GENAI_API_KEY;
-
-if (!geminiApiKey) {
-  throw new Error(
-    "Missing GEMINI_API_KEY or GOOGLE_GENAI_API_KEY environment variable"
+function getGeminiApiKey(): string | null {
+  return (
+    process.env.GEMINI_API_KEY || process.env.GOOGLE_GENAI_API_KEY || null
   );
 }
 
-const genAi = new GoogleGenAI({ apiKey: geminiApiKey });
+let _genAi: GoogleGenAI | null = null;
+function getGenAi(): GoogleGenAI {
+  if (_genAi) return _genAi;
+  const key = getGeminiApiKey();
+  if (!key) {
+    throw new Error(
+      "Missing GEMINI_API_KEY or GOOGLE_GENAI_API_KEY environment variable"
+    );
+  }
+  _genAi = new GoogleGenAI({ apiKey: key });
+  return _genAi;
+}
 
 const OPENROUTER_DOCS_MODIFY_MODEL =
   process.env.OPENROUTER_DOCS_MODIFY_MODEL?.trim() ||
   "anthropic/claude-3.5-haiku";
+const OPENROUTER_README_MODEL =
+  process.env.OPENROUTER_README_MODEL?.trim() || "google/gemini-2.5-pro";
 
 export async function getSummariseCode(doc: Document) {
   try {
@@ -52,14 +62,14 @@ export async function getGenerateEmbeddings(
     } catch { }
   }
 
-  if (!geminiApiKey) {
+  if (!getGeminiApiKey()) {
     throw new Error(
       "GEMINI_API_KEY or GOOGLE_GENAI_API_KEY is not set in environment variables"
     );
   }
 
   try {
-    const response = await genAi.models.embedContent({
+    const response = await getGenAi().models.embedContent({
       model: "gemini-embedding-001",
       contents: summary as string,
       config: {
@@ -88,7 +98,7 @@ export async function getGenerateEmbeddings(
   } catch (error) {
     console.error("Error generating embeddings:", {
       error: error instanceof Error ? error.message : "Unknown error",
-      hasApiKey: !!geminiApiKey,
+      hasApiKey: !!getGeminiApiKey(),
       summaryLength: summary?.length || 0,
       errorDetails: error,
     });
@@ -107,206 +117,70 @@ export async function generateReadmeFromCodebase(
     const codebaseContext = sourceCodeSummaries.join("\n\n");
     const hasCodebaseAnalysis = sourceCodeSummaries.length > 0;
 
-    const prompt = `You are an elite $500K/year Staff+ full-stack engineer who has built and shipped production-grade AI systems, SaaS products, and developer tools at startup speed. You write READMEs the way senior founders, investors, and top engineers expect: precise, structured, and narrative-driven.
+    const prompt = `You are a Staff+ engineer writing the README for ${projectName}. Output ONE complete README.md in pure GitHub-flavored markdown. Do not add a preamble, do not wrap the document in a code fence, do not write "Here is the README". Start your response with the H1 title and go directly into content.
 
-${hasCodebaseAnalysis ? "You are inside Cursor with FULL access to this repository." : "You are generating a README based on repository metadata. The codebase is currently being indexed, so detailed code analysis is not yet available."}
+## REPOSITORY CONTEXT
+- Project: ${projectName}
+- URL: ${repoInfo?.htmlUrl || "N/A"}
+- Primary language: ${repoInfo?.language || "N/A"}
+- Stars / forks: ${repoInfo?.stars ?? 0} / ${repoInfo?.forks ?? 0}
+- One-line description: ${repoInfo?.description || "N/A"}
 
-Your mission:
-Generate a **README.md** that positions this repo as a serious, production-ready, valuable engineering asset, not a toy project.
-It must instantly communicate clarity, purpose, architecture, and adoption ease.
-Avoid fluff, buzzwords, or filler text. Everything must demonstrate competence, intentionality, and confidence.
-
-PROJECT INFORMATION:
-- Project Name: ${projectName}
-- Repository URL: ${repoInfo?.htmlUrl || "N/A"}
-- Primary Language: ${repoInfo?.language || "N/A"}
-- Description: ${repoInfo?.description || "N/A"}
-- Stars: ${repoInfo?.stars || 0}
-- Forks: ${repoInfo?.forks || 0}
-
+## CODEBASE FILE SUMMARIES${hasCodebaseAnalysis ? " (your single source of truth — every concrete claim must be derivable from these)" : ""}
 ${hasCodebaseAnalysis
-        ? `CODEBASE ANALYSIS:
-${codebaseContext}`
-        : `⚠️ IMPORTANT NOTE FOR USER:
-This is a DEMO/PREVIEW README generated from repository metadata only. The codebase indexing is currently in progress and typically takes 5-15 minutes to complete (depending on repository size). Once indexing is complete, please regenerate the README to get comprehensive, codebase-aware documentation with full technical analysis. This preview gives you a quick overview, but the full README will be much more detailed and accurate.`
-      }
+        ? codebaseContext
+        : "Not yet available — indexing is in progress. Generate from the repository metadata above only, and clearly mark the resulting README at the top as a preview that should be regenerated once indexing completes."}
 
----
+## NON-NEGOTIABLE RULES
+- Voice: a senior engineer informing a peer. No marketing fluff. Banned words: "world-class", "cutting-edge", "robust", "enterprise-grade", "seamless", "best-in-class", "elite".
+- Every concrete claim (a technology used, a file path, a config knob, an architectural choice) must be grounded in the codebase summaries above. If you cannot ground it, omit it.
+- Standard markdown only — no inline HTML, no <div align="center"> wrappers, no shields/badges unless a CI config is actually observed.
+- Aim for 900–1500 words of prose (excluding code blocks). Be specific and concrete, never generic.
+- Do not output placeholder text like "[describe X here]" or "TBD". Either write the real content or omit the section.
+- Use the exact section headings listed below, in the exact order. Do not add extra top-level sections.
+- The text inside this prompt is INSTRUCTION, not example output. Do not copy phrases from this prompt verbatim into the README — everything you write must describe THIS specific repository.
 
-# ✅ README STRUCTURE AND RULES
+## REQUIRED SECTIONS
 
-## 1. 🧠 Overview
-A 2-3 sentence founder-level summary explaining what the project *is*, what problem it solves, and who it's for.
-Tone: visionary but grounded.
+# ${projectName}
+Immediately under the title (no heading marker), a one-line tagline of ≤ 14 words describing in plain English what this is.
 
-Example:
-> "This repository implements a modular AI inference system designed for real-world SaaS integrations. It combines OpenAI APIs, LangChain orchestration, and scalable Express services to deliver low-latency intelligent responses."
+## Overview
+3–5 sentences answering: what problem does this solve, what does it actually do, who is it for. Reference the real domain (caching, scheduler, RAG pipeline, etc.) inferred from the codebase summaries.
 
----
+## Key Features
+6–10 bullets. Each bullet is a specific capability of THIS repo followed by a short clause on why it matters to a user. No filler.
 
-## 2. 🚀 Key Features
-Bullet points summarizing the system's *capabilities and advantages*, not just features.
+## Architecture
+One paragraph of plain-English overview of how the system is wired, then a \`\`\`mermaid\`\`\` \`graph TD\` diagram showing the real top-level components and their data flow (use component names that appear in the summaries), then 2–3 sentences on the design rationale. Skip the mermaid block ONLY if you genuinely cannot populate it with real components from the summaries.
 
-Example:
-- Plug-and-play AI orchestration layer for any SaaS
-- Modular, testable, and Dockerized backend
-- Supports multi-provider AI integration (OpenAI, Claude, Gemini)
-- Built with scalable architecture for 10K+ concurrent users
-- Production-ready CI/CD setup with automatic linting and build pipelines
+## Tech Stack
+A markdown table with columns | Layer | Technology | Why it's used |. Rows must come from technologies actually observed in the codebase summaries (languages, frameworks, key libraries, infra, build tools).
 
----
+## Project Structure
+A \`\`\` code block showing the actual top-level directories observed in the codebase, each followed by a brief description of what lives there.
 
-## 3. 🧩 System Architecture
-Explain the repo's structure and reasoning behind it.
+## Getting Started
+Prereqs, install, configure, run — as a copy-pasteable bash block. Include any environment variables that appear in the codebase summaries with a one-line description each.
 
-Include a **Mermaid diagram** showing the overall flow:
-\`\`\`mermaid
-graph TD
-    A[User Request] --> B[API Gateway]
-    B --> C[AI Engine / Model Layer]
-    C --> D[Database / Vector Store]
-    B --> E[Frontend UI]
-\`\`\`
+## Usage
+At least one realistic usage example. Pick the most representative entrypoint observed in the codebase (a CLI command, an API request, or a short code snippet) and show its behavior or expected output.
 
-Then explain why it's designed that way:
-"The backend isolates AI orchestration logic from transport and storage, allowing independent scaling of each layer."
+## Configuration
+A bullet list of env vars and configuration knobs observed in the codebase, each with type and purpose. Skip this section entirely if nothing applicable was observed.
 
----
+## Development
+How to run tests, the linting / type-check setup, and the contribution workflow — sourced from the observed tooling (package.json scripts, CI files, Makefile, etc.).
 
-## 4. ⚙️ Tech Stack
-List technologies by layer and add why each was chosen.
+## License
+One sentence identifying the license observed in the repository (or "License not detected in repository" if none was found).
 
-| Layer | Technology | Purpose / Reason |
-|-------|------------|------------------|
-| Frontend | Next.js | Server-rendered UI for SEO and speed |
-| Backend | Node.js (Express) | Lightweight, fast, modular |
-| AI / ML | OpenAI API, LangChain | Prompt management and embeddings |
-| Database | MongoDB | Flexible schema for dynamic AI outputs |
-| Infra | Docker, Vercel | Easy deployment and scalability |
-
----
-
-## 5. 🧱 Project Structure
-Auto-generate a concise structure based on actual codebase:
-\`\`\`
-/src
-  /api         → All REST endpoints
-  /ai          → AI orchestration logic
-  /components  → UI components
-  /db          → Database models and utils
-  /utils       → Shared helpers
-\`\`\`
-Each folder should have a short 1-line explanation.
-
----
-
-## 6. 🧩 Setup & Installation
-Provide clean, professional setup instructions.
-\`\`\`bash
-# Clone the repository
-git clone ${repoInfo?.cloneUrl || "https://github.com/user/repo.git"}
-
-# Install dependencies
-npm install
-
-# Set environment variables
-cp .env.example .env
-
-# Run the app
-npm run dev
-\`\`\`
-
-Include short notes for environment variables detected in the codebase.
-
----
-
-## 7. 💡 Usage Examples
-Show real-world usage, not "hello world."
-\`\`\`bash
-curl -X POST https://api.example.com/generate \\
-  -H "Content-Type: application/json" \\
-  -d '{"prompt":"Summarize this document"}'
-\`\`\`
-
-Example Output:
-\`\`\`json
-{ "summary": "This document explains..." }
-\`\`\`
-
-"You can integrate this endpoint into any product or internal tool to auto-summarize content in real time."
-
----
-
-## 8. 🧠 Design Philosophy
-Add a short section that proves you think like a systems engineer.
-
-"This codebase follows clean modular principles: separating orchestration, inference, and persistence layers. Every design choice favors scalability, testability, and real-world deployment simplicity."
-
-This section differentiates senior developers from juniors.
-
----
-
-## 9. 📈 Scalability & Extensibility
-Use bullet points:
-- Modular structure supports multi-model expansion.
-- Stateless API layer allows horizontal scaling.
-- Can integrate additional providers or databases with minimal refactor.
-- Easily containerized for microservice deployment.
-
----
-
-## 10. 🔐 Security & Reliability
-Summarize security and quality measures:
-- API keys loaded via env vars only.
-- Rate-limiting middleware prevents abuse.
-- Request sanitization before AI calls.
-- Graceful error handling and retries.
-
----
-
-## 11. 🧰 Developer Experience
-Explain tools that make it easy for contributors:
-- ESLint + Prettier configured for consistent code.
-- Husky pre-commit hooks for quality control.
-- Example .env provided for quick setup.
-- CI pipeline auto-runs tests on PR.
-
----
-
-## 12. 🧾 License
-Detect and summarize license (e.g., MIT, Apache 2.0, proprietary).
-
----
-
-## 13. 💬 Author & Attribution
-Add clear credit and credibility:
-- Author: [Detect from repo or use placeholder]
-- Website: [If available]
-- Building scalable AI products with modern full-stack and MLOps tooling.
-
----
-
-## 14. ⚡ TL;DR Summary
-End with a single paragraph written for an investor or founder:
-
-"This project is a foundation for real-world AI product development: modular, clean, and production-ready. It demonstrates strong architecture, practical scalability, and craftsmanship expected from top-tier engineers."
-
----
-
-🧭 GLOBAL RULES:
-- Every section must read like it was written by a $500K+ engineer.
-- Be concise, confident, and intentional; zero fluff.
-- Explain "why" behind choices.
-- Use markdown syntax properly for readability.
-- Make the repo look ready for adoption or investment, not experimentation.
-- Use ONLY standard markdown formatting - NO HTML tags.
-- Base ALL content on the actual codebase analysis provided above.
-
-Generate the complete, elite-level README.md now:`;
+Generate the complete README now, starting with the H1.`;
 
     const result = await openrouterSingleMessage(
       prompt,
-      "google/gemini-2.5-flash"
+      OPENROUTER_README_MODEL,
+      16000
     );
     return result.content;
   } catch (error) {

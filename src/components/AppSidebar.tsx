@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -40,20 +40,21 @@ import {
   X,
   Crown,
   Zap,
-  RefreshCw,
   BarChart3,
   Search,
   FileDiff,
   Network,
   Activity,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { RepoDocLogo } from "@/components/ui/repodoc-logo";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useUser } from "@/hooks/useUser";
 import { useProjectsContext } from "@/context/ProjectsContext";
 import { useClerk } from "@clerk/nextjs";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 type NavigationItem = {
   title: string;
@@ -116,7 +117,7 @@ const navigationItems: NavigationItem[] = [
 ];
 
 export default function AppSidebar() {
-  const { user, isLoading: userLoading, refreshUser } = useUser();
+  const { user, isLoading: userLoading } = useUser();
   const {
     projects,
     selectedProjectId,
@@ -130,42 +131,17 @@ export default function AppSidebar() {
   const pathname = usePathname();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { setOpenMobile, isMobile } = useSidebar();
 
-  const handleSyncPlan = async (forcePlan?: string) => {
-    setIsSyncing(true);
-    try {
-      const response = await fetch("/api/sync-plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: forcePlan ? JSON.stringify({ forcePlan }) : undefined,
-      });
-      const data = await response.json();
-
-      if (data.success) {
-        await refreshUser();
-      }
-    } catch (error) {
-    } finally {
-      setIsSyncing(false);
+  // On mobile, once navigation lands on a new route, close the slide-in
+  // sidebar so the loaded page is visible. No-op on desktop (isMobile === false),
+  // where the sidebar is persistent.
+  useEffect(() => {
+    if (isMobile) {
+      setOpenMobile(false);
     }
-  };
-
-  const handleProSyncClick = async () => {
-    await handleSyncPlan();
-
-    setTimeout(() => {
-      if (user?.plan === "professional") {
-        const shouldForce = window.confirm(
-          "Still showing Pro? If you just purchased Enterprise, click OK to force update to Enterprise."
-        );
-        if (shouldForce) {
-          handleSyncPlan("enterprise");
-        }
-      }
-    }, 1500);
-  };
+  }, [pathname, isMobile, setOpenMobile]);
 
   const handleDeleteClick = (projectId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -190,8 +166,14 @@ export default function AppSidebar() {
     setProjectToDelete(null);
   };
 
-  const handleLogout = () => {
-    signOut();
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    try {
+      await signOut({ redirectUrl: "/" });
+    } catch (error) {
+      setIsLoggingOut(false);
+    }
   };
 
   const handleCloseSidebar = () => {
@@ -342,17 +324,14 @@ export default function AppSidebar() {
             <div className="flex flex-col gap-2 w-full">
               <div className="flex items-center justify-between w-full">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <Avatar className="w-8 h-8">
-                    <AvatarImage
-                      src={user?.imageUrl || undefined}
-                      alt={user?.firstName || user?.emailAddress || "User"}
-                    />
-                    <AvatarFallback className="bg-gray-700 text-white text-sm">
-                      {user?.firstName?.charAt(0) ||
-                        user?.emailAddress?.charAt(0)?.toUpperCase() ||
-                        "U"}
-                    </AvatarFallback>
-                  </Avatar>
+                  <UserAvatar
+                    src={user?.imageUrl}
+                    name={[user?.firstName, user?.lastName]
+                      .filter(Boolean)
+                      .join(" ")}
+                    email={user?.emailAddress}
+                    className="h-8 w-8"
+                  />
                   <div className="flex flex-col min-w-0 flex-1">
                     <span className="text-white font-medium text-sm truncate">
                       {userLoading
@@ -364,24 +343,12 @@ export default function AppSidebar() {
                     {!userLoading && user?.plan && (
                       <div className="flex items-center gap-1.5 mt-1">
                         {user.plan === "professional" ? (
-                          <>
-                            <div className="flex items-center gap-1 px-2 py-0.5 bg-linear-to-r from-amber-500 via-orange-500 to-amber-500 rounded-full shadow-lg shadow-amber-500/20">
-                              <Zap className="w-3 h-3 text-white" />
-                              <span className="text-[10px] font-bold text-white tracking-wide uppercase">
-                                Pro
-                              </span>
-                            </div>
-                            <button
-                              onClick={handleProSyncClick}
-                              disabled={isSyncing}
-                              className="p-1 hover:bg-white/10 rounded-full transition-colors"
-                              title="Sync plan (click if you upgraded to Enterprise)"
-                            >
-                              <RefreshCw
-                                className={`w-3 h-3 text-gray-400 hover:text-white ${isSyncing ? "animate-spin" : ""}`}
-                              />
-                            </button>
-                          </>
+                          <div className="flex items-center gap-1 px-2 py-0.5 bg-linear-to-r from-amber-500 via-orange-500 to-amber-500 rounded-full shadow-lg shadow-amber-500/20">
+                            <Zap className="w-3 h-3 text-white" />
+                            <span className="text-[10px] font-bold text-white tracking-wide uppercase">
+                              Pro
+                            </span>
+                          </div>
                         ) : user.plan === "enterprise" ? (
                           <div className="flex items-center gap-1 px-2 py-0.5 bg-linear-to-r from-violet-500 via-purple-500 to-fuchsia-500 rounded-full shadow-lg shadow-purple-500/20">
                             <Crown className="w-3 h-3 text-white" />
@@ -389,29 +356,45 @@ export default function AppSidebar() {
                               Enterprise
                             </span>
                           </div>
-                        ) : (
-                          <button
-                            onClick={() => handleSyncPlan()}
-                            disabled={isSyncing}
-                            className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-300 transition-colors"
-                            title="Sync plan from Stripe"
-                          >
-                            <RefreshCw
-                              className={`w-2.5 h-2.5 ${isSyncing ? "animate-spin" : ""}`}
-                            />
-                            {isSyncing ? "Syncing..." : "Sync Plan"}
-                          </button>
-                        )}
+                        ) : null}
                       </div>
                     )}
                   </div>
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="p-1 hover:bg-gray-800 rounded transition-colors shrink-0"
-                  title="Logout"
+                  disabled={isLoggingOut}
+                  aria-busy={isLoggingOut}
+                  aria-label={isLoggingOut ? "Signing out" : "Sign out"}
+                  className="relative p-1.5 rounded-md hover:bg-white/10 transition-colors shrink-0 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                  title={isLoggingOut ? "Signing out…" : "Logout"}
+                  type="button"
                 >
-                  <LogOut className="w-4 h-4 text-gray-400" />
+                  <AnimatePresence mode="wait" initial={false}>
+                    {isLoggingOut ? (
+                      <motion.span
+                        key="loader"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={{ duration: 0.15 }}
+                        className="block"
+                      >
+                        <Loader2 className="w-4 h-4 text-white animate-spin" />
+                      </motion.span>
+                    ) : (
+                      <motion.span
+                        key="icon"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={{ duration: 0.15 }}
+                        className="block"
+                      >
+                        <LogOut className="w-4 h-4 text-gray-400" />
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
                 </button>
               </div>
             </div>
@@ -441,6 +424,42 @@ export default function AppSidebar() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AnimatePresence>
+        {isLoggingOut && (
+          <motion.div
+            key="logout-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 backdrop-blur-md"
+            aria-live="polite"
+            role="status"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 8, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 4, scale: 0.98 }}
+              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              className="flex flex-col items-center gap-4 rounded-2xl border border-white/10 bg-[#0c0c0e]/80 px-10 py-8 shadow-2xl shadow-black/40"
+            >
+              <div className="relative flex items-center justify-center">
+                <span className="absolute inline-flex h-10 w-10 rounded-full bg-white/5 blur-md" />
+                <Loader2 className="relative w-6 h-6 text-white animate-spin" />
+              </div>
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-white text-sm font-medium tracking-tight">
+                  Signing out
+                </span>
+                <span className="text-[#888] text-xs font-mono tracking-wide">
+                  Ending session…
+                </span>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </Sidebar>
   );
 }

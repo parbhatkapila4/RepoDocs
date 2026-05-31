@@ -1,6 +1,7 @@
 import prisma from "./prisma";
 import { Project, Prisma } from "@prisma/client";
 import { auth } from "@clerk/nextjs/server";
+import { encryptSecret } from "./secret-crypto";
 
 const PLAN_LIMITS = {
   starter: { maxProjects: 3 },
@@ -135,7 +136,7 @@ export async function createProjectWithAuth(
       data: {
         name,
         repoUrl: githubUrl,
-        githubToken: githubToken || null,
+        githubToken: githubToken ? encryptSecret(githubToken) : null,
         user: {
           connect: {
             id: existingUser.id,

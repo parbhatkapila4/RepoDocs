@@ -9,11 +9,9 @@ function isServerActionPost(req: NextRequest): boolean {
 const isPublicRoute = createRouteMatcher([
   "/",
   "/sign-in(.*)",
-  "/sign-up(.*)",
   "/sync-user",
   "/api/indexing-worker(.*)",
-  "/api/webhook/stripe(.*)",
-  "/api/stripe-webhook(.*)",
+  "/api/gumroad-webhook(.*)",
   "/api/webhooks(.*)",
   "/api/clerk(.*)",
   "/readme/(.*)",
@@ -23,6 +21,13 @@ const isPublicRoute = createRouteMatcher([
   "/privacy",
   "/terms",
   "/pricing",
+  "/documentation",
+  "/changelog",
+  "/api",
+  "/careers",
+  "/blog",
+  "/security",
+  "/status",
 ]);
 
 const isDev = process.env.NODE_ENV === "development";
@@ -35,7 +40,7 @@ export default clerkMiddleware(
     }
 
     const { userId } = await auth();
-    if (userId && (req.nextUrl.pathname.startsWith("/sign-in") || req.nextUrl.pathname.startsWith("/sign-up"))) {
+    if (userId && req.nextUrl.pathname.startsWith("/sign-in")) {
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
     if (!isPublicRoute(req)) {

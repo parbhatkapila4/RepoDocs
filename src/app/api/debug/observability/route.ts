@@ -18,13 +18,31 @@ export async function GET() {
   }
 
   try {
+    const projects = await prisma.project.findMany({
+      where: { userId: dbUserId, deletedAt: null },
+      select: { id: true },
+    });
+    const projectIds = projects.map((p) => p.id);
+
+    if (projectIds.length === 0) {
+      return NextResponse.json({
+        totalMetricsRows: 0,
+        byProject: [],
+        recentRows: [],
+      });
+    }
+
+    const scope = { projectId: { in: projectIds } };
+
     const [totalMetricsRows, byProject, recentRows] = await Promise.all([
-      prisma.queryMetrics.count(),
+      prisma.queryMetrics.count({ where: scope }),
       prisma.queryMetrics.groupBy({
         by: ["projectId"],
+        where: scope,
         _count: true,
       }),
       prisma.queryMetrics.findMany({
+        where: scope,
         orderBy: { createdAt: "desc" },
         take: 5,
         select: {

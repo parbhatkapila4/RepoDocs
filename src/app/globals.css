@@ -2,6 +2,109 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@keyframes constellation-drift {
+
+  0%,
+  100% {
+    transform: translate3d(-1.5%, 0%, 0);
+  }
+
+  50% {
+    transform: translate3d(1.5%, -1%, 0);
+  }
+}
+
+@keyframes constellation-pulse {
+
+  0%,
+  100% {
+    opacity: 0.18;
+  }
+
+  50% {
+    opacity: 0.42;
+  }
+}
+
+@keyframes system-hub-pulse {
+
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+
+  50% {
+    opacity: 0.85;
+  }
+}
+
+.system-hub-pulse {
+  animation-name: system-hub-pulse;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+}
+
+@keyframes edge-flow {
+  to {
+    stroke-dashoffset: -10;
+  }
+}
+
+.edge-flow {
+  animation: edge-flow 1.1s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .edge-flow {
+    animation: none !important;
+  }
+}
+
+.constellation-drift {
+  animation: constellation-drift 60s ease-in-out infinite;
+  will-change: transform;
+}
+
+.constellation-pulse {
+  animation-name: constellation-pulse;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .constellation-drift,
+  .constellation-pulse {
+    animation: none !important;
+  }
+}
+
+.react-flow__node {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  width: auto !important;
+  font-size: inherit !important;
+  color: inherit !important;
+}
+
+.react-flow__handle {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.react-flow__edge.animated path.react-flow__edge-path {
+  stroke-dasharray: 5;
+  animation: rf-dashdraw 0.8s linear infinite;
+}
+
+@keyframes rf-dashdraw {
+  to {
+    stroke-dashoffset: -10;
+  }
+}
+
 .prose img[src*="shields.io"] {
   display: inline-block !important;
   margin-right: 8px !important;
@@ -542,6 +645,15 @@
     display: flex !important;
     flex-direction: column !important;
   }
+
+  /* Radix wraps the scroll-area content in a `display: table` div that sizes to
+     its widest line, which defeats text wrapping and makes code blocks overflow
+     the card on mobile. Force normal block flow so `whitespace-pre-wrap` /
+     `break-words` actually wrap to the available width. */
+  [data-slot="scroll-area-viewport"] > div {
+    display: block !important;
+    min-width: 0 !important;
+  }
 }
 
 @media (min-width: 641px) and (max-width: 1024px) {
@@ -600,111 +712,37 @@
   }
 }
 
-.cl-card {
-  background: white !important;
-  border-radius: 0.75rem !important;
-  box-shadow:
-    0 10px 15px -3px rgba(0, 0, 0, 0.1),
-    0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
-  border: 1px solid rgba(229, 231, 235, 0.5) !important;
-  backdrop-filter: blur(4px) !important;
-}
+@keyframes dotPulse {
 
-.cl-cardBox {
-  padding: 2rem 2.5rem !important;
-}
+  0%,
+  80%,
+  100% {
+    opacity: 0.2;
+  }
 
-.cl-headerTitle {
-  font-size: 1.875rem !important;
-  line-height: 2.25rem !important;
-  font-weight: 700 !important;
-  color: #000 !important;
-  margin-bottom: 0.75rem !important;
-}
-
-@media (min-width: 768px) {
-  .cl-headerTitle {
-    font-size: 2.25rem !important;
-    line-height: 2.5rem !important;
+  40% {
+    opacity: 1;
   }
 }
 
-.cl-headerSubtitle {
-  font-size: 0.875rem !important;
-  line-height: 1.25rem !important;
-  color: #6b7280 !important;
-  margin-bottom: 2rem !important;
+.dot-1 {
+  animation: dotPulse 0.9s ease-in-out infinite;
 }
 
-@media (min-width: 768px) {
-  .cl-headerSubtitle {
-    font-size: 1rem !important;
-    line-height: 1.5rem !important;
+.dot-2 {
+  animation: dotPulse 0.9s ease-in-out 0.16s infinite;
+}
+
+.dot-3 {
+  animation: dotPulse 0.9s ease-in-out 0.32s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .dot-1,
+  .dot-2,
+  .dot-3 {
+    animation: none;
+    opacity: 0.6;
   }
-}
-
-.cl-formFieldInput {
-  border: 1px solid #e5e7eb !important;
-  border-radius: 0.5rem !important;
-  padding: 0.875rem 1rem !important;
-  transition: all 0.2s ease !important;
-  background: white !important;
-}
-
-.cl-formFieldInput:focus {
-  border-color: #f97316 !important;
-  outline: none !important;
-  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1) !important;
-}
-
-.cl-buttonPrimary {
-  background: #f97316 !important;
-  color: white !important;
-  border-radius: 0.5rem !important;
-  font-weight: 600 !important;
-  padding: 0.875rem 1rem !important;
-  transition: all 0.2s ease !important;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
-}
-
-.cl-buttonPrimary:hover {
-  background: #ea580c !important;
-  box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.1),
-    0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
-}
-
-.cl-buttonPrimary:active {
-  background: #c2410c !important;
-}
-
-.cl-socialButtons {
-  gap: 0.75rem !important;
-}
-
-.cl-socialButton {
-  border: 1px solid #e5e7eb !important;
-  border-radius: 0.5rem !important;
-  padding: 0.75rem !important;
-  transition: all 0.2s ease !important;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
-}
-
-.cl-socialButton:hover {
-  border-color: #d1d5db !important;
-  background: #f9fafb !important;
-}
-
-.cl-socialButton:active {
-  background: #f3f4f6 !important;
-}
-
-.cl-dividerLine {
-  border-color: #e5e7eb !important;
-}
-
-.cl-dividerText {
-  color: #6b7280 !important;
-  font-weight: 500 !important;
-  background: white !important;
 }

@@ -1,52 +1,81 @@
-import { NextRequest } from "next/server";
-import { POST } from "../../src/app/api/query/route";
-
-const mockAuth = jest.fn();
 jest.mock("@clerk/nextjs/server", () => ({
-  auth: () => mockAuth(),
+  auth: jest.fn(),
 }));
 
-const mockQueryCodebase = jest.fn();
-const mockQueryCodebasePreindex = jest.fn();
-jest.mock("@/lib/rag", () => ({
-  queryCodebase: mockQueryCodebase,
-  queryCodebasePreindex: mockQueryCodebasePreindex,
+jest.mock("../../src/lib/get-db-user-id", () => ({
+  getDbUserId: jest.fn(),
 }));
 
-jest.mock("@/lib/indexing-worker-kick", () => ({
+jest.mock("../../src/lib/rate-limiter", () => ({
+  rateLimit: jest.fn().mockResolvedValue({ success: true }),
+  getRateLimitIdentifier: jest.fn().mockReturnValue("test-id"),
+  rateLimitResponse: jest.fn(),
+  RATE_LIMITS: { API: {} },
+}));
+
+jest.mock("../../src/lib/budget", () => ({
+  isProjectOverBudget: jest.fn().mockResolvedValue(false),
+  BUDGET_EXCEEDED_MESSAGE: "budget exceeded",
+}));
+
+jest.mock("../../src/lib/query-metrics", () => ({
+  recordQueryMetrics: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock("../../src/lib/memory", () => ({
+  extractMemoriesFromConversation: jest.fn().mockResolvedValue([]),
+  storeMemories: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock("../../src/lib/secret-crypto", () => ({
+  decryptSecret: jest.fn((value: string | null) => value),
+}));
+
+jest.mock("../../src/lib/query-cache", () => ({
+  get: jest.fn().mockReturnValue(null),
+  set: jest.fn(),
+}));
+
+jest.mock("../../src/lib/rag", () => ({
+  queryCodebase: jest.fn(),
+  queryCodebasePreindex: jest.fn(),
+}));
+
+jest.mock("../../src/lib/indexing-worker-kick", () => ({
   kickIndexingWorker: jest.fn().mockResolvedValue(undefined),
 }));
 
-const mockPrisma = {
-  user: {
-    findUnique: jest.fn(),
-  },
-  project: {
-    findFirst: jest.fn(),
-  },
-  sourceCodeEmbeddings: {
-    count: jest.fn(),
-  },
-  queryMetrics: {
-    create: jest.fn().mockResolvedValue({}),
-  },
-  $executeRaw: jest.fn(),
-};
-
-jest.mock("@/lib/prisma", () => ({
+jest.mock("../../src/lib/prisma", () => ({
   __esModule: true,
-  default: mockPrisma,
+  default: {
+    project: { findFirst: jest.fn() },
+    sourceCodeEmbeddings: { count: jest.fn() },
+    $executeRaw: jest.fn(),
+  },
 }));
+
+import { NextRequest } from "next/server";
+import { auth } from "@clerk/nextjs/server";
+import { getDbUserId } from "../../src/lib/get-db-user-id";
+import { queryCodebase, queryCodebasePreindex } from "../../src/lib/rag";
+import prisma from "../../src/lib/prisma";
+import { POST } from "../../src/app/api/query/route";
+
+const mockAuth = auth as unknown as jest.Mock;
+const mockGetDbUserId = getDbUserId as unknown as jest.Mock;
+const mockQueryCodebase = queryCodebase as unknown as jest.Mock;
+const mockQueryCodebasePreindex = queryCodebasePreindex as unknown as jest.Mock;
+const mockPrisma = prisma as unknown as {
+  project: { findFirst: jest.Mock };
+  sourceCodeEmbeddings: { count: jest.Mock };
+  $executeRaw: jest.Mock;
+};
 
 describe("/api/query", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockAuth.mockResolvedValue({ userId: "user123" });
-    mockPrisma.user.findUnique.mockResolvedValue({ id: "user123" });
-  });
-
-  afterEach(() => {
-    jest.clearAllMocks();
+    mockGetDbUserId.mockResolvedValue("user123");
   });
 
   it("returns 401 if user is not authenticated", async () => {
@@ -77,7 +106,7 @@ describe("/api/query", () => {
   });
 
   it("returns 404 if user is not found in database", async () => {
-    mockPrisma.user.findUnique.mockResolvedValue(null);
+    mockGetDbUserId.mockResolvedValue(null);
 
     const request = new NextRequest("http://localhost:3000/api/query", {
       method: "POST",
@@ -101,6 +130,7 @@ describe("/api/query", () => {
       id: "proj1",
       userId: "user123",
       name: "Test Project",
+      monthlyCostLimitUsd: null,
     });
 
     mockPrisma.sourceCodeEmbeddings.count.mockResolvedValue(10);
@@ -132,13 +162,16 @@ describe("/api/query", () => {
       name: "Test Project",
       repoUrl: "https://github.com/o/r",
       githubToken: null,
+      monthlyCostLimitUsd: null,
     });
 
     mockPrisma.sourceCodeEmbeddings.count.mockResolvedValue(0);
 
     mockQueryCodebasePreindex.mockResolvedValue({
       answer: "Pre-index answer",
-      sources: [{ fileName: "README.md", sourceCode: "", summary: "x", similarity: 0.5 }],
+      sources: [
+        { fileName: "README.md", sourceCode: "", summary: "x", similarity: 0.5 },
+      ],
       promptTokens: 1,
       completionTokens: 2,
       totalTokens: 3,

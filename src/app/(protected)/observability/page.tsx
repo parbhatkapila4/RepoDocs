@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useProjectsContext } from "@/context/ProjectsContext";
-import { Activity, Loader2, AlertCircle } from "lucide-react";
+import { Activity, AlertCircle } from "lucide-react";
+import { PageSkeleton, PageError } from "@/components/PageStates";
 
 const WINDOW_DAYS = 7;
 
@@ -149,20 +150,14 @@ export default function ObservabilityPage() {
           </p>
         </div>
 
-        {loading && (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-8 h-8 animate-spin text-[#666]" />
-          </div>
-        )}
+        {loading && <PageSkeleton rows={8} />}
 
         {error && !loading && (
-          <div className="bg-[#1a1a1a] border border-[#333] rounded-lg p-6 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-            <div>
-              <h3 className="text-white font-medium mb-1">Error loading metrics</h3>
-              <p className="text-[#888] text-sm">{error}</p>
-            </div>
-          </div>
+          <PageError
+            title="Error loading metrics"
+            message={error}
+            onRetry={() => window.location.reload()}
+          />
         )}
 
         {data && !loading && !error && (

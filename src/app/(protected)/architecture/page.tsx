@@ -13,6 +13,7 @@ import {
   Copy,
   CheckCheck,
 } from "lucide-react";
+import { PageSkeleton } from "@/components/PageStates";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import type { ArchitectureNode, ArchitectureEdge } from "@/lib/architecture";
@@ -318,12 +319,17 @@ export default function ArchitecturePage() {
 
           <div className="p-6">
             {loading && (
-              <div className="flex items-center gap-3 py-12 text-[#888]">
-                <Loader2
-                  className="w-5 h-5 animate-spin"
-                  style={{ color: colors.cyan }}
-                />
-                <span className="text-sm font-mono">Loading architecture...</span>
+              <div className="py-2">
+                <div className="flex items-center gap-2 mb-4 text-[#888]">
+                  <Loader2
+                    className="w-3.5 h-3.5 animate-spin"
+                    style={{ color: colors.cyan }}
+                  />
+                  <span className="font-mono text-[10.5px] uppercase tracking-[0.22em]">
+                    resolving graph
+                  </span>
+                </div>
+                <PageSkeleton rows={8} />
               </div>
             )}
 
@@ -383,7 +389,7 @@ export default function ArchitecturePage() {
             )}
 
             {!loading && !error && nodes.length > 0 && (
-              <div className="flex gap-6 flex-col lg:flex-row w-full min-w-0">
+              <div className="flex gap-6 flex-col lg:flex-row lg:items-start w-full min-w-0">
                 <div
                   className="rounded-lg bg-[#0a0a0a] border border-[#333] overflow-auto flex-1 min-w-0 w-full"
                   style={{ minHeight: 320 }}
@@ -557,7 +563,7 @@ export default function ArchitecturePage() {
                                       >
                                         {showGap ? (
                                           <div className="text-center py-2 px-2 text-[10px] font-mono text-[#666] border-b border-[#252525] bg-[#0c0c0c]">
-                                            Lines {ob.fromLine}–{ob.toLine}{" "}
+                                            Lines {ob.fromLine}-{ob.toLine}{" "}
                                             omitted in source
                                           </div>
                                         ) : null}

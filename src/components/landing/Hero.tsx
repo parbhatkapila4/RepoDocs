@@ -1,214 +1,152 @@
 "use client";
-import React, { useState, useEffect, useMemo } from "react";
-import { ArrowRight, Play } from "lucide-react";
+
+import React, { useState } from "react";
 import { motion } from "motion/react";
+import { ArrowRight, Play } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { VideoModal } from "./VideoModal";
+import AnswerShowcase from "./hero/AnswerShowcase";
+import SystemGraph from "./SystemGraph";
+import { DemoVideoModal } from "./hero/DemoVideoModal";
+import { LoadingButton } from "@/components/LoadingButton";
 
-const Terminal = () => {
-  const [lines, setLines] = useState<string[]>([]);
-  const [currentLine, setCurrentLine] = useState(0);
+const DEMO_VIDEO_URL = "REPLACE_WITH_SUPABASE_VIDEO_URL";
 
-  const terminalLines = useMemo(
-    () => [
-      "$ repodoc init",
-      "Connecting to github.com/vercel/next.js...",
-      "Indexing 33,847 files...",
-      "████████████████████ 100%",
-      "",
-      "✓ Knowledge base ready",
-      "",
-      '$ repodoc ask "How does routing work?"',
-      "",
-      "The App Router in Next.js uses a file-system",
-      "based router built on React Server Components.",
-      "",
-      "See: app/page.tsx (L12-45)",
-      "     lib/router.ts (L89-124)",
-    ],
-    []
-  );
-
-  useEffect(() => {
-    if (currentLine < terminalLines.length) {
-      const timeout = setTimeout(
-        () => {
-          setLines((prev) => [...prev, terminalLines[currentLine]]);
-          setCurrentLine((prev) => prev + 1);
-        },
-        currentLine === 0
-          ? 500
-          : terminalLines[currentLine] === ""
-            ? 200
-            : terminalLines[currentLine].includes("████")
-              ? 800
-              : 100
-      );
-      return () => clearTimeout(timeout);
-    } else {
-      const timeout = setTimeout(() => {
-        setLines([]);
-        setCurrentLine(0);
-      }, 4000);
-      return () => clearTimeout(timeout);
-    }
-  }, [currentLine, terminalLines]);
-
-  return (
-    <div className="w-full max-w-2xl mx-auto">
-      <div className="bg-[#1a1a1a] rounded-lg overflow-hidden border border-[#333] shadow-2xl">
-        <div className="flex items-center gap-2 px-4 py-3 bg-[#252525] border-b border-[#333]">
-          <div className="w-3 h-3 rounded-full bg-[#ff5f57]" />
-          <div className="w-3 h-3 rounded-full bg-[#febc2e]" />
-          <div className="w-3 h-3 rounded-full bg-[#28c840]" />
-          <span className="ml-3 text-[#666] text-sm font-mono">terminal</span>
-        </div>
-        <div className="p-6 font-mono text-sm min-h-[320px]">
-          {lines.map((line, i) => (
-            <div
-              key={i}
-              className={`${
-                line.startsWith("$")
-                  ? "text-[#50fa7b]"
-                  : line.startsWith("✓")
-                    ? "text-[#50fa7b]"
-                    : line.includes("████")
-                      ? "text-[#8be9fd]"
-                      : line.startsWith("See:")
-                        ? "text-[#bd93f9]"
-                        : line.includes("L12") || line.includes("L89")
-                          ? "text-[#bd93f9]"
-                          : "text-[#f8f8f2]"
-              }`}
-            >
-              {line || "\u00A0"}
-            </div>
-          ))}
-          <span className="inline-block w-2 h-4 bg-[#f8f8f2] animate-pulse" />
-        </div>
-      </div>
-    </div>
-  );
-};
+const TRUSTED = [
+  "vercel/next.js",
+  "prisma/prisma",
+  "shadcn/ui",
+  "clerk/javascript",
+  "langchain-ai/langchain",
+  "xyflow/xyflow",
+];
 
 export default function Hero() {
   const { isSignedIn } = useUser();
   const router = useRouter();
-  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+  const [videoOpen, setVideoOpen] = useState(false);
+  const [navigating, setNavigating] = useState(false);
+  const hasVideo =
+    DEMO_VIDEO_URL && DEMO_VIDEO_URL !== "REPLACE_WITH_SUPABASE_VIDEO_URL";
+
+  const onGetStarted = () => {
+    if (navigating) return;
+    setNavigating(true);
+    router.push(isSignedIn ? "/create" : "/sign-in");
+  };
 
   return (
-    <section className="min-h-screen bg-[#0a0a0a] relative">
+    <section className="relative isolate overflow-hidden bg-[#040406]">
+      <SystemGraph className="-z-20" />
       <div
-        className="absolute inset-0 opacity-[0.12] pointer-events-none z-0"
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[60vh]"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+          background:
+            "radial-gradient(ellipse 50% 35% at 50% 0%, rgba(245,158,11,0.04), transparent 70%)",
         }}
       />
 
-      <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-[#333] to-transparent" />
-
-      <div className="max-w-6xl mx-auto px-6 pt-32 pb-20 relative z-10">
-        <motion.div
-          className="mb-8"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5 }}
-        >
-          <span className="text-[#666] text-sm font-mono tracking-wide">
-            RAG-POWERED CODE INTELLIGENCE
-          </span>
-        </motion.div>
-
-        <motion.h1
-          className="text-[clamp(3rem,8vw,7rem)] font-bold leading-[0.95] tracking-tight text-white mb-8 max-w-4xl"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-        >
-          Ask your codebase
-          <br />
-          <span className="text-[#666]">anything.</span>
-        </motion.h1>
-
-        <motion.p
-          className="text-xl text-[#888] max-w-xl mb-12 leading-relaxed"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-        >
-          Connect a GitHub repo. Get instant answers with precise code
-          references. No more digging through files.
-        </motion.p>
-
-        <motion.div
-          className="flex flex-wrap gap-4 mb-24"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-        >
-          <button
-            onClick={() => router.push(isSignedIn ? "/create" : "/sign-up")}
-            className="group px-6 py-3 bg-white text-black font-medium rounded-lg flex items-center gap-2 hover:bg-[#eee] transition-colors"
+      <div className="mx-auto max-w-5xl px-6 pt-28 pb-20 lg:pt-36 lg:pb-24">
+        <div className="mx-auto max-w-3xl text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 font-mono text-[10.5px] uppercase tracking-[0.18em] text-white/45"
           >
-            Get started
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-          </button>
+            <span className="h-1 w-1 rounded-full bg-amber-400" />
+            an interface for software systems
+          </motion.div>
 
-          <button
-            onClick={() => setIsVideoModalOpen(true)}
-            className="px-6 py-3 text-[#888] font-medium rounded-lg flex items-center gap-2 hover:text-white transition-colors border border-[#333] hover:border-[#555]"
+          <motion.h1
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.08 }}
+            className="mt-7 text-[clamp(2rem,4.4vw,3.4rem)] font-medium leading-[1.08] tracking-[-0.03em] text-white"
           >
-            <Play className="w-4 h-4" />
-            Watch demo
-          </button>
-        </motion.div>
+            Understand the system.
+            <br />
+            <span className="text-white/45">Not just the code.</span>
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.18 }}
+            className="mx-auto mt-6 max-w-xl text-[15px] leading-[1.6] text-white/55"
+          >
+            You joined a new codebase three weeks ago. You&apos;re still
+            grepping. RepoDoc indexes every file, traces the relationships
+            between modules, and turns the codebase into something you can
+            interrogate. Every answer cites the exact line it came from.
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.28 }}
+            className="mt-9 flex items-center justify-center gap-4"
+          >
+            <LoadingButton
+              type="button"
+              onClick={onGetStarted}
+              loading={navigating}
+              className="group rounded-md bg-white px-4 py-2 text-[13px] font-medium text-black transition-all hover:bg-white/95 hover:shadow-[0_8px_30px_-8px_rgba(255,255,255,0.3)]"
+            >
+              Connect a repo
+              <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+            </LoadingButton>
+            <button
+              type="button"
+              onClick={() => setVideoOpen(true)}
+              disabled={!hasVideo}
+              className="group/demo inline-flex items-center gap-1.5 px-1 py-2 text-[13px] text-white/55 transition-colors enabled:hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="Watch the product walkthrough"
+              title={hasVideo ? undefined : "Demo video coming soon"}
+            >
+              <Play className="h-3 w-3 fill-white/40 text-white/40 transition-colors group-enabled/demo:group-hover/demo:fill-white group-enabled/demo:group-hover/demo:text-white" />
+              Watch the demo
+              <ArrowRight className="h-3 w-3 text-white/30" />
+            </button>
+          </motion.div>
+        </div>
 
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.5 }}
+          transition={{ duration: 0.8, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          className="mt-16 lg:mt-20"
         >
-          <Terminal />
-        </motion.div>
-
-        <motion.div
-          className="mt-20 pt-12 border-t border-[#222]"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.8 }}
-        >
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                value: "pgvector",
-                label: "Real vector search, not keyword matching",
-              },
-              {
-                value: "Line-level",
-                label: "Answers cite exact file:line references",
-              },
-              {
-                value: "Shareable",
-                label: "Generate public links to docs & READMEs",
-              },
-            ].map((stat) => (
-              <div key={stat.label}>
-                <div className="text-xl font-bold text-white mb-1 font-mono">
-                  {stat.value}
-                </div>
-                <div className="text-sm text-[#666]">{stat.label}</div>
-              </div>
-            ))}
-          </div>
+          <AnswerShowcase />
         </motion.div>
       </div>
 
-      <VideoModal
-        videoSrc="/Repodoc-AI-Demo.mp4"
-        isOpen={isVideoModalOpen}
-        onClose={() => setIsVideoModalOpen(false)}
-      />
+      <div className="relative">
+        <div className="mx-auto max-w-6xl px-6 py-14">
+          <div className="text-center font-mono text-[10px] uppercase tracking-[0.22em] text-white/28">
+            built with
+          </div>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-x-9 gap-y-3">
+            {TRUSTED.map((r) => (
+              <span
+                key={r}
+                className="font-mono text-[12px] text-white/35 transition-colors hover:text-white/60"
+              >
+                {r}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {hasVideo && (
+        <DemoVideoModal
+          open={videoOpen}
+          onClose={() => setVideoOpen(false)}
+          src={DEMO_VIDEO_URL}
+        />
+      )}
     </section>
   );
 }

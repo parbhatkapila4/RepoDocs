@@ -1,19 +1,20 @@
-import {
-  getGitHubRepositoryInfo,
-  loadGithubRepository,
-} from "../../src/lib/github";
-
-jest.mock("octokit", () => ({
-  Octokit: jest.fn().mockImplementation(() => ({
-    rest: {
-      repos: {
-        get: jest.fn(),
-        listLanguages: jest.fn(),
-        getAllTopics: jest.fn(),
-      },
-    },
-  })),
-}));
+jest.mock("octokit", () => {
+  const repos = {
+    get: jest.fn(),
+    listLanguages: jest.fn(),
+    getAllTopics: jest.fn(),
+    getReadme: jest.fn(),
+    getContent: jest.fn(),
+  };
+  const search = { repos: jest.fn() };
+  const git = { getTree: jest.fn() };
+  return {
+    Octokit: jest.fn().mockImplementation(() => ({
+      rest: { repos, search },
+      git,
+    })),
+  };
+});
 
 jest.mock("@langchain/community/document_loaders/web/github", () => ({
   GithubRepoLoader: jest.fn().mockImplementation(() => ({
@@ -21,14 +22,32 @@ jest.mock("@langchain/community/document_loaders/web/github", () => ({
   })),
 }));
 
+import {
+  getGitHubRepositoryInfo,
+  loadGithubRepository,
+} from "../../src/lib/github";
+import { Octokit } from "octokit";
+import { GithubRepoLoader } from "@langchain/community/document_loaders/web/github";
+
+const octokitMock = new (Octokit as unknown as jest.Mock)();
+const reposGet = octokitMock.rest.repos.get as jest.Mock;
+const reposListLanguages = octokitMock.rest.repos.listLanguages as jest.Mock;
+const reposGetAllTopics = octokitMock.rest.repos.getAllTopics as jest.Mock;
+const githubRepoLoaderMock = GithubRepoLoader as unknown as jest.Mock;
+
 describe("GitHub Integration", () => {
+  beforeEach(() => {
+    reposGet.mockReset();
+    reposListLanguages.mockReset();
+    reposGetAllTopics.mockReset();
+    githubRepoLoaderMock.mockClear();
+  });
+
   describe("getGitHubRepositoryInfo", () => {
     it("successfully fetches repository information", async () => {
       const repoUrl = "https://github.com/test/repo";
-      const { Octokit } = require("octokit");
-      const mockOctokit = new Octokit();
 
-      mockOctokit.rest.repos.get.mockResolvedValue({
+      reposGet.mockResolvedValue({
         data: {
           id: 1,
           name: "repo",
@@ -44,9 +63,9 @@ describe("GitHub Integration", () => {
           open_issues_count: 5,
           size: 1000,
           default_branch: "main",
-          created_at: "2023-01-01T00:00:00Z",
-          updated_at: "2023-12-01T00:00:00Z",
-          pushed_at: "2023-12-01T00:00:00Z",
+          created_at: "2026-05-01T00:00:00Z",
+          updated_at: "2026-05-01T00:00:00Z",
+          pushed_at: "2026-05-01T00:00:00Z",
           private: false,
           fork: false,
           archived: false,
@@ -69,12 +88,10 @@ describe("GitHub Integration", () => {
           license: null,
         },
       });
-
-      mockOctokit.rest.repos.listLanguages.mockResolvedValue({
+      reposListLanguages.mockResolvedValue({
         data: { TypeScript: 1000, JavaScript: 500 },
       });
-
-      mockOctokit.rest.repos.getAllTopics.mockResolvedValue({
+      reposGetAllTopics.mockResolvedValue({
         data: { names: ["test", "repo"] },
       });
 
@@ -86,25 +103,16 @@ describe("GitHub Integration", () => {
     });
 
     it("handles invalid repository URLs", async () => {
-      const invalidUrl = "not-a-url";
-
-      const result = await getGitHubRepositoryInfo(invalidUrl);
-
+      const result = await getGitHubRepositoryInfo("not-a-url");
       expect(result).toBeNull();
     });
 
     it("handles non-existent repositories", async () => {
-      const nonExistentUrl = "https://github.com/nonexistent/repo-12345";
-      const { Octokit } = require("octokit");
-      const mockOctokit = new Octokit();
+      reposGet.mockRejectedValue({ status: 404, message: "Not Found" });
 
-      mockOctokit.rest.repos.get.mockRejectedValue({
-        status: 404,
-        message: "Not Found",
-      });
-
-      const result = await getGitHubRepositoryInfo(nonExistentUrl);
-
+      const result = await getGitHubRepositoryInfo(
+        "https://github.com/nonexistent/repo-12345"
+      );
       expect(result).toBeNull();
     });
   });
@@ -112,61 +120,38 @@ describe("GitHub Integration", () => {
   describe("loadGithubRepository", () => {
     it("successfully loads a repository", async () => {
       const repoUrl = "https://github.com/test/repo";
-      const { Octokit } = require("octokit");
-      const mockOctokit = new Octokit();
-      mockOctokit.rest.repos.get.mockResolvedValue({
+      reposGet.mockResolvedValue({
         data: { default_branch: "master" },
       });
-
-      const {
-        GithubRepoLoader,
-      } = require("@langchain/community/document_loaders/web/github");
-
-      const mockLoader = {
+      githubRepoLoaderMock.mockImplementation(() => ({
         load: jest.fn().mockResolvedValue([
-          {
-            pageContent: "test content",
-            metadata: { source: "test.ts" },
-          },
+          { pageContent: "test content", metadata: { source: "test.ts" } },
         ]),
-      };
-
-      GithubRepoLoader.mockImplementation(() => mockLoader);
+      }));
 
       const result = await loadGithubRepository(repoUrl);
 
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
-      expect(GithubRepoLoader).toHaveBeenCalledWith(
+      expect(githubRepoLoaderMock).toHaveBeenCalledWith(
         repoUrl,
-        expect.objectContaining({
-          branch: "master",
-        })
+        expect.objectContaining({ branch: "master" })
       );
     });
 
-    it("handles private repositories with token", async () => {
+    it("handles private repositories with a token", async () => {
       const privateRepoUrl = "https://github.com/private/repo";
       const token = "test-token";
-      const { Octokit } = require("octokit");
-      const mockOctokit = new Octokit();
-      mockOctokit.rest.repos.get.mockResolvedValue({
+      reposGet.mockResolvedValue({
         data: { default_branch: "main" },
       });
-
-      const {
-        GithubRepoLoader,
-      } = require("@langchain/community/document_loaders/web/github");
-
-      const mockLoader = {
+      githubRepoLoaderMock.mockImplementation(() => ({
         load: jest.fn().mockResolvedValue([]),
-      };
-
-      GithubRepoLoader.mockImplementation(() => mockLoader);
+      }));
 
       await loadGithubRepository(privateRepoUrl, token);
 
-      expect(GithubRepoLoader).toHaveBeenCalledWith(
+      expect(githubRepoLoaderMock).toHaveBeenCalledWith(
         privateRepoUrl,
         expect.objectContaining({
           accessToken: token,

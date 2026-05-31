@@ -1,8 +1,65 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import prisma from "@/lib/prisma";
+import { getDbUserId } from "@/lib/get-db-user-id";
+import {
+  rateLimit,
+  getRateLimitIdentifier,
+  rateLimitResponse,
+  RATE_LIMITS,
+} from "@/lib/rate-limiter";
 
-export async function GET() {
+export const runtime = "nodejs";
+
+const EXTENSION_TO_LANGUAGE: Record<string, string> = {
+  ".js": "JavaScript",
+  ".ts": "TypeScript",
+  ".tsx": "TypeScript",
+  ".jsx": "JavaScript",
+  ".py": "Python",
+  ".java": "Java",
+  ".cpp": "C++",
+  ".c": "C",
+  ".cs": "C#",
+  ".go": "Go",
+  ".rs": "Rust",
+  ".php": "PHP",
+  ".rb": "Ruby",
+  ".swift": "Swift",
+  ".kt": "Kotlin",
+  ".html": "HTML",
+  ".css": "CSS",
+  ".scss": "SCSS",
+  ".vue": "Vue",
+  ".sh": "Shell",
+  ".sql": "SQL",
+  ".prisma": "Prisma",
+};
+
+function getAdminEmails(): Set<string> {
+  return new Set(
+    (process.env.ADMIN_EMAILS || "")
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean)
+  );
+}
+
+function buildLanguageDistribution(files: { fileName: string }[]) {
+  const languageMap: Record<string, number> = {};
+  files.forEach((file) => {
+    const idx = file.fileName.lastIndexOf(".");
+    const ext = idx >= 0 ? file.fileName.substring(idx) : "";
+    const lang = EXTENSION_TO_LANGUAGE[ext] || "Other";
+    languageMap[lang] = (languageMap[lang] || 0) + 1;
+  });
+  return Object.entries(languageMap)
+    .map(([language, count]) => ({ language, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+}
+
+export async function GET(request: NextRequest) {
   try {
     const { userId } = await auth();
 
@@ -10,105 +67,132 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    let dbUserId = userId;
-    try {
-      const { clerkClient } = await import("@clerk/nextjs/server");
-      const client = await clerkClient();
-      const clerkUser = await client.users.getUser(userId);
+    const rl = await rateLimit(
+      getRateLimitIdentifier(request, userId),
+      RATE_LIMITS.API
+    );
+    if (!rl.success) return rateLimitResponse(rl.resetTime);
 
-      if (clerkUser.emailAddresses[0]?.emailAddress) {
-        const dbUser = await prisma.user.findUnique({
-          where: { emailAddress: clerkUser.emailAddresses[0].emailAddress },
-          select: { id: true },
-        });
-        if (dbUser) {
-          dbUserId = dbUser.id;
-        }
-      }
-    } catch (error) {
-      console.error("Error getting DB user:", error);
+    const dbUserId = await getDbUserId(userId);
+    if (!dbUserId) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const totalUsers = await prisma.user.count();
-    const usersByPlan = await prisma.user.groupBy({
-      by: ["plan"],
-      _count: true,
+    const currentUser = await prisma.user.findUnique({
+      where: { id: dbUserId },
+      select: { emailAddress: true, plan: true, createdAt: true },
     });
 
-    const totalProjects = await prisma.project.count({
-      where: { deletedAt: null },
-    });
+    const isAdmin =
+      !!currentUser?.emailAddress &&
+      getAdminEmails().has(currentUser.emailAddress.toLowerCase());
 
-    const projectsByUser = await prisma.project.groupBy({
-      by: ["userId"],
-      where: { deletedAt: null },
-      _count: true,
-    });
+    let projectIds: string[] = [];
+    if (!isAdmin) {
+      const myProjects = await prisma.project.findMany({
+        where: { userId: dbUserId, deletedAt: null },
+        select: { id: true },
+      });
+      projectIds = myProjects.map((p) => p.id);
+    }
+
+    const embeddingsWhere = isAdmin ? {} : { projectId: { in: projectIds } };
+    const projectWhere = isAdmin
+      ? { deletedAt: null }
+      : { userId: dbUserId, deletedAt: null };
+    const readmeQnaWhere = isAdmin
+      ? {}
+      : { readme: { projectId: { in: projectIds } } };
+    const docsQnaWhere = isAdmin
+      ? {}
+      : { docs: { projectId: { in: projectIds } } };
+    const readmeShareWhere = isAdmin
+      ? { isActive: true }
+      : { isActive: true, readme: { projectId: { in: projectIds } } };
+    const docsShareWhere = isAdmin
+      ? { isActive: true }
+      : { isActive: true, docs: { projectId: { in: projectIds } } };
+
+    let totalUsers: number;
+    let activeUsers: number;
+    let usersByPlan: Array<{ plan: string; count: number }>;
+    if (isAdmin) {
+      totalUsers = await prisma.user.count();
+      const grouped = await prisma.user.groupBy({
+        by: ["plan"],
+        _count: true,
+      });
+      usersByPlan = grouped.map((item) => ({
+        plan: item.plan,
+        count: item._count,
+      }));
+      activeUsers = await prisma.user.count({
+        where: { projects: { some: { deletedAt: null } } },
+      });
+    } else {
+      totalUsers = 1;
+      usersByPlan = [{ plan: currentUser?.plan ?? "starter", count: 1 }];
+      activeUsers = projectIds.length > 0 ? 1 : 0;
+    }
+
+    const totalProjects = await prisma.project.count({ where: projectWhere });
 
     const projectsWithReadme = await prisma.project.count({
-      where: {
-        deletedAt: null,
-        readme: { isNot: null },
-      },
+      where: { ...projectWhere, readme: { isNot: null } },
     });
-
     const projectsWithDocs = await prisma.project.count({
-      where: {
-        deletedAt: null,
-        docs: { isNot: null },
-      },
+      where: { ...projectWhere, docs: { isNot: null } },
     });
 
-    const totalEmbeddings = await prisma.sourceCodeEmbeddings.count();
+    const totalEmbeddings = await prisma.sourceCodeEmbeddings.count({
+      where: embeddingsWhere,
+    });
     const embeddingsByProject = await prisma.sourceCodeEmbeddings.groupBy({
       by: ["projectId"],
+      where: embeddingsWhere,
       _count: true,
     });
-
     const avgFilesPerProject =
       embeddingsByProject.length > 0
         ? embeddingsByProject.reduce((sum, item) => sum + item._count, 0) /
-          embeddingsByProject.length
+        embeddingsByProject.length
         : 0;
 
-    const totalReadmeQuestions = await prisma.readmeQna.count();
-    const totalDocsQuestions = await prisma.docsQna.count();
+    const totalReadmeQuestions = await prisma.readmeQna.count({
+      where: readmeQnaWhere,
+    });
+    const totalDocsQuestions = await prisma.docsQna.count({
+      where: docsQnaWhere,
+    });
     const totalQuestions = totalReadmeQuestions + totalDocsQuestions;
 
     const totalReadmeShares = await prisma.readmeShare.count({
-      where: { isActive: true },
+      where: readmeShareWhere,
     });
     const totalDocsShares = await prisma.docsShare.count({
-      where: { isActive: true },
+      where: docsShareWhere,
     });
     const totalActiveShares = totalReadmeShares + totalDocsShares;
 
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const recentUsers = await prisma.user.count({
-      where: {
-        createdAt: { gte: thirtyDaysAgo },
-      },
-    });
+    const recentUsers = isAdmin
+      ? await prisma.user.count({ where: { createdAt: { gte: thirtyDaysAgo } } })
+      : currentUser?.createdAt && currentUser.createdAt >= thirtyDaysAgo
+        ? 1
+        : 0;
 
     const recentProjects = await prisma.project.count({
-      where: {
-        createdAt: { gte: thirtyDaysAgo },
-        deletedAt: null,
-      },
+      where: { ...projectWhere, createdAt: { gte: thirtyDaysAgo } },
     });
 
     const recentQuestions =
       (await prisma.readmeQna.count({
-        where: {
-          createdAt: { gte: thirtyDaysAgo },
-        },
+        where: { ...readmeQnaWhere, createdAt: { gte: thirtyDaysAgo } },
       })) +
       (await prisma.docsQna.count({
-        where: {
-          createdAt: { gte: thirtyDaysAgo },
-        },
+        where: { ...docsQnaWhere, createdAt: { gte: thirtyDaysAgo } },
       }));
 
     const dailyActivity = [];
@@ -121,22 +205,15 @@ export async function GET() {
       nextDate.setDate(nextDate.getDate() + 1);
 
       const projects = await prisma.project.count({
-        where: {
-          createdAt: { gte: date, lt: nextDate },
-          deletedAt: null,
-        },
+        where: { ...projectWhere, createdAt: { gte: date, lt: nextDate } },
       });
 
       const questions =
         (await prisma.readmeQna.count({
-          where: {
-            createdAt: { gte: date, lt: nextDate },
-          },
+          where: { ...readmeQnaWhere, createdAt: { gte: date, lt: nextDate } },
         })) +
         (await prisma.docsQna.count({
-          where: {
-            createdAt: { gte: date, lt: nextDate },
-          },
+          where: { ...docsQnaWhere, createdAt: { gte: date, lt: nextDate } },
         }));
 
       dailyActivity.push({
@@ -148,6 +225,7 @@ export async function GET() {
 
     const topProjectsByFiles = await prisma.sourceCodeEmbeddings.groupBy({
       by: ["projectId"],
+      where: embeddingsWhere,
       _count: true,
       orderBy: {
         _count: {
@@ -157,74 +235,27 @@ export async function GET() {
       take: 10,
     });
 
-    const topProjectsDetails = await Promise.all(
-      topProjectsByFiles.map(async (item) => {
-        const project = await prisma.project.findUnique({
-          where: { id: item.projectId },
-          select: {
-            id: true,
-            name: true,
-            repoUrl: true,
-            createdAt: true,
-          },
-        });
-        return {
-          ...project,
-          fileCount: item._count,
-        };
+    const topIds = topProjectsByFiles.map((item) => item.projectId);
+    const topDetails = topIds.length
+      ? await prisma.project.findMany({
+        where: { id: { in: topIds } },
+        select: { id: true, name: true, repoUrl: true, createdAt: true },
       })
-    );
+      : [];
+    const detailsById = new Map(topDetails.map((p) => [p.id, p]));
+    const topProjects = topProjectsByFiles
+      .map((item) => {
+        const details = detailsById.get(item.projectId);
+        if (!details) return null;
+        return { ...details, fileCount: item._count };
+      })
+      .filter((p): p is NonNullable<typeof p> => p !== null);
 
     const allFiles = await prisma.sourceCodeEmbeddings.findMany({
+      where: embeddingsWhere,
       select: { fileName: true },
     });
-
-    const languageMap: Record<string, number> = {};
-    const extensions: Record<string, string> = {
-      ".js": "JavaScript",
-      ".ts": "TypeScript",
-      ".tsx": "TypeScript",
-      ".jsx": "JavaScript",
-      ".py": "Python",
-      ".java": "Java",
-      ".cpp": "C++",
-      ".c": "C",
-      ".cs": "C#",
-      ".go": "Go",
-      ".rs": "Rust",
-      ".php": "PHP",
-      ".rb": "Ruby",
-      ".swift": "Swift",
-      ".kt": "Kotlin",
-      ".html": "HTML",
-      ".css": "CSS",
-      ".scss": "SCSS",
-      ".vue": "Vue",
-      ".sh": "Shell",
-      ".sql": "SQL",
-      ".prisma": "Prisma",
-    };
-
-    allFiles.forEach((file) => {
-      const ext = file.fileName.substring(file.fileName.lastIndexOf("."));
-      const lang = extensions[ext] || "Other";
-      languageMap[lang] = (languageMap[lang] || 0) + 1;
-    });
-
-    const languageDistribution = Object.entries(languageMap)
-      .map(([language, count]) => ({ language, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
-
-    const activeUsers = await prisma.user.count({
-      where: {
-        projects: {
-          some: {
-            deletedAt: null,
-          },
-        },
-      },
-    });
+    const languageDistribution = buildLanguageDistribution(allFiles);
 
     const avgProjectsPerUser = totalUsers > 0 ? totalProjects / totalUsers : 0;
     const avgQuestionsPerProject =
@@ -242,10 +273,7 @@ export async function GET() {
       userMetrics: {
         totalUsers,
         activeUsers,
-        usersByPlan: usersByPlan.map((item) => ({
-          plan: item.plan,
-          count: item._count,
-        })),
+        usersByPlan,
         avgProjectsPerUser: Math.round(avgProjectsPerUser * 100) / 100,
       },
       projectMetrics: {
@@ -253,7 +281,7 @@ export async function GET() {
         projectsWithReadme,
         projectsWithDocs,
         avgFilesPerProject: Math.round(avgFilesPerProject * 100) / 100,
-        topProjects: topProjectsDetails.filter((p) => p !== null),
+        topProjects,
       },
       codeMetrics: {
         totalEmbeddings,

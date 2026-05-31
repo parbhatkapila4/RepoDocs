@@ -17,9 +17,7 @@ import remarkGfm from "remark-gfm";
 import { notFound } from "next/navigation";
 
 interface PublicReadmePageProps {
-  params: {
-    token: string;
-  };
+  params: Promise<{ token: string }>;
 }
 
 interface ReadmeMetadata {
@@ -72,7 +70,9 @@ export default async function PublicReadmePage({
   params,
 }: PublicReadmePageProps) {
   try {
-    const share = await getPublicReadme(params.token);
+    const { token } = await params;
+    const decodedToken = decodeURIComponent(token);
+    const share = await getPublicReadme(decodedToken);
     const metadata = parseReadmeMetadata(share.readme.content);
 
     return (
@@ -143,6 +143,7 @@ export default async function PublicReadmePage({
                           </pre>
                         ),
                         img: ({ src, alt, ...props }) => (
+                          // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={src}
                             alt={alt}

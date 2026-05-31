@@ -1,485 +1,327 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Shield,
-  BookOpen,
-  Mail,
-  Clock,
-  Users,
-  FileText,
-  ArrowLeft,
-  Lock,
-  Eye,
-  Database,
-  Settings,
-  AlertTriangle,
-  CheckCircle,
-} from "lucide-react";
+import React from "react";
 import Link from "next/link";
+import Image from "next/image";
+import { ArrowLeft } from "lucide-react";
+
+export const metadata = {
+  title: "Privacy Policy - RepoDoc",
+  description:
+    "How RepoDoc collects, uses, and protects your information.",
+};
 
 export default function PrivacyPolicyPage() {
   return (
-    <div className="min-h-screen black-bg relative overflow-hidden">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/3 rounded-full blur-2xl"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-white/2 rounded-full blur-2xl"></div>
-      </div>
+    <main className="relative min-h-screen overflow-hidden bg-[#040406]">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[60vh]"
+        style={{
+          background:
+            "radial-gradient(ellipse 50% 35% at 50% 0%, rgba(245,158,11,0.04), transparent 70%)",
+        }}
+      />
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="mb-8">
-          <Button
-            variant="outline"
-            className="border-subtle text-white/70 hover:text-white hover:bg-white/5 glass-card"
-            asChild
-          >
-            <Link href="/">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Home
-            </Link>
-          </Button>
+      <TopBar />
+
+      <section className="relative mx-auto max-w-[1800px] px-6 sm:px-10 lg:px-20 pt-20 pb-12">
+        <Eyebrow>privacy policy</Eyebrow>
+        <h1 className="mt-6 text-[clamp(2rem,4.4vw,3.2rem)] font-medium leading-[1.08] tracking-[-0.03em] text-white">
+          Your data, handled deliberately.
+          <br />
+          <span className="text-white/45">No selling. No surprises.</span>
+        </h1>
+        <p className="mt-6 max-w-2xl text-[15px] leading-[1.6] text-white/55">
+          How RepoDoc collects, uses, and protects your information. This
+          policy covers personal data, repository content, and the AI-generated
+          artifacts produced during indexing and querying.
+        </p>
+        <p className="mt-4 font-mono text-[10.5px] uppercase tracking-[0.22em] text-white/35">
+          last updated · May 2026
+        </p>
+      </section>
+
+      <Section label="01 / introduction" title="Scope of this policy">
+        <p className="text-[14.5px] leading-[1.7] text-white/65">
+          This Privacy Policy describes how RepoDoc (&quot;we&quot;,
+          &quot;us&quot;, &quot;our&quot;) collects, uses, and discloses your
+          information when you use the platform. By using RepoDoc you agree to
+          the practices described here.
+        </p>
+        <Surface label="commitment">
+          We are committed to protecting your privacy and handling your data
+          with the highest standards of security and transparency. Source code
+          and personal information are treated with the same care as our own.
+        </Surface>
+      </Section>
+
+      <Section label="02 / what we collect" title="Information we collect">
+        <p className="text-[14.5px] leading-[1.7] text-white/65">
+          We collect only what is necessary to operate the retrieval and
+          indexing surface and to maintain your account.
+        </p>
+        <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <Surface label="personal information">
+            <BulletList
+              items={[
+                <>
+                  <Strong>Account data:</Strong> email address, GitHub
+                  username, profile information.
+                </>,
+                <>
+                  <Strong>Usage data:</Strong> how you interact with the
+                  platform, queries made, features used.
+                </>,
+                <>
+                  <Strong>Communication:</Strong> support requests and
+                  feedback you send.
+                </>,
+              ]}
+            />
+          </Surface>
+          <Surface label="repository data">
+            <BulletList
+              items={[
+                <>
+                  <Strong>Code content:</Strong> source files, documentation,
+                  and project structure of repos you index.
+                </>,
+                <>
+                  <Strong>Metadata:</Strong> repository information, commit
+                  history, file structure.
+                </>,
+                <>
+                  <Strong>Generated data:</Strong> AI summaries, embeddings,
+                  and answers produced during use.
+                </>,
+              ]}
+            />
+          </Surface>
         </div>
+      </Section>
 
-        <div className="text-center mb-16">
-          <Badge
-            variant="secondary"
-            className="mb-6 px-4 py-2 text-sm glass-card text-white/90 border-subtle"
-          >
-            <Shield className="w-4 h-4 mr-2 text-white/80" />
-            Privacy Policy
-          </Badge>
-
-          <h1 className="text-4xl sm:text-5xl font-bold text-white mb-6 leading-tight">
-            Privacy Policy
-          </h1>
-
-          <p className="text-xl text-white/70 max-w-3xl mx-auto mb-8">
-            How RepoDoc collects, uses, and protects your information. Your
-            privacy is our priority.
-          </p>
+      <Section label="03 / how we use it" title="How your information is used">
+        <p className="text-[14.5px] leading-[1.7] text-white/65">
+          Information is used solely to operate and improve the service. We do
+          not use repository content to train external models.
+        </p>
+        <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <Surface label="service provision">
+            <BulletList
+              items={[
+                "Process and analyze your codebase",
+                "Generate grounded answers to queries",
+                "Maintain your project history and chat history",
+                "Provide technical support",
+              ]}
+            />
+          </Surface>
+          <Surface label="platform improvement">
+            <BulletList
+              items={[
+                "Improve retrieval and ranking quality",
+                "Optimize indexing and search latency",
+                "Identify and fix bugs through error telemetry",
+                "Develop new features",
+              ]}
+            />
+          </Surface>
         </div>
+      </Section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-16">
-          <div className="lg:col-span-1">
-            <Card className="glass-card border-subtle sticky top-8">
-              <CardHeader>
-                <CardTitle className="text-white">Table of Contents</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <a
-                  href="#introduction"
-                  className="block text-white/60 hover:text-white transition-colors text-sm"
-                >
-                  Introduction
-                </a>
-                <a
-                  href="#information-collection"
-                  className="block text-white/60 hover:text-white transition-colors text-sm"
-                >
-                  Information We Collect
-                </a>
-                <a
-                  href="#how-we-use"
-                  className="block text-white/60 hover:text-white transition-colors text-sm"
-                >
-                  How We Use Information
-                </a>
-                <a
-                  href="#data-sharing"
-                  className="block text-white/60 hover:text-white transition-colors text-sm"
-                >
-                  Data Sharing
-                </a>
-                <a
-                  href="#data-security"
-                  className="block text-white/60 hover:text-white transition-colors text-sm"
-                >
-                  Data Security
-                </a>
-                <a
-                  href="#your-rights"
-                  className="block text-white/60 hover:text-white transition-colors text-sm"
-                >
-                  Your Rights
-                </a>
-                <a
-                  href="#contact"
-                  className="block text-white/60 hover:text-white transition-colors text-sm"
-                >
-                  Contact Us
-                </a>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="lg:col-span-3 space-y-12">
-            <section id="introduction">
-              <Card className="glass-card border-subtle">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <BookOpen className="w-6 h-6 mr-3 text-white/80" />
-                    Introduction
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <p className="text-white/70 text-lg leading-relaxed">
-                    This Privacy Policy describes how RepoDoc ("we," "us," or
-                    "our") collects, uses, and discloses your information when
-                    you use our RAG-powered codebase intelligence platform.
-                  </p>
-
-                  <div className="glass-card p-6 rounded-lg border-subtle">
-                    <h4 className="text-white font-semibold mb-3">
-                      Our Commitment
-                    </h4>
-                    <p className="text-white/70">
-                      We are committed to protecting your privacy and handling
-                      your data with the highest standards of security and
-                      transparency. Your code and personal information are
-                      treated with the utmost care and respect.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </section>
-
-            <section id="information-collection">
-              <Card className="glass-card border-subtle">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <FileText className="w-6 h-6 mr-3 text-white/80" />
-                    Information We Collect
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <p className="text-white/70 text-lg leading-relaxed">
-                    We collect information necessary to provide our RAG-powered
-                    codebase intelligence services.
-                  </p>
-
-                  <div className="space-y-6">
-                    <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-4 flex items-center">
-                        <Users className="w-5 h-5 mr-2 text-blue-400" />
-                        Personal Information
-                      </h4>
-                      <ul className="space-y-3 text-white/70">
-                        <li className="flex items-start">
-                          <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 shrink-0"></div>
-                          <div>
-                            <strong className="text-white">
-                              Account Data:
-                            </strong>{" "}
-                            Email address, GitHub username, and profile
-                            information
-                          </div>
-                        </li>
-                        <li className="flex items-start">
-                          <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 shrink-0"></div>
-                          <div>
-                            <strong className="text-white">Usage Data:</strong>{" "}
-                            How you interact with our platform, queries made,
-                            and features used
-                          </div>
-                        </li>
-                        <li className="flex items-start">
-                          <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 shrink-0"></div>
-                          <div>
-                            <strong className="text-white">
-                              Communication Data:
-                            </strong>{" "}
-                            Support requests and feedback you provide
-                          </div>
-                        </li>
-                      </ul>
-                    </div>
-
-                    <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-4 flex items-center">
-                        <Database className="w-5 h-5 mr-2 text-green-400" />
-                        Repository Data
-                      </h4>
-                      <ul className="space-y-3 text-white/70">
-                        <li className="flex items-start">
-                          <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 shrink-0"></div>
-                          <div>
-                            <strong className="text-white">
-                              Code Content:
-                            </strong>{" "}
-                            Source code files, documentation, and project
-                            structure
-                          </div>
-                        </li>
-                        <li className="flex items-start">
-                          <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 shrink-0"></div>
-                          <div>
-                            <strong className="text-white">Metadata:</strong>{" "}
-                            Repository information, commit history, and file
-                            structure
-                          </div>
-                        </li>
-                        <li className="flex items-start">
-                          <div className="w-2 h-2 bg-white/40 rounded-full mt-2 mr-3 shrink-0"></div>
-                          <div>
-                            <strong className="text-white">
-                              Generated Data:
-                            </strong>{" "}
-                            AI-generated embeddings and knowledge base content
-                          </div>
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </section>
-
-            <section id="how-we-use">
-              <Card className="glass-card border-subtle">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <Settings className="w-6 h-6 mr-3 text-white/80" />
-                    How We Use Your Information
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <p className="text-white/70 text-lg leading-relaxed">
-                    We use your information solely to provide and improve our
-                    RAG-powered codebase intelligence services.
-                  </p>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3">
-                        Service Provision
-                      </h4>
-                      <ul className="space-y-2 text-white/70 text-sm">
-                        <li>• Process and analyze your codebase</li>
-                        <li>• Generate intelligent responses to queries</li>
-                        <li>• Maintain your knowledge base</li>
-                        <li>• Provide technical support</li>
-                      </ul>
-                    </div>
-
-                    <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3">
-                        Platform Improvement
-                      </h4>
-                      <ul className="space-y-2 text-white/70 text-sm">
-                        <li>• Enhance AI model performance</li>
-                        <li>• Optimize search algorithms</li>
-                        <li>• Improve user experience</li>
-                        <li>• Develop new features</li>
-                      </ul>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </section>
-
-            <section id="data-sharing">
-              <Card className="glass-card border-subtle">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <Lock className="w-6 h-6 mr-3 text-white/80" />
-                    Data Sharing & Disclosure
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <p className="text-white/70 text-lg leading-relaxed">
-                    We do not sell your personal data. We may share information
-                    only in the following limited circumstances:
-                  </p>
-
-                  <div className="space-y-4">
-                    <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3 flex items-center">
-                        <CheckCircle className="w-5 h-5 mr-2 text-green-400" />
-                        Service Providers
-                      </h4>
-                      <p className="text-white/70 text-sm">
-                        Trusted third-party vendors who help us operate our
-                        platform (hosting, analytics, AI services). All service
-                        providers are bound by strict confidentiality
-                        agreements.
-                      </p>
-                    </div>
-
-                    <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3 flex items-center">
-                        <AlertTriangle className="w-5 h-5 mr-2 text-orange-400" />
-                        Legal Requirements
-                      </h4>
-                      <p className="text-white/70 text-sm">
-                        When required by law, court order, or to protect our
-                        rights and the safety of our users.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </section>
-
-            <section id="data-security">
-              <Card className="glass-card border-subtle">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <Shield className="w-6 h-6 mr-3 text-white/80" />
-                    Data Security
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <p className="text-white/70 text-lg leading-relaxed">
-                    We implement industry-leading security measures to protect
-                    your data from unauthorized access, alteration, or
-                    disclosure.
-                  </p>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3">
-                        Technical Safeguards
-                      </h4>
-                      <ul className="space-y-2 text-white/70 text-sm">
-                        <li>• End-to-end encryption</li>
-                        <li>• Secure data transmission (HTTPS)</li>
-                        <li>• Encrypted data storage</li>
-                        <li>• Regular security audits</li>
-                        <li>• Access controls and monitoring</li>
-                      </ul>
-                    </div>
-
-                    <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3">
-                        Operational Security
-                      </h4>
-                      <ul className="space-y-2 text-white/70 text-sm">
-                        <li>• Limited data access</li>
-                        <li>• Employee training</li>
-                        <li>• Incident response plans</li>
-                        <li>• Regular backups</li>
-                        <li>• Compliance monitoring</li>
-                      </ul>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </section>
-
-            <section id="your-rights">
-              <Card className="glass-card border-subtle">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <Users className="w-6 h-6 mr-3 text-white/80" />
-                    Your Rights
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <p className="text-white/70 text-lg leading-relaxed">
-                    You have control over your personal data. Here are your
-                    rights and how to exercise them:
-                  </p>
-
-                  <div className="space-y-4">
-                    <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3">
-                        Data Access & Portability
-                      </h4>
-                      <p className="text-white/70 text-sm mb-3">
-                        Request a copy of all personal data we have about you in
-                        a structured, machine-readable format.
-                      </p>
-                    </div>
-
-                    <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3">
-                        Data Correction
-                      </h4>
-                      <p className="text-white/70 text-sm mb-3">
-                        Update or correct any inaccurate or incomplete personal
-                        information in your account.
-                      </p>
-                    </div>
-
-                    <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3">
-                        Data Deletion
-                      </h4>
-                      <p className="text-white/70 text-sm mb-3">
-                        Request deletion of your personal data, subject to legal
-                        obligations and legitimate business interests.
-                      </p>
-                    </div>
-
-                    <div className="glass-card p-6 rounded-lg border-subtle">
-                      <h4 className="text-white font-semibold mb-3">
-                        Data Processing Objection
-                      </h4>
-                      <p className="text-white/70 text-sm mb-3">
-                        Object to certain types of data processing where we rely
-                        on legitimate interests.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </section>
-
-            <section id="contact">
-              <Card className="glass-card border-subtle">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <Mail className="w-6 h-6 mr-3 text-white/80" />
-                    Contact Us
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <p className="text-white/70 text-lg leading-relaxed">
-                    Have questions about this Privacy Policy or want to exercise
-                    your rights? We're here to help.
-                  </p>
-
-                  <div className="glass-card p-6 rounded-lg border-subtle">
-                    <h4 className="text-white font-semibold mb-3">
-                      Get in Touch
-                    </h4>
-                    <div className="space-y-3">
-                      <p className="text-white/70">
-                        <strong className="text-white">Email:</strong>{" "}
-                        help@productsolution.net
-                      </p>
-                      <p className="text-white/70">
-                        <strong className="text-white">Response Time:</strong>{" "}
-                        We respond to all privacy inquiries within 48 hours
-                      </p>
-                      <p className="text-white/70">
-                        <strong className="text-white">
-                          Data Protection Officer:
-                        </strong>{" "}
-                        Available for complex privacy matters
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="glass-card p-6 rounded-lg border-subtle bg-white/5">
-                    <h4 className="text-white font-semibold mb-3">
-                      Policy Updates
-                    </h4>
-                    <p className="text-white/70 text-sm mb-3">
-                      We may update this Privacy Policy from time to time. We
-                      will notify you of any material changes by email or
-                      through our platform.
-                    </p>
-                    <p className="text-white/50 text-sm">
-                      Last Updated: October 2025
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </section>
-          </div>
+      <Section label="04 / data sharing" title="Data sharing and disclosure">
+        <p className="text-[14.5px] leading-[1.7] text-white/65">
+          We do not sell your personal data. Limited disclosure happens only
+          in two cases.
+        </p>
+        <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <Surface label="service providers">
+            Trusted vendors that help us operate the platform (hosting,
+            authentication, AI providers). All providers are bound by
+            confidentiality terms and process data on our behalf.
+          </Surface>
+          <Surface label="legal requirements">
+            When required by law, valid court order, or to protect the rights,
+            property, or safety of RepoDoc, our users, or the public.
+          </Surface>
         </div>
+      </Section>
+
+      <Section label="05 / data security" title="How your data is protected">
+        <p className="text-[14.5px] leading-[1.7] text-white/65">
+          Industry-standard controls protect your data at rest and in transit.
+        </p>
+        <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <Surface label="technical safeguards">
+            <BulletList
+              items={[
+                "TLS for data in transit",
+                "Encrypted database storage",
+                "Authenticated, scoped access to APIs",
+                "Regular dependency and security audits",
+              ]}
+            />
+          </Surface>
+          <Surface label="operational security">
+            <BulletList
+              items={[
+                "Least-privilege access for operators",
+                "Audit-friendly request observability",
+                "Backups with retention policies",
+                "Incident response procedures",
+              ]}
+            />
+          </Surface>
+        </div>
+      </Section>
+
+      <Section label="06 / your rights" title="What you can do with your data">
+        <p className="text-[14.5px] leading-[1.7] text-white/65">
+          You retain control over your personal data. To exercise any of these
+          rights, email us at the address below.
+        </p>
+        <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <Surface label="access &amp; portability">
+            Request a copy of all personal data we hold about you in a
+            structured, machine-readable format.
+          </Surface>
+          <Surface label="correction">
+            Update or correct any inaccurate or incomplete information in your
+            account.
+          </Surface>
+          <Surface label="deletion">
+            Request deletion of your personal data, subject to legal
+            obligations and legitimate business interests.
+          </Surface>
+          <Surface label="objection">
+            Object to specific types of processing where we rely on legitimate
+            interests rather than consent.
+          </Surface>
+        </div>
+      </Section>
+
+      <Section label="07 / contact" title="Reach out about privacy">
+        <p className="text-[14.5px] leading-[1.7] text-white/65">
+          Questions about this policy or want to exercise your rights? We
+          respond to privacy inquiries within two business days.
+        </p>
+        <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <Surface label="email">
+            <a
+              href="mailto:parbhat@parbhat.work"
+              className="text-white underline underline-offset-4 transition-colors hover:text-white/75"
+            >
+              parbhat@parbhat.work
+            </a>
+          </Surface>
+          <Surface label="policy updates">
+            We may update this policy. Material changes will be announced by
+            email or through the platform. The &quot;last updated&quot; date
+            at the top reflects the current version.
+          </Surface>
+        </div>
+      </Section>
+    </main>
+  );
+}
+
+function TopBar() {
+  return (
+    <div className="border-b border-white/[0.05]">
+      <div className="flex items-center px-6 sm:px-8 lg:px-12 py-4">
+        <Link href="/" className="group inline-flex items-center gap-2">
+          <ArrowLeft className="h-3.5 w-3.5 text-white/40 transition-all group-hover:-translate-x-0.5 group-hover:text-white/70" />
+          <Image
+            src="/repodoc.png"
+            alt="RepoDoc"
+            width={20}
+            height={20}
+            className="rounded-[5px]"
+          />
+          <span className="text-[13.5px] font-medium tracking-[-0.01em] text-white/85 transition-colors group-hover:text-white">
+            RepoDoc
+          </span>
+        </Link>
       </div>
     </div>
   );
+}
+
+function Eyebrow({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.02] px-2.5 py-1 font-mono text-[10.5px] uppercase tracking-[0.22em] text-white/45">
+      <span className="h-1 w-1 rounded-full bg-amber-400" />
+      {children}
+    </div>
+  );
+}
+
+function Section({
+  label,
+  title,
+  children,
+}: {
+  label: string;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section>
+      <div className="mx-auto max-w-[1800px] px-6 sm:px-10 lg:px-20 py-12 lg:py-16">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-12">
+          <div className="md:col-span-3">
+            <div className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-white/35">
+              {label}
+            </div>
+            <h2 className="mt-3 text-[22px] font-medium tracking-[-0.02em] text-white">
+              {title}
+            </h2>
+          </div>
+          <div className="md:col-span-9">{children}</div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Surface({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-lg border border-white/[0.06] bg-white/[0.015] p-5 transition-colors hover:border-white/[0.12]">
+      <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-white/35">
+        {label}
+      </div>
+      <div className="mt-3 text-[13.5px] leading-[1.65] text-white/65">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function BulletList({ items }: { items: React.ReactNode[] }) {
+  return (
+    <ul className="space-y-2.5">
+      {items.map((it, i) => (
+        <li
+          key={i}
+          className="flex items-start gap-3 text-[13.5px] leading-[1.6] text-white/65"
+        >
+          <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-white/30" />
+          <span>{it}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Strong({ children }: { children: React.ReactNode }) {
+  return <span className="font-medium text-white/90">{children}</span>;
 }

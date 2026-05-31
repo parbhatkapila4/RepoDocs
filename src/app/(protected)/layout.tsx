@@ -16,9 +16,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <UserProvider>
       <ProjectsProvider>
         <SidebarProvider>
-          <div className="flex h-screen w-full text-white">
+          <div className="flex h-screen w-full bg-black text-white">
             <AppSidebar />
-            <SidebarInset className="flex-1 h-full overflow-y-auto scrollbar-hide">
+            <SidebarInset className="flex-1 h-full overflow-y-auto bg-black scrollbar-hide">
               <div className="flex items-center gap-2 p-2 sm:p-4 border-b border-white/10 md:hidden">
                 <SidebarTrigger />
               </div>

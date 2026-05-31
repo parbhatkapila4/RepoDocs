@@ -10,9 +10,32 @@ import {
 import { estimateCostUsd } from "@/lib/cost";
 import { recordQueryMetrics } from "@/lib/query-metrics";
 import * as queryCache from "@/lib/query-cache";
+import {
+  rateLimit,
+  getRateLimitIdentifier,
+  rateLimitResponse,
+  RATE_LIMITS,
+} from "@/lib/rate-limiter";
+import { z } from "zod";
+import { decryptSecret } from "@/lib/secret-crypto";
+import { isProjectOverBudget, BUDGET_EXCEEDED_MESSAGE } from "@/lib/budget";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
+
+const QuerySchema = z.object({
+  projectId: z.string().min(1),
+  question: z.string().trim().min(1),
+  conversationHistory: z
+    .array(
+      z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string(),
+      })
+    )
+    .optional(),
+  mode: z.enum(["guidance", "default"]).optional(),
+});
 
 export async function POST(request: NextRequest) {
   const startMs = Date.now();
@@ -24,31 +47,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const rl = await rateLimit(
+      getRateLimitIdentifier(request, userId),
+      RATE_LIMITS.API
+    );
+    if (!rl.success) return rateLimitResponse(rl.resetTime);
+
     const dbUserId = await getDbUserId(userId);
     if (!dbUserId) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const body = await request.json();
-    const { projectId, question, conversationHistory, mode: bodyMode } = body;
-
-    const mode =
-      bodyMode === "guidance" || bodyMode === "default" ? bodyMode : "default";
-
-    if (!projectId || !question) {
+    const parsed = QuerySchema.safeParse(
+      await request.json().catch(() => null)
+    );
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Project ID and question are required" },
+        { error: "Project ID and a non-empty question are required" },
         { status: 400 }
       );
     }
+    const { projectId, question, conversationHistory } = parsed.data;
+    const mode = parsed.data.mode ?? "default";
     projectIdForMetrics = projectId;
-
-    if (typeof question !== "string" || question.trim().length === 0) {
-      return NextResponse.json(
-        { error: "Question must be a non-empty string" },
-        { status: 400 }
-      );
-    }
 
     const project = await prisma.project.findFirst({
       where: {
@@ -65,6 +86,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (await isProjectOverBudget(projectId, project.monthlyCostLimitUsd)) {
+      return NextResponse.json(
+        { error: "Budget exceeded", message: BUDGET_EXCEEDED_MESSAGE },
+        { status: 402 }
+      );
+    }
+
     const embeddingsCount = await prisma.sourceCodeEmbeddings.count({
       where: {
         projectId: projectId,
@@ -78,7 +106,7 @@ export async function POST(request: NextRequest) {
 
       const preResult = await queryCodebasePreindex(
         project.repoUrl,
-        project.githubToken,
+        decryptSecret(project.githubToken),
         question,
         conversationHistory,
         { mode }
@@ -259,6 +287,12 @@ export async function GET(request: NextRequest) {
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const rl = await rateLimit(
+      getRateLimitIdentifier(request, userId),
+      RATE_LIMITS.API
+    );
+    if (!rl.success) return rateLimitResponse(rl.resetTime);
 
     const dbUserId = await getDbUserId(userId);
     if (!dbUserId) {

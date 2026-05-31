@@ -1,4 +1,3 @@
--- AlterTable
 ALTER TABLE "Project"
 ADD COLUMN "monthlyCostLimitUsd" DOUBLE PRECISION,
     ADD COLUMN "alertThresholdPercent" DOUBLE PRECISION NOT NULL DEFAULT 80;

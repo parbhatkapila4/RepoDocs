@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { getDbUserId } from "@/lib/get-db-user-id";
+
+const RetrySchema = z.object({
+  projectId: z.string().trim().min(1),
+});
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,16 +20,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const body = (await request.json().catch(() => null)) as
-      | { projectId?: string }
-      | null;
-    const projectId = body?.projectId?.trim();
-    if (!projectId) {
+    const parsed = RetrySchema.safeParse(
+      await request.json().catch(() => null)
+    );
+    if (!parsed.success) {
       return NextResponse.json(
         { error: "Project ID is required" },
         { status: 400 }
       );
     }
+    const projectId = parsed.data.projectId;
 
     const project = await prisma.project.findFirst({
       where: {

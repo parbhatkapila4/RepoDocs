@@ -517,12 +517,19 @@ export async function getGitHubRepositoryInfo(
     const token = githubToken || process.env.GITHUB_TOKEN;
     const octokit = createGitHubOctokit(token);
 
+    const repoPromise = octokit.rest.repos.get({ owner, repo: cleanRepo });
+    const languagesPromise = octokit.rest.repos
+      .listLanguages({ owner, repo: cleanRepo })
+      .then((r) => r.data as Record<string, number>)
+      .catch(() => ({}) as Record<string, number>);
+    const topicsPromise = octokit.rest.repos
+      .getAllTopics({ owner, repo: cleanRepo })
+      .then((r) => r.data as { names: string[] })
+      .catch(() => ({ names: [] as string[] }));
+
     let repoData;
     try {
-      const response = await octokit.rest.repos.get({
-        owner,
-        repo: cleanRepo,
-      });
+      const response = await repoPromise;
       repoData = response.data;
     } catch (error: any) {
       if (error?.status === 404) {
@@ -552,23 +559,10 @@ export async function getGitHubRepositoryInfo(
       }
     }
 
-    let languages: Record<string, number> = {};
-    try {
-      const { data: languagesData } = await octokit.rest.repos.listLanguages({
-        owner,
-        repo: cleanRepo,
-      });
-      languages = languagesData;
-    } catch (error) { }
-
-    let topics: { names: string[] } = { names: [] };
-    try {
-      const { data: topicsData } = await octokit.rest.repos.getAllTopics({
-        owner,
-        repo: cleanRepo,
-      });
-      topics = topicsData;
-    } catch (error) { }
+    const [languages, topics] = await Promise.all([
+      languagesPromise,
+      topicsPromise,
+    ]);
 
     const repoInfo: GitHubRepoInfo = {
       id: repoData.id,

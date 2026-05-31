@@ -1,5 +1,4 @@
--- CreateTable
-CREATE TABLE "QueryMetrics" (
+- CREATE TABLE "QueryMetrics" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid()::text,
     "projectId" TEXT NOT NULL,
     "routeType" TEXT NOT NULL,
@@ -16,12 +15,8 @@ CREATE TABLE "QueryMetrics" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "QueryMetrics_pkey" PRIMARY KEY ("id")
 );
--- CreateIndex
 CREATE INDEX "QueryMetrics_projectId_idx" ON "QueryMetrics"("projectId");
--- CreateIndex
 CREATE INDEX "QueryMetrics_projectId_createdAt_idx" ON "QueryMetrics"("projectId", "createdAt" DESC);
--- CreateIndex
 CREATE INDEX "QueryMetrics_projectId_success_createdAt_idx" ON "QueryMetrics"("projectId", "success", "createdAt" DESC);
--- AddForeignKey
 ALTER TABLE "QueryMetrics"
 ADD CONSTRAINT "QueryMetrics_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE CASCADE ON UPDATE CASCADE;
