@@ -72,7 +72,7 @@ const DATABASES = [
 
 export default function SearchPage() {
   const router = useRouter();
-  const { loadProjects } = useProjectsContext();
+  const { loadProjects, selectProject } = useProjectsContext();
   const [searchQuery, setSearchQuery] = useState("");
   const [backendLanguages, setBackendLanguages] = useState<string[]>([]);
   const [frontendLanguages, setFrontendLanguages] = useState<string[]>([]);
@@ -237,6 +237,7 @@ export default function SearchPage() {
       }
 
       await loadProjects();
+      if (result.project?.id) selectProject(result.project.id);
 
       toast.success("Repository added successfully!", {
         description: `${repo.fullName} has been added to your repositories.`,
