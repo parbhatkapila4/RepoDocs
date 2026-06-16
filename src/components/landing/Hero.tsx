@@ -10,7 +10,8 @@ import SystemGraph from "./SystemGraph";
 import { DemoVideoModal } from "./hero/DemoVideoModal";
 import { LoadingButton } from "@/components/LoadingButton";
 
-const DEMO_VIDEO_URL = "REPLACE_WITH_SUPABASE_VIDEO_URL";
+const DEMO_VIDEO_URL: string =
+  "https://lcbcrithcxdbqynfmtxk.supabase.co/storage/v1/object/public/Videos/Loom-Repodoc-1.mp4";
 
 const TRUSTED = [
   "vercel/next.js",

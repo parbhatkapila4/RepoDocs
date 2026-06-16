@@ -7,10 +7,12 @@ import { useRouter } from "next/navigation";
 import { DemoVideoModal } from "./hero/DemoVideoModal";
 import { LoadingButton } from "@/components/LoadingButton";
 
-const DEMO_VIDEO_URL = "REPLACE_WITH_SUPABASE_VIDEO_URL";
+const DEMO_VIDEO_URL: string =
+  "https://lcbcrithcxdbqynfmtxk.supabase.co/storage/v1/object/public/Videos/Loom-Repodoc-1.mp4";
 const RED = "#AFBFC0";
 const INK = "#180b06";
-const CHAMFER = "polygon(0 0, 100% 0, 100% 100%, 13px 100%, 0 calc(100% - 13px))";
+const CHAMFER =
+  "polygon(0 0, 100% 0, 100% 100%, 13px 100%, 0 calc(100% - 13px))";
 const NOISE_URL =
   "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 320 320' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")";
 const MARQUEE = [
@@ -25,13 +27,45 @@ const MARQUEE = [
 
 function HeroBackdrop() {
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+    >
       <div className="absolute -left-[7%] top-1/2 w-[clamp(20rem,40vw,44rem)] -translate-y-1/2 text-black opacity-[0.05]">
         <svg viewBox="0 0 200 200" fill="none" className="h-auto w-full">
-          <rect x="22" y="22" width="156" height="156" rx="38" stroke="currentColor" strokeWidth="13" />
-          <rect x="58" y="68" width="86" height="13" rx="6.5" fill="currentColor" />
-          <rect x="58" y="100" width="62" height="13" rx="6.5" fill="currentColor" />
-          <rect x="58" y="132" width="78" height="13" rx="6.5" fill="currentColor" />
+          <rect
+            x="22"
+            y="22"
+            width="156"
+            height="156"
+            rx="38"
+            stroke="currentColor"
+            strokeWidth="13"
+          />
+          <rect
+            x="58"
+            y="68"
+            width="86"
+            height="13"
+            rx="6.5"
+            fill="currentColor"
+          />
+          <rect
+            x="58"
+            y="100"
+            width="62"
+            height="13"
+            rx="6.5"
+            fill="currentColor"
+          />
+          <rect
+            x="58"
+            y="132"
+            width="78"
+            height="13"
+            rx="6.5"
+            fill="currentColor"
+          />
         </svg>
       </div>
 
