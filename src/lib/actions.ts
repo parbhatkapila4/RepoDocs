@@ -420,6 +420,9 @@ export async function getUserProjects() {
         name: true,
         repoUrl: true,
         createdAt: true,
+        indexedCommitSha: true,
+        indexedBranch: true,
+        indexedAt: true,
       },
     });
 

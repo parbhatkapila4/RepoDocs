@@ -34,6 +34,9 @@ model Project {
   userId                String
   monthlyCostLimitUsd   Float?
   alertThresholdPercent Float                  @default(80)
+  indexedCommitSha      String?
+  indexedBranch         String?
+  indexedAt             DateTime?
   docs                  Docs?
   user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   readme                Readme?
@@ -155,6 +158,7 @@ model IndexingJob {
   filesTotal     Int               @default(0)
   filesProcessed Int               @default(0)
   lastCommitSha  String?
+  indexedBranch  String?
   resumeAfter    String?           @db.Text
 
   @@index([status, lockedAt])

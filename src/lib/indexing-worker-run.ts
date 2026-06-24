@@ -1,6 +1,8 @@
 import prisma from "@/lib/prisma";
 import { indexGithubRepository } from "@/lib/github";
 import { decryptSecret } from "@/lib/secret-crypto";
+import { retryAsync } from "@/lib/errors";
+import { mirrorBaselineIfPending } from "@/lib/baseline-mirror";
 
 const JOB_LEASE_DURATION_MS = 5 * 60 * 1000;
 
@@ -171,6 +173,22 @@ export async function runIndexingWorkerOnce(): Promise<IndexingWorkerHttpResult>
           updatedAt: new Date(),
         },
       });
+      try {
+        const mirroredSha = await retryAsync(
+          () => mirrorBaselineIfPending(job.projectId),
+          { maxRetries: 3, initialDelay: 400 }
+        );
+        if (mirroredSha) {
+          console.log(
+            `[Worker ${workerId}] Job ${job.id} mirrored baseline ${mirroredSha} -> project ${job.projectId}`
+          );
+        }
+      } catch (mirrorError) {
+        console.error(
+          `[Worker ${workerId}] Job ${job.id} completed but baseline mirror failed (will reconcile on next status read):`,
+          mirrorError instanceof Error ? mirrorError.message : String(mirrorError)
+        );
+      }
 
       console.log(`[Worker ${workerId}] Job ${job.id} completed successfully`);
       return {

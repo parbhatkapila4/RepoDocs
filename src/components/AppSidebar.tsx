@@ -43,6 +43,7 @@ import {
   BarChart3,
   Search,
   FileDiff,
+  GitCompare,
   Network,
   Activity,
   AlertCircle,
@@ -93,6 +94,11 @@ const navigationItems: NavigationItem[] = [
     title: "Analyze Diff",
     url: "/diff",
     icon: FileDiff,
+  },
+  {
+    title: "Drift",
+    url: "/drift",
+    icon: GitCompare,
   },
   {
     title: "Observability",

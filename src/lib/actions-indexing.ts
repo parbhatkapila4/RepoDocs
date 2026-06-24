@@ -3,6 +3,10 @@
 import { auth } from "@clerk/nextjs/server";
 import { kickIndexingWorker } from "./indexing-worker-kick";
 import prisma from "./prisma";
+import { getDbUserId } from "./get-db-user-id";
+import { decryptSecret } from "./secret-crypto";
+import { resolveGithubDefaultBranch, fetchBranchHeadSha } from "./github";
+import { mirrorBaselineIfPending } from "./baseline-mirror";
 
 export async function getIndexingStatus(projectId: string) {
   try {
@@ -46,6 +50,17 @@ export async function getIndexingStatus(projectId: string) {
       throw new Error("Project not found or unauthorized");
     }
 
+    try {
+      await mirrorBaselineIfPending(projectId);
+    } catch (reconcileError) {
+      console.error(
+        "[getIndexingStatus] baseline reconcile failed:",
+        reconcileError instanceof Error
+          ? reconcileError.message
+          : String(reconcileError)
+      );
+    }
+
     const job = await prisma.indexingJob.findUnique({
       where: { projectId },
       select: {
@@ -53,6 +68,9 @@ export async function getIndexingStatus(projectId: string) {
         progress: true,
         error: true,
         updatedAt: true,
+        filesProcessed: true,
+        filesTotal: true,
+        phase: true,
       },
     });
 
@@ -62,6 +80,9 @@ export async function getIndexingStatus(projectId: string) {
         progress: 0,
         error: null,
         updatedAt: null,
+        filesProcessed: 0,
+        filesTotal: 0,
+        phase: null,
       };
     }
 
@@ -70,6 +91,9 @@ export async function getIndexingStatus(projectId: string) {
       progress: job.progress,
       error: job.error,
       updatedAt: job.updatedAt,
+      filesProcessed: job.filesProcessed,
+      filesTotal: job.filesTotal,
+      phase: job.phase,
     };
   } catch (error) {
     console.error("Error fetching indexing status:", error);
@@ -267,5 +291,116 @@ export async function cancelIndexingJob(projectId: string) {
   } catch (error) {
     console.error("Error cancelling indexing job:", error);
     throw error;
+  }
+}
+
+export type SetBaselineResult =
+  | {
+    success: true;
+    indexedCommitSha: string;
+    indexedBranch: string;
+    indexedAt: string;
+    alreadySet: boolean;
+  }
+  | { success: false; error: string };
+
+function describeGithubFetchError(e: unknown): string {
+  const status =
+    (e as { status?: number })?.status ??
+    (e as { response?: { status?: number } })?.response?.status;
+  if (status === 401) {
+    return "GitHub rejected the credentials. Add or refresh this project's access token, then try again.";
+  }
+  if (status === 403) {
+    return "GitHub denied access - usually a rate limit, or a token without the 'repo' scope (private repos need it). Try again in a few minutes.";
+  }
+  if (status === 404) {
+    return "Repository or its default branch wasn't found on GitHub. It may be private, renamed, or deleted.";
+  }
+  const msg = e instanceof Error ? e.message : "";
+  return msg
+    ? `Couldn't read the current HEAD from GitHub: ${msg}`
+    : "Couldn't reach GitHub to read the current HEAD commit.";
+}
+
+export async function setProjectBaselineNow(
+  projectId: string
+): Promise<SetBaselineResult> {
+  try {
+    const { userId } = await auth();
+    if (!userId) return { success: false, error: "You must be signed in." };
+
+    const dbUserId = await getDbUserId(userId);
+    if (!dbUserId) return { success: false, error: "User account not found." };
+
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, userId: dbUserId, deletedAt: null },
+      select: {
+        id: true,
+        repoUrl: true,
+        githubToken: true,
+        indexedCommitSha: true,
+        indexedBranch: true,
+        indexedAt: true,
+      },
+    });
+    if (!project) {
+      return {
+        success: false,
+        error: "Project not found, or you don't have access to it.",
+      };
+    }
+
+    if (project.indexedCommitSha && project.indexedBranch) {
+      return {
+        success: true,
+        indexedCommitSha: project.indexedCommitSha,
+        indexedBranch: project.indexedBranch,
+        indexedAt: (project.indexedAt ?? new Date()).toISOString(),
+        alreadySet: true,
+      };
+    }
+
+    const token =
+      (project.githubToken ? decryptSecret(project.githubToken) : null) ||
+      process.env.GITHUB_TOKEN ||
+      undefined;
+
+    const branch = await resolveGithubDefaultBranch(project.repoUrl, token);
+
+    let sha: string;
+    try {
+      sha = await fetchBranchHeadSha(project.repoUrl, branch, token);
+    } catch (githubError) {
+      console.error("[setProjectBaselineNow] getRef failed:", githubError);
+      return { success: false, error: describeGithubFetchError(githubError) };
+    }
+
+    const indexedAt = new Date();
+    await prisma.project.update({
+      where: { id: projectId },
+      data: {
+        indexedCommitSha: sha,
+        indexedBranch: branch,
+        indexedAt,
+      },
+    });
+
+    return {
+      success: true,
+      indexedCommitSha: sha,
+      indexedBranch: branch,
+      indexedAt: indexedAt.toISOString(),
+      alreadySet: false,
+    };
+  } catch (error) {
+    console.error("Error setting project baseline:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to set the baseline. Please try again.",
+    };
   }
 }

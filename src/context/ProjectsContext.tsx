@@ -14,6 +14,9 @@ export interface SidebarProject {
   name: string;
   repoUrl: string;
   createdAt: Date;
+  indexedCommitSha?: string | null;
+  indexedBranch?: string | null;
+  indexedAt?: Date | null;
 }
 
 interface ProjectsContextType {
