@@ -580,9 +580,9 @@ function CreatePage() {
           transition={{ delay: 0.5 }}
         >
           {[
-            { value: "30s", label: "Avg indexing" },
+            { value: "768d", label: "Embeddings" },
             { value: "RAG", label: "Retrieval" },
-            { value: "∞", label: "Questions" },
+            { value: "Top 5", label: "Files cited" },
           ].map((stat) => (
             <div
               key={stat.label}

@@ -11,13 +11,13 @@ const LINE = "rgba(243,238,228,0.14)";
 
 const LEFT = [
   { title: "RAG pipeline", desc: "Retrieval over your indexed source" },
-  { title: "pgvector", desc: "Embeddings stored and searched fast" },
-  { title: "Architecture graph", desc: "Repo-wide relationship mapping" },
+  { title: "pgvector", desc: "768-dim cosine search in Postgres" },
+  { title: "Leased job queue", desc: "Resumable indexing, no queue service" },
 ];
 const RIGHT = [
   { title: "Gemini summaries", desc: "Every file distilled to its intent" },
-  { title: "Line-level citations", desc: "Proof attached to every answer" },
-  { title: "Command palette", desc: "⌘K to jump anywhere, instantly" },
+  { title: "File-level sources", desc: "The files behind every answer" },
+  { title: "Metered spend", desc: "Per-project cost ceiling, enforced live" },
 ];
 
 function Anno({
@@ -63,126 +63,174 @@ function Anno({
   );
 }
 
-const OUTPUT_COUNT = 6;
-const TYPING = 'ask "where is auth handled?"';
+const FILES_TOTAL = 1284;
+const RUN_TICKS = 128;
+const HOLD_TICKS = 34;
+const CYCLE_TICKS = RUN_TICKS + HOLD_TICKS;
 
-function outputLine(i: number) {
-  switch (i) {
+interface StepDef {
+  label: string;
+  start: number;
+  end: number;
+}
+
+const STEPS: StepDef[] = [
+  { label: "clone acme/ledger", start: 0, end: 9 },
+  { label: "walk source tree", start: 9, end: 26 },
+  { label: "summarize files", start: 26, end: 78 },
+  { label: "embed summaries", start: 78, end: 112 },
+  { label: "write docs + readme", start: 112, end: 128 },
+];
+
+const LOGS: { at: number; text: string }[] = [
+  { at: 4, text: "fetch origin/main · 412 objects" },
+  { at: 12, text: "tree walk · skip lockfiles, .git" },
+  { at: 21, text: "queued 1,284 files · lease w-01 acquired" },
+  { at: 30, text: "summarize src/ledger/postings.ts" },
+  { at: 38, text: "summarize src/api/transfers/route.ts" },
+  { at: 46, text: "summarize src/lib/idempotency.ts" },
+  { at: 54, text: "summarize prisma/schema.prisma" },
+  { at: 62, text: "summarize src/workers/reconcile.ts" },
+  { at: 70, text: "summarize src/lib/audit-log.ts" },
+  { at: 82, text: "embed batch 07/26 · 768d · 50 rows" },
+  { at: 91, text: "embed batch 14/26 · 768d · 50 rows" },
+  { at: 100, text: "embed batch 21/26 · 768d · 50 rows" },
+  { at: 108, text: "pgvector upsert · hnsw index warm" },
+  { at: 116, text: "compose docs · 17 sections" },
+  { at: 122, text: "readme grounded · 41 source refs" },
+  { at: 127, text: "index complete · 1,284 files · 1,284 vectors" },
+];
+
+const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+
+const easeOut = (p: number) => 1 - Math.pow(1 - p, 3);
+const fmtInt = (n: number) => Math.round(n).toLocaleString("en-US");
+
+function stepProgress(t: number, step: StepDef): number {
+  if (t <= step.start) return 0;
+  if (t >= step.end) return 1;
+  return (t - step.start) / (step.end - step.start);
+}
+
+function stepMetric(t: number, index: number): string {
+  const p = stepProgress(t, STEPS[index]);
+  switch (index) {
     case 0:
-      return (
-        <>
-          <span style={{ color: RED }}>λ </span>
-          <span className="text-white/90">repodoc index github.com/vercel/next.js</span>
-        </>
-      );
+      return p >= 1 ? "9f31c2e · 0.9s" : p > 0 ? "receiving…" : "";
     case 1:
-      return <span className="text-white/40">&gt; cloning default branch…</span>;
+      return p > 0 ? `${fmtInt(easeOut(p) * FILES_TOTAL)} files` : "";
     case 2:
-      return <span className="text-white/40">&gt; 4,812 files · 92,140 symbols</span>;
+      return p > 0 ? `${fmtInt(p * FILES_TOTAL)}/${fmtInt(FILES_TOTAL)}` : "";
     case 3:
-      return <span className="text-white/40">&gt; embedding into pgvector</span>;
+      return p > 0 ? `${fmtInt(p * FILES_TOTAL)} vectors · 768d` : "";
     case 4:
-      return (
-        <span className="text-white/40">
-          &gt; architecture graph resolved <span style={{ color: GREEN }}>OK</span>
-        </span>
-      );
+      return p >= 1 ? "17 sections · readme" : p > 0 ? "17 sections…" : "";
     default:
-      return (
-        <>
-          <span style={{ color: GREEN }}>✓ </span>
-          <span className="text-white/75">Ready.</span>
-          <span className="text-white/35">
-            {" "}Cited: <span style={{ color: GREEN }}>ON</span> · Grounded:{" "}
-            <span style={{ color: GREEN }}>ON</span>
-          </span>
-        </>
-      );
+      return "";
   }
 }
 
 function Monitor() {
-  const [shown, setShown] = useState(0);
-  const [typed, setTyped] = useState(0);
+  const [tick, setTick] = useState(0);
+  const [run, setRun] = useState(147);
 
   useEffect(() => {
-    let active = true;
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    const at = (fn: () => void, ms: number) =>
-      timers.push(
-        setTimeout(() => {
-          if (active) fn();
-        }, ms)
-      );
-    const run = () => {
-      setShown(0);
-      setTyped(0);
-      let t = 500;
-      for (let i = 1; i <= OUTPUT_COUNT; i++) {
-        const n = i;
-        at(() => setShown(n), t);
-        t += 480;
-      }
-      t += 320;
-      for (let c = 1; c <= TYPING.length; c++) {
-        const n = c;
-        at(() => setTyped(n), t);
-        t += 55;
-      }
-      t += 2600;
-      at(run, t);
-    };
-    run();
-    return () => {
-      active = false;
-      timers.forEach(clearTimeout);
-    };
+    const id = setInterval(() => {
+      setTick((t) => {
+        if (t + 1 >= CYCLE_TICKS) {
+          setRun((r) => r + 1);
+          return 0;
+        }
+        return t + 1;
+      });
+    }, 100);
+    return () => clearInterval(id);
   }, []);
+
+  const t = Math.min(tick, RUN_TICKS);
+  const running = tick < RUN_TICKS;
+  const pct = Math.min(100, Math.round((t / RUN_TICKS) * 100));
+  const elapsed = (t * 0.1).toFixed(1).padStart(4, "0");
+  const visibleLogs = LOGS.filter((l) => l.at <= tick).slice(-4);
+  const logDim = [0.2, 0.3, 0.45, 0.7];
 
   return (
     <div
       className="relative w-full max-w-[560px] shrink-0 rounded-2xl border border-white/[0.08] p-3.5 shadow-[0_40px_120px_-40px_rgba(0,0,0,0.9)]"
       style={{ backgroundColor: "#100e10" }}
     >
-      <div className="mb-2.5 flex justify-center gap-1.5">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <span key={i} className="h-0.5 w-7 rounded-full bg-white/[0.06]" />
-        ))}
-      </div>
-
-      <div className="overflow-hidden rounded-xl border border-white/[0.07]" style={{ backgroundColor: "#08070a" }}>
+      <div
+        className="overflow-hidden rounded-xl border border-white/[0.07]"
+        style={{ backgroundColor: "#08070a", fontVariantNumeric: "tabular-nums" }}
+      >
         <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-2.5">
-          <div className="flex gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
-            <span className="h-2.5 w-2.5 rounded-full bg-[#febc2e]" />
-            <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
-          </div>
-          <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-white/35">
-            repodoc://index · live
+          <span className="flex items-center gap-2 font-mono text-[11px] tracking-[0.08em] text-white/80">
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${running ? "animate-pulse" : ""}`}
+              style={{ backgroundColor: GREEN }}
+            />
+            acme/ledger
+            <span className="text-white/30">·</span>
+            <span className="text-white/35">main @ 9f31c2e</span>
           </span>
-          <span className="h-1.5 w-1.5 animate-pulse rounded-full" style={{ backgroundColor: RED }} />
+          <span className="font-mono text-[10px] uppercase tracking-[0.15em]">
+            {running ? (
+              <span className="text-white/40">indexing · {pct}%</span>
+            ) : (
+              <span style={{ color: GREEN }}>✓ ready</span>
+            )}
+          </span>
         </div>
 
-        <div className="space-y-1.5 px-5 py-5 font-mono text-[12.5px] leading-[1.55]">
-          {Array.from({ length: OUTPUT_COUNT }).map((_, i) => (
+        <div className="space-y-[7px] px-5 py-4 font-mono text-[12.5px] leading-[1.5]">
+          {STEPS.map((step, i) => {
+            const done = t >= step.end;
+            const active = running && t >= step.start && t < step.end;
+            const metric = stepMetric(t, i);
+            return (
+              <div key={step.label} className="flex items-baseline justify-between gap-4">
+                <span className="flex items-baseline gap-2.5">
+                  <span
+                    className="inline-block w-3 text-center"
+                    style={{ color: done ? GREEN : active ? PAPER : "rgba(255,255,255,0.22)" }}
+                  >
+                    {done ? "✓" : active ? SPINNER[tick % SPINNER.length] : "○"}
+                  </span>
+                  <span className={done || active ? "text-white/85" : "text-white/30"}>
+                    {step.label}
+                  </span>
+                </span>
+                <span className={`text-[11px] ${active ? "text-white/60" : "text-white/35"}`}>
+                  {metric}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="flex items-center gap-3 border-t border-white/[0.06] px-5 py-2.5 font-mono text-[10px] tracking-[0.08em] text-white/35">
+          <span>run #{run} · w-01</span>
+          <span className="relative h-px flex-1 overflow-hidden rounded-full bg-white/[0.08]">
+            <span
+              className="absolute inset-y-0 left-0 transition-[width] duration-200 ease-linear"
+              style={{ width: `${pct}%`, backgroundColor: GREEN }}
+            />
+          </span>
+          <span>00:{elapsed}</span>
+        </div>
+
+        <div className="h-[86px] space-y-[3px] overflow-hidden border-t border-white/[0.06] px-5 py-2.5 font-mono text-[10.5px] leading-[1.5]">
+          {visibleLogs.map((l, i) => (
             <motion.div
-              key={i}
-              animate={{ opacity: i < shown ? 1 : 0 }}
-              transition={{ duration: 0.3 }}
-              className={i === 5 ? "pt-1" : undefined}
+              key={`${run}-${l.at}`}
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              style={{ color: `rgba(243,238,228,${logDim[i + (4 - visibleLogs.length)]})` }}
             >
-              {outputLine(i)}
+              {l.text}
             </motion.div>
           ))}
-          <motion.div
-            animate={{ opacity: shown >= OUTPUT_COUNT ? 1 : 0 }}
-            transition={{ duration: 0.2 }}
-            className="pt-1"
-          >
-            <span style={{ color: RED }}>λ </span>
-            <span className="text-white/90">{TYPING.slice(0, typed)}</span>
-            <span className="ml-0.5 inline-block h-3.5 w-2 translate-y-0.5 animate-pulse bg-white/70" />
-          </motion.div>
         </div>
       </div>
 

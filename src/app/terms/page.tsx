@@ -83,7 +83,7 @@ export default function TermsOfServicePage() {
           <Surface label="availability">
             <BulletList
               items={[
-                "We aim for 99.9% monthly uptime; not contractually guaranteed at the free tier",
+                "Best-effort availability; no uptime commitment on any tier",
                 "Scheduled maintenance is announced in advance when possible",
                 "Email support during business hours",
               ]}

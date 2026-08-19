@@ -16,24 +16,24 @@ const STEPS = [
     n: "01",
     title: "Index every file, not just the README.",
     body: [
-      "RepoDoc walks the whole repo, summarizes each file with Gemini, and embeds it into pgvector  -  so retrieval pulls the right context every time, not just the obvious files.",
-      "Config, tests, the one helper module that actually matters  -  nothing gets skipped.",
+      "RepoDoc walks the whole repo, summarizes each file with Gemini, and embeds that summary into pgvector  -  so retrieval ranks by what a file means, not by which words it happens to share with your question.",
+      "Config, tests, the one helper module that actually matters. Only lockfiles and VCS metadata are skipped.",
     ],
   },
   {
     n: "02",
-    title: "Map how the system actually connects.",
+    title: "Read the repo as a file map.",
     body: [
-      "It traces the import graph  -  services, schemas, shared modules  -  into an interactive architecture you can explore instead of reconstruct in your head.",
-      "Follow an edge from a route handler all the way down to the query that backs it.",
+      "The indexed source is parsed into a browsable map of every file in the repo, with the connections between them drawn from real import statements rather than guessed at by a model.",
+      "Pick a file to see what it pulls in and what pulls it in.",
     ],
   },
   {
     n: "03",
-    title: "Cite the source on every claim.",
+    title: "Show the sources behind the answer.",
     body: [
-      "Each answer carries citations into the underlying code. Click one to land on the exact line that backs it.",
-      "No proof, no answer  -  so you never have to take RepoDoc's word for it.",
+      "Every answer lists the files it was grounded in, ranked by similarity. Open one and read the code yourself.",
+      "The answer is built only from retrieved source  -  so you never have to take RepoDoc's word for it.",
     ],
   },
 ];
@@ -53,31 +53,31 @@ interface Panel {
 
 const PANELS: Panel[] = [
   {
-    title: "INDEX COVERAGE",
-    label: "Files considered per question",
+    title: "INDEX SCOPE",
+    label: "What the walker takes in",
     rows: [
-      { name: "RepoDoc", pct: 100, val: "100%", good: true },
-      { name: "Keyword grep", pct: 8, val: "~5%" },
+      { name: "Indexed", pct: 100, val: "all source", good: true },
+      { name: "Skipped", pct: 6, val: "lockfiles, .git" },
     ],
-    note: "RepoDoc retrieves across the whole repo  -  not just the files you happen to have open.",
+    note: "GithubRepoLoader walks the default branch. The ignore list is lockfiles, .git, .github and .DS_Store  -  nothing else.",
   },
   {
-    title: "ARCHITECTURE",
-    label: "Time to a mental model",
+    title: "FILE MAP",
+    label: "Where edges come from",
     rows: [
-      { name: "RepoDoc", pct: 14, val: "~30s", good: true },
-      { name: "By hand", pct: 96, val: "hours" },
+      { name: "Relative", pct: 100, val: "./ and ../", good: true },
+      { name: "Aliased", pct: 0, val: "not resolved" },
     ],
-    note: "The import graph resolved into an interactive map you can actually explore.",
+    note: "Edges are parsed straight out of import and require statements. Path-aliased imports (@/lib/...) aren't resolved yet.",
   },
   {
-    title: "CITATIONS",
-    label: "Proof attached to each answer",
+    title: "GROUNDING",
+    label: "Context assembled per question",
     rows: [
-      { name: "RepoDoc", pct: 100, val: "every claim", good: true },
-      { name: "Generic AI", pct: 5, val: "none" },
+      { name: "Code files", pct: 100, val: "top 5", good: true },
+      { name: "Repo memory", pct: 60, val: "top 3" },
     ],
-    note: "Every answer links to the exact lines. Click a citation to verify it yourself.",
+    note: "Retrieved files plus durable facts from earlier answers. When memory and code disagree, the prompt tells the model the code wins.",
   },
 ];
 
@@ -103,6 +103,8 @@ const CODE_BARS = (() => {
   return bars;
 })();
 
+const SCAN_DUR = 7;
+
 function CodeRain() {
   return (
     <svg
@@ -111,10 +113,53 @@ function CodeRain() {
       className="h-full w-full"
       aria-hidden
     >
-      <g fill="rgba(243,238,228,0.05)">
-        {CODE_BARS.map((b, i) => (
-          <rect key={i} x={b.x} y={b.y} width={b.w} height="5" rx="1" />
-        ))}
+      <defs>
+        <linearGradient id="rig-scan-tail" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={GREEN} stopOpacity="0" />
+          <stop offset="1" stopColor={GREEN} stopOpacity="0.12" />
+        </linearGradient>
+      </defs>
+
+      <g fill="rgba(243,238,228,0.16)">
+        {CODE_BARS.map((b, i) => {
+          const arrival = ((b.y + 60) / 820) * SCAN_DUR;
+          const isTyping = i % 9 === 4;
+          return (
+            <rect key={i} x={b.x} y={b.y} width={b.w} height="5" rx="1" opacity="0.35">
+              <animate
+                attributeName="opacity"
+                values="0.35;1;0.35"
+                keyTimes="0;0.1;1"
+                dur={`${SCAN_DUR}s`}
+                begin={`${(arrival - 0.7).toFixed(2)}s`}
+                repeatCount="indefinite"
+              />
+              {isTyping && (
+                <animate
+                  attributeName="width"
+                  values={`0;${b.w};${b.w}`}
+                  keyTimes="0;0.3;1"
+                  dur="6.3s"
+                  begin={`${((i * 0.53) % 6.3).toFixed(2)}s`}
+                  repeatCount="indefinite"
+                />
+              )}
+            </rect>
+          );
+        })}
+      </g>
+
+      <g>
+        <rect x="0" y="-56" width="300" height="56" fill="url(#rig-scan-tail)" />
+        <rect x="0" y="0" width="300" height="1.5" fill={GREEN} opacity="0.5" />
+        <animateTransform
+          attributeName="transform"
+          type="translate"
+          from="0 -60"
+          to="0 760"
+          dur={`${SCAN_DUR}s`}
+          repeatCount="indefinite"
+        />
       </g>
     </svg>
   );
@@ -196,7 +241,7 @@ export default function RigApproach() {
             </h2>
             <p className="mx-auto mt-5 max-w-2xl text-[15px] leading-[1.6] text-white/55">
               RepoDoc is a closed loop  -  indexing, retrieval, mapping, and
-              citations  -  engineered together for one job: understanding real
+              sourcing  -  engineered together for one job: understanding real
               codebases, not guessing about them.
             </p>
           </motion.div>

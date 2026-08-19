@@ -1,3 +1,4 @@
+import { log } from "./logger";
 import prisma from "./prisma";
 import { Project, Prisma } from "@prisma/client";
 import { auth } from "@clerk/nextjs/server";
@@ -21,7 +22,7 @@ function normalizePlanName(plan: string): keyof typeof PLAN_LIMITS {
 }
 
 export async function createProject(
-  data: Prisma.ProjectCreateInput
+  data: Prisma.ProjectCreateInput,
 ): Promise<Project> {
   try {
     const project = await prisma.project.create({
@@ -38,7 +39,7 @@ export async function createProject(
 export async function createProjectWithAuth(
   name: string,
   githubUrl: string,
-  githubToken?: string
+  githubToken?: string,
 ): Promise<Project> {
   try {
     const { userId } = await auth();
@@ -127,7 +128,7 @@ export async function createProjectWithAuth(
               ? "Please upgrade to Enterprise for unlimited projects."
               : "";
         throw new Error(
-          `PROJECT_LIMIT_REACHED: You've reached the maximum of ${maxProjects} projects on the ${plan} plan. ${upgradeMessage}`
+          `PROJECT_LIMIT_REACHED: You've reached the maximum of ${maxProjects} projects on the ${plan} plan. ${upgradeMessage}`,
         );
       }
     }
@@ -153,20 +154,19 @@ export async function createProjectWithAuth(
           progress: 0,
         },
       });
-      console.log(`[Indexing] Queued job for project ${project.id}`);
+      log.debug(`[Indexing] Queued job for project ${project.id}`);
     } catch (indexingError) {
       console.error(
         "[Indexing] Failed to queue indexing job (project still created):",
-        indexingError
+        indexingError,
       );
     }
 
-    console.log(`[Indexing] Repo: ${githubUrl}, Has token: ${!!githubToken}`);
+    log.debug(`[Indexing] Repo: ${githubUrl}, Has token: ${!!githubToken}`);
 
     return project;
   } catch (error) {
     console.error("Error creating project:", error);
-
 
     if (error instanceof Error) {
       const msg = error.message;
@@ -186,7 +186,7 @@ export async function createProjectWithAuth(
     }
 
     throw new Error(
-      "Failed to create project. Please check your connection and try again."
+      "Failed to create project. Please check your connection and try again.",
     );
   }
 }
@@ -212,7 +212,7 @@ export async function getUserProjects(userId: string): Promise<Project[]> {
 
 export async function getProjectById(
   projectId: string,
-  userId: string
+  userId: string,
 ): Promise<Project | null> {
   try {
     const project = await prisma.project.findFirst({
@@ -233,7 +233,7 @@ export async function getProjectById(
 export async function updateProject(
   projectId: string,
   userId: string,
-  data: Prisma.ProjectUpdateInput
+  data: Prisma.ProjectUpdateInput,
 ): Promise<Project> {
   try {
     const project = await prisma.project.update({
@@ -253,7 +253,7 @@ export async function updateProject(
 
 export async function deleteProject(
   projectId: string,
-  userId: string
+  userId: string,
 ): Promise<Project> {
   try {
     const project = await prisma.project.update({

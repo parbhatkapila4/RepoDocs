@@ -83,7 +83,7 @@ export default function DocumentationPage() {
           <Step
             n="2"
             title="Create a project"
-            body="Paste a GitHub URL. RepoDoc clones the file tree, computes embeddings across each source file, and resolves the import graph in the background."
+            body="Paste a GitHub URL. RepoDoc walks the file tree and summarizes then embeds each source file in a background job. The import graph is derived from the stored source on demand, the first time you open the architecture view."
           />
           <Step
             n="3"
@@ -96,20 +96,21 @@ export default function DocumentationPage() {
       <Section id="indexing" label="02 / indexing" title="What happens when you connect a repo">
         <p className="text-[14.5px] leading-[1.7] text-white/60">
           Indexing runs as a background job and emits progress through the
-          dashboard. For a typical Next.js-sized codebase the full pipeline
-          completes in a few minutes; very large repositories stream files in
-          batches to keep latency stable.
+          dashboard. It typically takes 5&ndash;15 minutes depending on
+          repository size. The worker time-boxes each run, writes a resume
+          cursor, and requeues itself, so a large repo indexes across several
+          short invocations rather than one long one.
         </p>
         <ul className="mt-6 space-y-3">
           <Bullet>
             Files are fetched with LangChain&apos;s GithubRepoLoader, scoped to
-            the default branch and respecting the repository&apos;s ignore
-            rules.
+            the default branch. Lockfiles and VCS metadata are skipped;
+            everything else in the tree is indexed.
           </Bullet>
           <Bullet>
             Each file is summarized with Gemini 2.5 Flash, then embedded with{" "}
             <span className="font-mono text-[12.5px] text-white/80">
-              text-embedding-004
+              gemini-embedding-001
             </span>{" "}
             (768 dimensions).
           </Bullet>
@@ -121,12 +122,13 @@ export default function DocumentationPage() {
         </ul>
       </Section>
 
-      <Section id="querying" label="03 / querying" title="Chat and semantic search">
+      <Section id="querying" label="03 / querying" title="Chat over an indexed repo">
         <p className="text-[14.5px] leading-[1.7] text-white/60">
-          Two endpoints back the query surface. Chat is a grounded conversation
-          that returns an answer plus the source files used. Search returns
-          ranked file matches without LLM synthesis  -  useful when you want raw
-          retrieval results.
+          Chat is a grounded conversation that returns an answer plus the source
+          files it was built from. Vector retrieval runs inside that endpoint  -
+          the question is embedded, matched against file summaries by cosine
+          similarity, and the top 5 files are passed into the answer prompt.
+          There is no separate retrieval-only endpoint.
         </p>
         <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
           <Surface>
@@ -135,18 +137,19 @@ export default function DocumentationPage() {
               POST /api/query
             </code>
             <p className="mt-2 text-[13.5px] leading-[1.6] text-white/55">
-              Natural-language Q&amp;A with citations. Accepts a conversation
-              history for follow-ups.
+              Natural-language Q&amp;A with the source files listed alongside
+              the answer. Accepts a conversation history for follow-ups.
             </p>
           </Surface>
           <Surface>
-            <SurfaceLabel>search</SurfaceLabel>
+            <SurfaceLabel>repo discovery</SurfaceLabel>
             <code className="mt-1 block font-mono text-[13px] text-white">
               POST /api/search
             </code>
             <p className="mt-2 text-[13.5px] leading-[1.6] text-white/55">
-              Semantic file lookup ranked by cosine similarity. No LLM in the
-              loop.
+              Finds repositories on GitHub by keyword, language, and topic  -
+              for picking something to index. It does not search your indexed
+              files.
             </p>
           </Surface>
         </div>
@@ -162,8 +165,9 @@ export default function DocumentationPage() {
         </p>
         <ul className="mt-6 space-y-3">
           <Bullet>
-            Generated documents are versioned per project. Earlier revisions
-            stay accessible through the QnA history.
+            A project holds one current document. Each follow-up edit is stored
+            with the content it produced, so earlier revisions stay reachable
+            through the QnA history.
           </Bullet>
           <Bullet>
             Markdown rendering uses remark-gfm, with syntax highlighting
@@ -204,15 +208,17 @@ export default function DocumentationPage() {
           <Surface>
             <SurfaceLabel>models</SurfaceLabel>
             <p className="mt-2 text-[13.5px] leading-[1.6] text-white/60">
-              Gemini 2.5 Flash for summarization and answers, OpenRouter as a
-              fallback for LLM requests.
+              All generation goes through OpenRouter, picked per task: Gemini
+              2.5 Flash for chat and summaries, Gemini 2.5 Pro for README,
+              Claude Haiku for docs edits. There is no cross-provider failover.
             </p>
           </Surface>
           <Surface>
             <SurfaceLabel>retrieval</SurfaceLabel>
             <p className="mt-2 text-[13.5px] leading-[1.6] text-white/60">
-              Vector similarity search over file-level summaries; citations
-              are passed back into the answer prompt for grounding.
+              Vector similarity search over file-level summaries. The matching
+              files are passed into the answer prompt for grounding and listed
+              with the answer.
             </p>
           </Surface>
         </div>

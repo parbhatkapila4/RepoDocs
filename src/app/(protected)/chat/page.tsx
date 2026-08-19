@@ -2,6 +2,8 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useProjectsContext } from "@/context/ProjectsContext";
 import { useUser } from "@/hooks/useUser";
+import { isPaidPlan } from "@/lib/plan";
+import { UpgradePanel } from "@/components/UpgradePanel";
 import { checkEmbeddingsStatus } from "@/lib/actions";
 import { useMountedRef } from "@/hooks/useMountedRef";
 import {
@@ -361,6 +363,16 @@ export default function ChatPage() {
   const showIndexingBar =
     initialCheckDone &&
     (indexState.indexing || (!indexState.hasEmbeddings && indexState.progress < 100));
+
+  if (user && !isPaidPlan(user.plan)) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-[#0a0a0c] px-6">
+        <div className="w-full max-w-lg">
+          <UpgradePanel feature="chat" />
+        </div>
+      </div>
+    );
+  }
 
   if (!currentProject) {
     return (

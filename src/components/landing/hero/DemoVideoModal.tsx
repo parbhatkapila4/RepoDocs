@@ -659,7 +659,7 @@ function ModalContent({
                     className="h-1 w-1 rounded-full"
                     style={{ backgroundColor: `${ACCENT}99` }}
                   />
-                  cited to the exact line
+                  sourced to the files behind it
                 </span>
                 <button
                   type="button"

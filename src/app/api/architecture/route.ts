@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import prisma from "@/lib/prisma";
 import { getDbUserId } from "@/lib/get-db-user-id";
+import { requirePaidPlan, isGuardFailure } from "@/lib/api-guards";
 import {
   buildDependencyGraph,
   buildQuickDependencyGraphFromGitTree,
@@ -39,6 +40,9 @@ export async function GET(request: NextRequest) {
     if (!dbUserId) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
+
+    const gate = await requirePaidPlan(dbUserId, "architecture");
+    if (isGuardFailure(gate)) return gate.response;
 
     const projectId = request.nextUrl.searchParams.get("projectId");
 

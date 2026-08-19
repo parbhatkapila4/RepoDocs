@@ -10,17 +10,24 @@ import {
   RATE_LIMITS,
 } from "@/lib/rate-limiter";
 import { isProjectOverBudget, BUDGET_EXCEEDED_MESSAGE } from "@/lib/budget";
+import {
+  normalizePlanName,
+  planAllows,
+  upgradeMessage,
+  type PaidFeature,
+  type PlanName,
+} from "@/lib/plan";
 
 export type GuardFailure = { response: NextResponse };
 
 export function isGuardFailure<T>(
-  result: GuardFailure | T
+  result: GuardFailure | T,
 ): result is GuardFailure {
   return (result as GuardFailure).response instanceof NextResponse;
 }
 
 export async function requireAuthAndRateLimit(
-  request: NextRequest
+  request: NextRequest,
 ): Promise<GuardFailure | { userId: string; dbUserId: string }> {
   const { userId } = await auth();
 
@@ -32,7 +39,7 @@ export async function requireAuthAndRateLimit(
 
   const rl = await rateLimit(
     getRateLimitIdentifier(request, userId),
-    RATE_LIMITS.API
+    RATE_LIMITS.API,
   );
   if (!rl.success) return { response: rateLimitResponse(rl.resetTime) };
 
@@ -48,7 +55,7 @@ export async function requireAuthAndRateLimit(
 
 export async function requireOwnedProjectWithinBudget(
   projectId: string,
-  dbUserId: string
+  dbUserId: string,
 ): Promise<GuardFailure | { project: Project }> {
   const project = await prisma.project.findFirst({
     where: {
@@ -62,7 +69,7 @@ export async function requireOwnedProjectWithinBudget(
     return {
       response: NextResponse.json(
         { error: "Project not found or unauthorized" },
-        { status: 404 }
+        { status: 404 },
       ),
     };
   }
@@ -71,10 +78,37 @@ export async function requireOwnedProjectWithinBudget(
     return {
       response: NextResponse.json(
         { error: "Budget exceeded", message: BUDGET_EXCEEDED_MESSAGE },
-        { status: 402 }
+        { status: 402 },
       ),
     };
   }
 
   return { project };
+}
+
+export async function requirePaidPlan(
+  dbUserId: string,
+  feature: PaidFeature,
+): Promise<GuardFailure | { plan: PlanName }> {
+  const user = await prisma.user.findUnique({
+    where: { id: dbUserId },
+    select: { plan: true },
+  });
+  const plan = normalizePlanName(user?.plan);
+
+  if (!planAllows(plan, feature)) {
+    return {
+      response: NextResponse.json(
+        {
+          error: upgradeMessage(feature),
+          reason: "upgrade_required",
+          feature,
+          plan,
+        },
+        { status: 402 },
+      ),
+    };
+  }
+
+  return { plan };
 }

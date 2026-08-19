@@ -4,7 +4,7 @@ function getOpenRouterKey(): string {
   const key = process.env.OPENROUTER_API_KEY;
   if (!key?.trim()) {
     throw new Error(
-      "OPENROUTER_API_KEY is not set. Add it in your environment (e.g. .env) to use doc modification and AI features."
+      "OPENROUTER_API_KEY is not set. Add it in your environment (e.g. .env) to use doc modification and AI features.",
     );
   }
   return key;
@@ -37,17 +37,35 @@ export interface OpenRouterChatResult {
   };
   model?: string;
 }
+const MODEL_MAX_COMPLETION_TOKENS: Record<string, number> = {
+  "anthropic/claude-3-haiku": 4096,
+  "anthropic/claude-3.5-haiku": 8192,
+  "anthropic/claude-3.5-sonnet": 8192,
+  "google/gemini-2.5-flash-lite": 65535,
+  "google/gemini-2.5-flash": 65535,
+  "google/gemini-2.5-pro": 65535,
+};
 
 export async function openrouterChatCompletion(
-  options: ChatCompletionOptions
+  options: ChatCompletionOptions,
 ): Promise<OpenRouterChatResult> {
   const {
     model: modelOption = "google/gemini-2.5-flash-lite",
     messages,
     temperature = 0.7,
-    max_tokens = 8000,
+    max_tokens: requestedMaxTokens = 8000,
     system,
   } = options;
+
+  const modelCap = MODEL_MAX_COMPLETION_TOKENS[modelOption];
+  const max_tokens = modelCap
+    ? Math.min(requestedMaxTokens, modelCap)
+    : requestedMaxTokens;
+  if (max_tokens < requestedMaxTokens * 0.8) {
+    console.warn(
+      `[openrouter] max_tokens ${requestedMaxTokens} exceeds what ${modelOption} can emit; clamped to ${max_tokens}. The call site should chunk its output or pick a larger model.`,
+    );
+  }
 
   const timeout =
     max_tokens >= 200000
@@ -67,37 +85,44 @@ export async function openrouterChatCompletion(
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     const apiKey = getOpenRouterKey();
-    const response: Response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-        "HTTP-Referer": "https://repodoc.dev",
-        "X-Title": "RepoDocs",
+    const response: Response = await fetch(
+      `${OPENROUTER_BASE_URL}/chat/completions`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+          "HTTP-Referer": "https://repodoc.dev",
+          "X-Title": "RepoDocs",
+        },
+        body: JSON.stringify({
+          model: modelOption,
+          messages: system
+            ? [{ role: "system", content: system }, ...messages]
+            : messages,
+          temperature,
+          max_tokens,
+        }),
+        signal: controller.signal,
       },
-      body: JSON.stringify({
-        model: modelOption,
-        messages: system
-          ? [{ role: "system", content: system }, ...messages]
-          : messages,
-        temperature,
-        max_tokens,
-      }),
-      signal: controller.signal,
-    });
+    );
 
     clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(
-        `OpenRouter API error: ${response.status} ${response.statusText} - ${errorText}`
+        `OpenRouter API error: ${response.status} ${response.statusText} - ${errorText}`,
       );
     }
 
     const data = (await response.json()) as {
       choices?: { message?: { content?: string } }[];
-      usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+      usage?: {
+        prompt_tokens?: number;
+        completion_tokens?: number;
+        total_tokens?: number;
+      };
       model?: string;
     };
 
@@ -108,16 +133,16 @@ export async function openrouterChatCompletion(
     const content = data.choices[0].message.content ?? "";
     const usage =
       data.usage &&
-        typeof data.usage.prompt_tokens === "number" &&
-        typeof data.usage.completion_tokens === "number"
+      typeof data.usage.prompt_tokens === "number" &&
+      typeof data.usage.completion_tokens === "number"
         ? {
-          prompt_tokens: data.usage.prompt_tokens,
-          completion_tokens: data.usage.completion_tokens,
-          total_tokens:
-            typeof data.usage.total_tokens === "number"
-              ? data.usage.total_tokens
-              : data.usage.prompt_tokens + data.usage.completion_tokens,
-        }
+            prompt_tokens: data.usage.prompt_tokens,
+            completion_tokens: data.usage.completion_tokens,
+            total_tokens:
+              typeof data.usage.total_tokens === "number"
+                ? data.usage.total_tokens
+                : data.usage.prompt_tokens + data.usage.completion_tokens,
+          }
         : undefined;
     const modelFromResponse =
       typeof data.model === "string" && data.model.length > 0
@@ -129,10 +154,10 @@ export async function openrouterChatCompletion(
     if (error instanceof Error && error.name === "AbortError") {
       const timeoutMinutes = Math.round(timeout / 60000);
       console.error(
-        `OpenRouter API request timed out after ${timeoutMinutes} minutes`
+        `OpenRouter API request timed out after ${timeoutMinutes} minutes`,
       );
       throw new Error(
-        `Request timed out after ${timeoutMinutes} minutes. The documentation generation is taking longer than expected. Please try again.`
+        `Request timed out after ${timeoutMinutes} minutes. The documentation generation is taking longer than expected. Please try again.`,
       );
     }
     console.error("Error calling OpenRouter chat completion:", error);
@@ -144,7 +169,7 @@ export async function openrouterSingleMessage(
   prompt: string,
   model?: string,
   maxTokens?: number,
-  system?: string
+  system?: string,
 ): Promise<OpenRouterChatResult> {
   return openrouterChatCompletion({
     model,

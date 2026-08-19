@@ -10,19 +10,52 @@ import { LoadingButton } from "@/components/LoadingButton";
 const TOPICS = ["sales", "support", "feedback", "partnership"] as const;
 type Topic = (typeof TOPICS)[number];
 
+const CONTACT_EMAIL = "parbhat@parbhat.work";
+
 export default function ContactPage() {
   const [topic, setTopic] = useState<Topic>("sales");
   const [submitting, setSubmitting] = useState(false);
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const form = e.currentTarget;
+    const data = new FormData(form);
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 600));
-    toast.success("Message sent", {
-      description: "We'll be in touch within one business day.",
-    });
-    (e.target as HTMLFormElement).reset();
-    setSubmitting(false);
+
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic,
+          name: String(data.get("name") ?? ""),
+          email: String(data.get("email") ?? ""),
+          company: String(data.get("company") ?? ""),
+          message: String(data.get("message") ?? ""),
+        }),
+      });
+
+      const body = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        const fallback = body?.fallbackEmail ?? CONTACT_EMAIL;
+        toast.error(body?.error ?? "Could not send your message", {
+          description: `Email ${fallback} directly and it will reach the same place.`,
+        });
+        return;
+      }
+
+      toast.success("Message sent", {
+        description: "It landed in the inbox. Expect a reply from a human.",
+      });
+      form.reset();
+    } catch {
+      toast.error("Could not reach the server", {
+        description: `Email ${CONTACT_EMAIL} directly and it will reach the same place.`,
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -61,10 +94,10 @@ export default function ContactPage() {
           <div className="grid grid-cols-1 gap-10 lg:grid-cols-12">
             <aside className="space-y-3 lg:col-span-4">
               <Channel
-                href="mailto:parbhat@parbhat.work"
+                href={`mailto:${CONTACT_EMAIL}`}
                 icon={<Mail className="h-3.5 w-3.5" />}
                 label="email"
-                value="parbhat@parbhat.work"
+                value={CONTACT_EMAIL}
                 hint="best for sales and partnership"
               />
               <Channel

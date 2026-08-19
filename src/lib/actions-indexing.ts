@@ -7,6 +7,24 @@ import { getDbUserId } from "./get-db-user-id";
 import { decryptSecret } from "./secret-crypto";
 import { resolveGithubDefaultBranch, fetchBranchHeadSha } from "./github";
 import { mirrorBaselineIfPending } from "./baseline-mirror";
+import { isPaidPlan, upgradeMessage } from "./plan";
+const WAKE_THROTTLE_MS = 15_000;
+const lastWake = new Map<string, number>();
+
+function nudgeWorkerIfDue(
+  projectId: string,
+  job: { status: string; nextAttemptAt: Date | null; lockedAt: Date | null }
+): void {
+  if (job.status !== "queued" || job.lockedAt) return;
+  if (job.nextAttemptAt && job.nextAttemptAt.getTime() > Date.now()) return;
+
+  const now = Date.now();
+  const previous = lastWake.get(projectId) ?? 0;
+  if (now - previous < WAKE_THROTTLE_MS) return;
+  lastWake.set(projectId, now);
+
+  void kickIndexingWorker();
+}
 
 export async function getIndexingStatus(projectId: string) {
   try {
@@ -43,11 +61,25 @@ export async function getIndexingStatus(projectId: string) {
         userId: dbUser.id,
         deletedAt: null,
       },
-      select: { id: true },
+      select: { id: true, user: { select: { plan: true } } },
     });
 
     if (!project) {
       throw new Error("Project not found or unauthorized");
+    }
+    if (!isPaidPlan(project.user?.plan)) {
+      return {
+        status: "locked" as const,
+        progress: 0,
+        error: null,
+        updatedAt: null,
+        filesProcessed: 0,
+        filesTotal: 0,
+        phase: null,
+        attempts: 0,
+        nextAttemptAt: null,
+        lockedAt: null,
+      };
     }
 
     try {
@@ -71,6 +103,9 @@ export async function getIndexingStatus(projectId: string) {
         filesProcessed: true,
         filesTotal: true,
         phase: true,
+        attempts: true,
+        nextAttemptAt: true,
+        lockedAt: true,
       },
     });
 
@@ -83,8 +118,12 @@ export async function getIndexingStatus(projectId: string) {
         filesProcessed: 0,
         filesTotal: 0,
         phase: null,
+        attempts: 0,
+        nextAttemptAt: null,
       };
     }
+
+    nudgeWorkerIfDue(projectId, job);
 
     return {
       status: job.status,
@@ -94,6 +133,9 @@ export async function getIndexingStatus(projectId: string) {
       filesProcessed: job.filesProcessed,
       filesTotal: job.filesTotal,
       phase: job.phase,
+      attempts: job.attempts,
+      nextAttemptAt: job.nextAttemptAt,
+      lockedAt: job.lockedAt,
     };
   } catch (error) {
     console.error("Error fetching indexing status:", error);
@@ -142,6 +184,14 @@ export async function retryIndexingJob(projectId: string) {
       throw new Error("Project not found or unauthorized");
     }
 
+    const owner = await prisma.user.findUnique({
+      where: { id: dbUser.id },
+      select: { plan: true },
+    });
+    if (!isPaidPlan(owner?.plan)) {
+      throw new Error(upgradeMessage("indexing"));
+    }
+
     const currentJob = await prisma.indexingJob.findUnique({
       where: { projectId },
       select: { status: true, lockedAt: true },
@@ -165,6 +215,8 @@ export async function retryIndexingJob(projectId: string) {
         status: "queued",
         progress: 0,
         error: null,
+        attempts: 0,
+        nextAttemptAt: null,
         lockedAt: null,
         lockedBy: null,
       },

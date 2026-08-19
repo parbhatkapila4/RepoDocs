@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useProjectsContext } from "@/context/ProjectsContext";
 import { Activity, AlertCircle } from "lucide-react";
 import { PageSkeleton, PageError } from "@/components/PageStates";
+import { friendlyError } from "@/lib/friendly-error";
 
 const WINDOW_DAYS = 7;
 
@@ -155,7 +156,7 @@ export default function ObservabilityPage() {
         {error && !loading && (
           <PageError
             title="Error loading metrics"
-            message={error}
+            message={friendlyError(error)}
             onRetry={() => window.location.reload()}
           />
         )}

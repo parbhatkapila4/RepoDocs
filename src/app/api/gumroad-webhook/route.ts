@@ -1,3 +1,4 @@
+import { log } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import prisma from "@/lib/prisma";
@@ -81,7 +82,7 @@ export async function POST(req: NextRequest) {
           where: { id: user.id },
           data: { plan: "starter" },
         });
-        console.log("[gumroad-webhook] downgrade -> starter", {
+        log.info("[gumroad-webhook] downgrade -> starter", {
           email: buyerEmail,
           saleId,
         });
@@ -142,7 +143,7 @@ export async function POST(req: NextRequest) {
       where: { id: user.id },
       data: { plan },
     });
-    console.log("[gumroad-webhook] upgrade", {
+    log.info("[gumroad-webhook] upgrade", {
       email: buyerEmail,
       previousPlan: user.plan,
       plan,

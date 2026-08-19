@@ -34,6 +34,8 @@ import GitHubRateLimitNotice, {
 } from "@/components/GitHubRateLimitNotice";
 import Image from "next/image";
 import { LoadingButton } from "@/components/LoadingButton";
+import { IndexingMeter } from "@/components/IndexingMeter";
+import { friendlyError } from "@/lib/friendly-error";
 
 const terminalColors = {
   green: "#50fa7b",
@@ -170,7 +172,7 @@ function ReposPage() {
             Can&apos;t load your projects
           </h1>
           <p className="text-[#b8b8b8] text-sm leading-relaxed mb-4">
-            {loadError}
+            {friendlyError(loadError)}
           </p>
           <LoadingButton
             type="button"
@@ -248,6 +250,11 @@ function ReposPage() {
           </div>
         </motion.div>
 
+        <IndexingMeter
+          key={currentProject.id}
+          projectId={currentProject.id}
+        />
+
         <GitHubRateLimitNotice error={error} className="mb-6" />
 
         {error && !isRateLimitError(error) && (
@@ -257,7 +264,7 @@ function ReposPage() {
             animate={{ opacity: 1 }}
           >
             <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-white/30" />
-            <span className="text-[13px] text-white/40">{error}</span>
+            <span className="text-[13px] text-white/40">{friendlyError(error)}</span>
           </motion.div>
         )}
 

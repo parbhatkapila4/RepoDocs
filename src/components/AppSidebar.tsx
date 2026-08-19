@@ -56,12 +56,16 @@ import { useUser } from "@/hooks/useUser";
 import { useProjectsContext } from "@/context/ProjectsContext";
 import { useClerk } from "@clerk/nextjs";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { friendlyError } from "@/lib/friendly-error";
+import { Lock } from "lucide-react";
+import { isPaidPlan, type PaidFeature } from "@/lib/plan";
 
 type NavigationItem = {
   title: string;
   url: string;
   icon: React.ComponentType<{ className?: string }>;
   external?: boolean;
+  requires?: PaidFeature;
 };
 
 const navigationItems: NavigationItem[] = [
@@ -79,6 +83,7 @@ const navigationItems: NavigationItem[] = [
     title: "Chat with Code",
     url: "/chat",
     icon: MessageSquare,
+    requires: "chat",
   },
   {
     title: "Search",
@@ -89,6 +94,7 @@ const navigationItems: NavigationItem[] = [
     title: "Architecture",
     url: "/architecture",
     icon: Network,
+    requires: "architecture",
   },
   {
     title: "Analyze Diff",
@@ -124,6 +130,8 @@ const navigationItems: NavigationItem[] = [
 
 export default function AppSidebar() {
   const { user, isLoading: userLoading } = useUser();
+  const userLoaded = Boolean(user) && !userLoading;
+  const paid = isPaidPlan(user?.plan);
   const {
     projects,
     selectedProjectId,
@@ -222,7 +230,7 @@ export default function AppSidebar() {
               <AlertCircle className="h-4 w-4" />
               <AlertTitle className="text-sm">Database unreachable</AlertTitle>
               <AlertDescription className="text-xs text-red-200/90 leading-snug space-y-2">
-                <p>{loadError}</p>
+                <p>{friendlyError(loadError)}</p>
                 <button
                   type="button"
                   onClick={() => void loadProjects()}
@@ -242,21 +250,28 @@ export default function AppSidebar() {
             <SidebarMenu>
               {navigationItems.map((item) => {
                 const isActive = pathname === item.url;
+                const locked = Boolean(item.requires) && userLoaded && !paid;
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
                       asChild
                       className={`h-10 px-3 rounded-lg transition-colors ${isActive
                         ? "bg-white/20 text-white"
-                        : "hover:bg-white/10 text-gray-300"
+                        : locked
+                          ? "hover:bg-white/5 text-gray-500"
+                          : "hover:bg-white/10 text-gray-300"
                         }`}
                     >
                       <Link
-                        href={item.url}
+                        href={locked ? "/pricing" : item.url}
                         target={item.external ? "_blank" : undefined}
+                        title={locked ? "Available on Professional and Enterprise" : undefined}
                       >
                         <item.icon className="w-4 h-4" />
                         <span>{item.title}</span>
+                        {locked && (
+                          <Lock className="w-3 h-3 ml-auto shrink-0 text-gray-600" />
+                        )}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

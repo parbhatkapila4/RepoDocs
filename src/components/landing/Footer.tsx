@@ -17,7 +17,7 @@ const PRODUCT: NavItem[] = [
   { label: "Documentation", desc: "Generated docs for every module", href: "/documentation" },
   { label: "Changelog", desc: "Shipped improvements, continuously", href: "/changelog" },
   { label: "Pricing", desc: "Plans for solo devs and teams", href: "/pricing" },
-  { label: "API Reference", desc: "Build on the indexing engine", href: "/api" },
+  { label: "API Reference", desc: "The endpoints behind the product", href: "/api" },
 ];
 
 const COMPANY: NavItem[] = [

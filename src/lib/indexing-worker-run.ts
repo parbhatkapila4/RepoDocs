@@ -1,10 +1,24 @@
+import { log } from "./logger";
 import prisma from "@/lib/prisma";
 import { indexGithubRepository } from "@/lib/github";
 import { decryptSecret } from "@/lib/secret-crypto";
 import { retryAsync } from "@/lib/errors";
 import { mirrorBaselineIfPending } from "@/lib/baseline-mirror";
+import { isPaidPlan } from "@/lib/plan";
 
 const JOB_LEASE_DURATION_MS = 5 * 60 * 1000;
+const MAX_ATTEMPTS = 5;
+const BACKOFF_MS = [
+  60_000,
+  5 * 60_000,
+  15 * 60_000,
+  60 * 60_000,
+  6 * 60 * 60_000,
+];
+
+function backoffFor(attempt: number): number {
+  return BACKOFF_MS[Math.min(attempt, BACKOFF_MS.length - 1)];
+}
 
 export type IndexingWorkerHttpResult = {
   status: number;
@@ -18,7 +32,12 @@ async function findEligibleJob() {
   const candidates = await prisma.indexingJob.findMany({
     where: {
       OR: [
-        { status: "queued", lockedAt: null },
+        {
+          status: "queued",
+          lockedAt: null,
+
+          OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: now } }],
+        },
         { status: "processing", lockedAt: { lt: leaseExpiry } },
       ],
     },
@@ -30,37 +49,44 @@ async function findEligibleJob() {
           repoUrl: true,
           githubToken: true,
           name: true,
+          user: { select: { plan: true } },
           _count: { select: { sourceCodeEmbeddings: true } },
         },
       },
     },
   });
 
-  if (candidates.length === 0) return null;
+  const eligible = candidates.filter((c) => isPaidPlan(c.project.user?.plan));
 
-  candidates.sort((a, b) => {
+  if (eligible.length === 0) return null;
+
+  eligible.sort((a, b) => {
     const ea = a.project._count.sourceCodeEmbeddings;
     const eb = b.project._count.sourceCodeEmbeddings;
     if (ea !== eb) return ea - eb;
     return a.createdAt.getTime() - b.createdAt.getTime();
   });
 
-  return candidates[0];
+  return eligible[0];
 }
 
 async function claimJob(jobId: string, workerId: string): Promise<boolean> {
-  const leaseExpiry = new Date(Date.now() - JOB_LEASE_DURATION_MS);
+  const now = new Date();
+  const leaseExpiry = new Date(now.getTime() - JOB_LEASE_DURATION_MS);
   const res = await prisma.indexingJob.updateMany({
     where: {
       id: jobId,
       OR: [
-        { status: "queued", lockedAt: null },
+        {
+          status: "queued",
+          lockedAt: null,
+          OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: now } }],
+        },
         { status: "processing", lockedAt: { lt: leaseExpiry } },
       ],
     },
     data: {
       status: "processing",
-      progress: 1,
       lockedAt: new Date(),
       lockedBy: workerId,
       updatedAt: new Date(),
@@ -69,32 +95,35 @@ async function claimJob(jobId: string, workerId: string): Promise<boolean> {
   return res.count === 1;
 }
 
-async function processIndexingJob(job: {
-  id: string;
-  projectId: string;
-  project: {
-    repoUrl: string;
-    githubToken: string | null;
-    name: string;
-  };
-}, workerId: string) {
+async function processIndexingJob(
+  job: {
+    id: string;
+    projectId: string;
+    project: {
+      repoUrl: string;
+      githubToken: string | null;
+      name: string;
+    };
+  },
+  workerId: string,
+) {
   const { projectId, project } = job;
 
   const onProgress = async (progress: number) => {
+    const capped = Math.max(0, Math.min(progress, 100));
     try {
-      await prisma.indexingJob.update({
-        where: { id: job.id },
-        data: { progress: Math.min(progress, 100), updatedAt: new Date() },
+      await prisma.indexingJob.updateMany({
+        where: { id: job.id, progress: { lt: capped } },
+        data: { progress: capped, updatedAt: new Date() },
       });
-    } catch {
-    }
+    } catch {}
   };
 
   return indexGithubRepository(
     projectId,
     project.repoUrl,
     decryptSecret(project.githubToken) || undefined,
-    onProgress
+    onProgress,
   );
 }
 
@@ -107,22 +136,25 @@ function generateWorkerId(): string {
 
 export async function runIndexingWorkerOnce(): Promise<IndexingWorkerHttpResult> {
   const workerId = generateWorkerId();
-  console.log(`[Worker ${workerId}] Invoked at ${new Date().toISOString()}`);
+  log.debug(`[Worker ${workerId}] Invoked at ${new Date().toISOString()}`);
 
   try {
     const job = await findEligibleJob();
     if (!job) {
-      console.log(`[Worker ${workerId}] No eligible jobs found`);
-      return { status: 200, body: { status: "idle", message: "No jobs to process" } };
+      log.debug(`[Worker ${workerId}] No eligible jobs found`);
+      return {
+        status: 200,
+        body: { status: "idle", message: "No jobs to process" },
+      };
     }
 
-    console.log(
-      `[Worker ${workerId}] Processing job ${job.id} for project ${job.projectId} (phase: ${job.phase})`
+    log.debug(
+      `[Worker ${workerId}] Processing job ${job.id} for project ${job.projectId} (phase: ${job.phase})`,
     );
     const claimed = await claimJob(job.id, workerId);
     if (!claimed) {
-      console.log(
-        `[Worker ${workerId}] Job ${job.id} was claimed by another worker; skipping`
+      log.debug(
+        `[Worker ${workerId}] Job ${job.id} was claimed by another worker; skipping`,
       );
       return {
         status: 200,
@@ -139,13 +171,16 @@ export async function runIndexingWorkerOnce(): Promise<IndexingWorkerHttpResult>
           data: {
             status: "queued",
             resumeAfter: result.resumeAfter,
+            attempts: 0,
+            nextAttemptAt: null,
+            error: null,
             lockedAt: null,
             lockedBy: null,
             updatedAt: new Date(),
           },
         });
-        console.log(
-          `[Worker ${workerId}] Job ${job.id} paused for budget; will resume from "${result.resumeAfter}"`
+        log.debug(
+          `[Worker ${workerId}] Job ${job.id} hit its time box; will resume from "${result.resumeAfter}"`,
         );
         const { kickIndexingWorker } = await import("./indexing-worker-kick");
         void kickIndexingWorker();
@@ -167,6 +202,8 @@ export async function runIndexingWorkerOnce(): Promise<IndexingWorkerHttpResult>
           progress: 100,
           phase: "full",
           resumeAfter: null,
+          attempts: 0,
+          nextAttemptAt: null,
           lockedAt: null,
           lockedBy: null,
           error: null,
@@ -176,44 +213,66 @@ export async function runIndexingWorkerOnce(): Promise<IndexingWorkerHttpResult>
       try {
         const mirroredSha = await retryAsync(
           () => mirrorBaselineIfPending(job.projectId),
-          { maxRetries: 3, initialDelay: 400 }
+          { maxRetries: 3, initialDelay: 400 },
         );
         if (mirroredSha) {
-          console.log(
-            `[Worker ${workerId}] Job ${job.id} mirrored baseline ${mirroredSha} -> project ${job.projectId}`
+          log.debug(
+            `[Worker ${workerId}] Job ${job.id} mirrored baseline ${mirroredSha} -> project ${job.projectId}`,
           );
         }
       } catch (mirrorError) {
         console.error(
           `[Worker ${workerId}] Job ${job.id} completed but baseline mirror failed (will reconcile on next status read):`,
-          mirrorError instanceof Error ? mirrorError.message : String(mirrorError)
+          mirrorError instanceof Error
+            ? mirrorError.message
+            : String(mirrorError),
         );
       }
 
-      console.log(`[Worker ${workerId}] Job ${job.id} completed successfully`);
+      log.debug(`[Worker ${workerId}] Job ${job.id} completed successfully`);
       return {
         status: 200,
         body: { status: "success", jobId: job.id, projectId: job.projectId },
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      const attempts = (job.attempts ?? 0) + 1;
+      const willRetry = attempts < MAX_ATTEMPTS;
+      const retryInMs = backoffFor(attempts - 1);
       await prisma.indexingJob.update({
         where: { id: job.id },
         data: {
-          status: "failed",
+          status: willRetry ? "queued" : "failed",
           error: errorMessage,
+          attempts,
+          nextAttemptAt: willRetry ? new Date(Date.now() + retryInMs) : null,
           lockedAt: null,
           lockedBy: null,
           updatedAt: new Date(),
         },
       });
-      console.error(`[Worker ${workerId}] Job ${job.id} failed:`, errorMessage);
+
+      if (willRetry) {
+        console.error(
+          `[Worker ${workerId}] Job ${job.id} failed (attempt ${attempts}/${MAX_ATTEMPTS}); retrying in ${Math.round(retryInMs / 1000)}s:`,
+          errorMessage,
+        );
+      } else {
+        console.error(
+          `[Worker ${workerId}] Job ${job.id} failed permanently after ${attempts} attempts:`,
+          errorMessage,
+        );
+      }
+
       return {
         status: 500,
         body: {
-          status: "error",
+          status: willRetry ? "retrying" : "error",
           jobId: job.id,
           projectId: job.projectId,
+          attempts,
+          retryInMs: willRetry ? retryInMs : undefined,
           error: errorMessage,
         },
       };

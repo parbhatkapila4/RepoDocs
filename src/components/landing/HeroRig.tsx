@@ -17,12 +17,12 @@ const NOISE_URL =
   "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 320 320' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")";
 const MARQUEE = [
   "Any GitHub repo",
-  "Indexed in ~30s",
-  "Line-level citations",
   "Public + private",
-  "Architecture maps",
+  "Whole-repo indexing",
+  "Sources on every answer",
   "Plain-English answers",
-  "Docs that stay true",
+  "Generated docs + README",
+  "Per-project spend caps",
 ];
 
 function HeroBackdrop() {
@@ -141,8 +141,9 @@ export default function HeroRig() {
           className="mt-6 max-w-md text-[15px] font-medium leading-[1.5]"
           style={{ color: "rgba(24,11,6,0.72)" }}
         >
-          A coding agent&apos;s worth of context for any GitHub repo. Indexed
-          locally, mapped end to end, every answer cited to the exact line.
+          A coding agent&apos;s worth of context for any GitHub repo. Every file
+          summarized and embedded, so every answer arrives with the source files
+          it came from.
         </motion.p>
 
         <motion.div

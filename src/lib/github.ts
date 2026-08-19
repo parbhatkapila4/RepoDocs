@@ -1,3 +1,4 @@
+import { log } from "./logger";
 import { GithubRepoLoader } from "@langchain/community/document_loaders/web/github";
 import { Document } from "@langchain/core/documents";
 import {
@@ -7,9 +8,15 @@ import {
 } from "./gemini";
 import prisma from "@/lib/prisma";
 import { createGitHubOctokit } from "@/lib/github-octokit";
+export function sanitizeTextForDb(input: string): string {
+  return input
+    .replace(/\u0000/g, "")
+    .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g, "")
+    .replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "");
+}
 
 export function parseGithubOwnerRepo(
-  githubUrl: string
+  githubUrl: string,
 ): { owner: string; repo: string } | null {
   const urlMatch = githubUrl.match(/github\.com\/([^/]+)\/([^/]+)/);
   if (!urlMatch) return null;
@@ -19,7 +26,7 @@ export function parseGithubOwnerRepo(
 
 export async function resolveGithubDefaultBranch(
   githubUrl: string,
-  githubToken?: string
+  githubToken?: string,
 ): Promise<string> {
   const parsed = parseGithubOwnerRepo(githubUrl);
   if (!parsed) return "main";
@@ -39,7 +46,7 @@ export async function resolveGithubDefaultBranch(
 export async function fetchBranchHeadSha(
   githubUrl: string,
   branch: string,
-  githubToken?: string
+  githubToken?: string,
 ): Promise<string> {
   const parsed = parseGithubOwnerRepo(githubUrl);
   if (!parsed) {
@@ -84,7 +91,7 @@ export async function compareCommitsBasehead(
   owner: string,
   repo: string,
   basehead: string,
-  githubToken?: string
+  githubToken?: string,
 ): Promise<GithubCompareOutcome> {
   const octokit = createGitHubOctokit(githubToken || process.env.GITHUB_TOKEN);
   try {
@@ -105,9 +112,10 @@ export async function compareCommitsBasehead(
         ahead_by: data.ahead_by ?? 0,
         total_commits: data.total_commits ?? 0,
         base_sha: data.base_commit?.sha ?? "",
-        head_sha: commits.length > 0
-          ? commits[commits.length - 1].sha
-          : data.base_commit?.sha ?? "",
+        head_sha:
+          commits.length > 0
+            ? commits[commits.length - 1].sha
+            : (data.base_commit?.sha ?? ""),
         commits,
         files: (data.files ?? []).map((f) => ({
           filename: f.filename,
@@ -160,7 +168,7 @@ export async function compareCommitsBasehead(
 export async function loadGithubRepository(
   githubUrl: string,
   githubToken?: string,
-  branch?: string
+  branch?: string,
 ) {
   const token = githubToken || process.env.GITHUB_TOKEN;
   const ref =
@@ -244,7 +252,7 @@ export async function indexGithubRepository(
   projectId: string,
   githubUrl: string,
   githubToken?: string,
-  onProgress?: (progress: number) => Promise<void> | void
+  onProgress?: (progress: number) => Promise<void> | void,
 ): Promise<IndexResult> {
   const { retryAsync, logError } = await import("./errors");
   const { cache } = await import("./cache");
@@ -262,9 +270,9 @@ export async function indexGithubRepository(
 
     const jobRow = job as
       | (typeof job & {
-        phase?: string | null;
-        resumeAfter?: string | null;
-      })
+          phase?: string | null;
+          resumeAfter?: string | null;
+        })
       | null;
 
     const currentPhase: "fast" | "full" =
@@ -278,12 +286,12 @@ export async function indexGithubRepository(
         const baselineToken = githubToken || process.env.GITHUB_TOKEN;
         const baselineBranch = await resolveGithubDefaultBranch(
           githubUrl,
-          baselineToken
+          baselineToken,
         );
         defaultBranchForLoader = baselineBranch;
         const baselineSha = await retryAsync(
           () => fetchBranchHeadSha(githubUrl, baselineBranch, baselineToken),
-          { maxRetries: 2, initialDelay: 500 }
+          { maxRetries: 2, initialDelay: 500 },
         );
         if (baselineSha) {
           await prisma.indexingJob.update({
@@ -310,14 +318,14 @@ export async function indexGithubRepository(
       const treeListing = await listGithubRepoPathsForPreindex(
         githubUrl,
         githubToken || process.env.GITHUB_TOKEN,
-        25_000
+        25_000,
       );
       if (treeListing) {
         defaultBranchForLoader = treeListing.defaultBranch;
       }
       if (treeListing && !treeListing.truncated) {
         const paths = treeListing.paths.filter(
-          (p) => !isGithubLoaderIgnoredPath(p)
+          (p) => !isGithubLoaderIgnoredPath(p),
         );
         const notIndexed = paths.filter((p) => !indexedSet.has(p));
         if (notIndexed.length === 0 && paths.length > 0) {
@@ -326,7 +334,7 @@ export async function indexGithubRepository(
             githubUrl,
             githubToken,
             retryAsync,
-            logError
+            logError,
           );
           await cache.invalidateProject(projectId);
           return {
@@ -345,13 +353,17 @@ export async function indexGithubRepository(
     try {
       await prisma.indexingJob.update({
         where: { projectId },
-        data: { progress: 2, updatedAt: new Date() },
+        data: { updatedAt: new Date() },
       });
-    } catch { }
+    } catch (progressError) {
+      log.warn("[indexing] Failed to write initial heartbeat:", progressError);
+    }
     if (onProgress) {
       try {
         await onProgress(2);
-      } catch { }
+      } catch (callbackError) {
+        log.warn("[indexing] onProgress(2) threw:", callbackError);
+      }
     }
 
     const docs = await retryAsync(
@@ -359,13 +371,13 @@ export async function indexGithubRepository(
         loadGithubRepository(
           githubUrl,
           githubToken || process.env.GITHUB_TOKEN,
-          defaultBranchForLoader
+          defaultBranchForLoader,
         ),
       {
         maxRetries: 3,
         initialDelay: 2000,
         retryIf: (error) => !error.message?.includes("authentication"),
-      }
+      },
     );
 
     if (!docs || docs.length === 0) {
@@ -375,14 +387,30 @@ export async function indexGithubRepository(
     const newDocs = docs.filter((d) => !indexedSet.has(d.metadata.source));
 
     if (newDocs.length === 0) {
-      await generateReadmeIfNeeded(projectId, githubUrl, githubToken, retryAsync, logError);
+      await generateReadmeIfNeeded(
+        projectId,
+        githubUrl,
+        githubToken,
+        retryAsync,
+        logError,
+      );
       await cache.invalidateProject(projectId);
-      return { success: true, filesProcessed: 0, successCount: 0, failCount: 0, needsResume: false, resumeAfter: null, phase: currentPhase };
+      return {
+        success: true,
+        filesProcessed: 0,
+        successCount: 0,
+        failCount: 0,
+        needsResume: false,
+        resumeAfter: null,
+        phase: currentPhase,
+      };
     }
 
     let filesToProcess: Document[];
     if (currentPhase === "fast") {
-      const highValue = newDocs.filter((d) => isHighValueFile(d.metadata.source));
+      const highValue = newDocs.filter((d) =>
+        isHighValueFile(d.metadata.source),
+      );
       const rest = newDocs.filter((d) => !isHighValueFile(d.metadata.source));
       filesToProcess = [...highValue, ...rest];
     } else {
@@ -390,24 +418,33 @@ export async function indexGithubRepository(
     }
 
     if (resumeAfterFile) {
-      const idx = filesToProcess.findIndex((d) => d.metadata.source === resumeAfterFile);
+      const idx = filesToProcess.findIndex(
+        (d) => d.metadata.source === resumeAfterFile,
+      );
       if (idx >= 0) {
         filesToProcess = filesToProcess.slice(idx + 1);
       }
     }
 
+    const knownTotal = alreadyIndexed.length + newDocs.length;
     await prisma.indexingJob.update({
       where: { projectId },
       data: {
-        filesTotal: alreadyIndexed.length + newDocs.length,
-        progress: 8,
+        filesTotal: knownTotal,
+        filesProcessed: alreadyIndexed.length,
+        progress:
+          knownTotal > 0
+            ? Math.floor((alreadyIndexed.length / knownTotal) * 100)
+            : 0,
         updatedAt: new Date(),
       },
     });
     if (onProgress) {
       try {
         await onProgress(8);
-      } catch { }
+      } catch (callbackError) {
+        log.warn("[indexing] onProgress(8) threw:", callbackError);
+      }
     }
 
     let successCount = 0;
@@ -415,6 +452,8 @@ export async function indexGithubRepository(
     let lastProcessed: string | null = null;
     let fastPhaseCompleted = false;
     const totalFiles = alreadyIndexed.length + newDocs.length;
+    let warnedProgressCallback = false;
+    let warnedProgressWrite = false;
 
     for (let i = 0; i < filesToProcess.length; i += BATCH_SIZE) {
       if (Date.now() - invocationStart > WORKER_BUDGET_MS) {
@@ -423,7 +462,9 @@ export async function indexGithubRepository(
           data: {
             resumeAfter: lastProcessed,
             filesProcessed: indexedSet.size + successCount,
-            progress: Math.floor(((indexedSet.size + successCount) / totalFiles) * 100),
+            progress: Math.floor(
+              ((indexedSet.size + successCount) / totalFiles) * 100,
+            ),
             updatedAt: new Date(),
           },
         });
@@ -443,25 +484,32 @@ export async function indexGithubRepository(
       for (const doc of batch) {
         if (Date.now() - invocationStart > WORKER_BUDGET_MS) break;
         try {
-          const summary = await retryAsync(() => getSummariseCode(doc), {
-            maxRetries: 2,
-            initialDelay: 500,
-          });
+          const rawContent =
+            typeof doc.pageContent === "string"
+              ? doc.pageContent
+              : String(doc.pageContent ?? "");
+          const isBinary = rawContent.includes("\u0000");
+
+          const summary = isBinary
+            ? `Binary or non-text file at ${doc.metadata.source}; contents are not indexed.`
+            : await retryAsync(() => getSummariseCode(doc), {
+                maxRetries: 2,
+                initialDelay: 500,
+              });
           if (!summary) throw new Error("Empty summary generated");
 
           const embedding = await retryAsync(
             () => getGenerateEmbeddings(summary),
-            { maxRetries: 2, initialDelay: 500 }
+            { maxRetries: 2, initialDelay: 500 },
           );
 
           const row = await prisma.sourceCodeEmbeddings.create({
             data: {
-              sourceCode:
-                typeof doc.pageContent === "string"
-                  ? doc.pageContent
-                  : String(doc.pageContent ?? ""),
+              sourceCode: sanitizeTextForDb(
+                isBinary ? "[binary file - contents not stored]" : rawContent,
+              ),
               fileName: doc.metadata.source,
-              Summary: summary,
+              Summary: sanitizeTextForDb(summary),
               projectId,
             },
           });
@@ -482,7 +530,12 @@ export async function indexGithubRepository(
           lastProcessed = doc.metadata.source;
         }
 
-        if (currentPhase === "fast" && !fastPhaseCompleted && !isHighValueFile(doc.metadata.source) && successCount > 0) {
+        if (
+          currentPhase === "fast" &&
+          !fastPhaseCompleted &&
+          !isHighValueFile(doc.metadata.source) &&
+          successCount > 0
+        ) {
           fastPhaseCompleted = true;
         }
       }
@@ -490,7 +543,17 @@ export async function indexGithubRepository(
       const processed = indexedSet.size + successCount;
       const progressPercent = Math.floor((processed / totalFiles) * 100);
       if (onProgress) {
-        try { await onProgress(progressPercent); } catch { }
+        try {
+          await onProgress(progressPercent);
+        } catch (callbackError) {
+          if (!warnedProgressCallback) {
+            warnedProgressCallback = true;
+            log.warn(
+              "[indexing] onProgress threw; suppressing further reports this run:",
+              callbackError,
+            );
+          }
+        }
       }
 
       try {
@@ -502,7 +565,15 @@ export async function indexGithubRepository(
             updatedAt: new Date(),
           },
         });
-      } catch { }
+      } catch (progressError) {
+        if (!warnedProgressWrite) {
+          warnedProgressWrite = true;
+          log.warn(
+            "[indexing] Progress write failed; suppressing further reports this run:",
+            progressError,
+          );
+        }
+      }
 
       if (i + BATCH_SIZE < filesToProcess.length) {
         await new Promise((r) => setTimeout(r, 200));
@@ -511,11 +582,17 @@ export async function indexGithubRepository(
 
     if (successCount === 0 && indexedSet.size === 0) {
       throw new Error(
-        "Indexing produced no embeddings (every file failed). Check GEMINI_API_KEY or GOOGLE_GENAI_API_KEY, GitHub access for this repo, and server logs."
+        "Indexing produced no embeddings (every file failed). Check GEMINI_API_KEY or GOOGLE_GENAI_API_KEY, GitHub access for this repo, and server logs.",
       );
     }
 
-    await generateReadmeIfNeeded(projectId, githubUrl, githubToken, retryAsync, logError);
+    await generateReadmeIfNeeded(
+      projectId,
+      githubUrl,
+      githubToken,
+      retryAsync,
+      logError,
+    );
     await cache.invalidateProject(projectId);
 
     return {
@@ -538,7 +615,7 @@ async function generateReadmeIfNeeded(
   githubUrl: string,
   githubToken: string | undefined,
   retryAsync: any,
-  logError: any
+  logError: any,
 ) {
   try {
     const allSummaries = await prisma.sourceCodeEmbeddings.findMany({
@@ -558,7 +635,7 @@ async function generateReadmeIfNeeded(
 
     const readmeContent = await retryAsync(
       () => generateReadmeFromCodebase(project.name, summaries, repoInfo),
-      { maxRetries: 2, initialDelay: 2000 }
+      { maxRetries: 2, initialDelay: 2000 },
     );
 
     await prisma.readme.upsert({
@@ -593,7 +670,7 @@ async function generateEmbeddings(docs: Document[]) {
             ? doc.pageContent
             : String(doc.pageContent ?? ""),
       };
-    })
+    }),
   );
 }
 
@@ -650,7 +727,7 @@ export interface GitHubRepoInfo {
 
 export async function getGitHubRepositoryInfo(
   repoUrl: string,
-  githubToken?: string
+  githubToken?: string,
 ): Promise<GitHubRepoInfo | null> {
   try {
     const urlMatch = repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/);
@@ -660,7 +737,7 @@ export async function getGitHubRepositoryInfo(
     }
 
     const [, owner, repo] = urlMatch;
-    const cleanRepo = repo.replace(".git", "");
+    const cleanRepo = repo.replace(/\.git$/, "");
 
     const token = githubToken || process.env.GITHUB_TOKEN;
     const octokit = createGitHubOctokit(token);
@@ -686,7 +763,7 @@ export async function getGitHubRepositoryInfo(
       }
       if (error?.status === 403) {
         console.error(
-          `GitHub API rate limit or forbidden: ${owner}/${cleanRepo}`
+          `GitHub API rate limit or forbidden: ${owner}/${cleanRepo}`,
         );
         if (token) {
           const publicOctokit = createGitHubOctokit();
@@ -734,10 +811,10 @@ export async function getGitHubRepositoryInfo(
       topics: topics.names || [],
       license: repoData.license
         ? {
-          name: repoData.license.name,
-          spdxId: repoData.license.spdx_id || null,
-          url: repoData.license.url || null,
-        }
+            name: repoData.license.name,
+            spdxId: repoData.license.spdx_id || null,
+            url: repoData.license.url || null,
+          }
         : null,
       owner: {
         login: repoData.owner.login,
@@ -775,12 +852,12 @@ export async function getGitHubRepositoryInfo(
 export async function fetchRepositoryReadmeRaw(
   repoUrl: string,
   githubToken?: string,
-  maxChars = 14000
+  maxChars = 14000,
 ): Promise<string | null> {
   const urlMatch = repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/);
   if (!urlMatch) return null;
   const [, owner, repo] = urlMatch;
-  const cleanRepo = repo.replace(".git", "");
+  const cleanRepo = repo.replace(/\.git$/, "");
   const token = githubToken || process.env.GITHUB_TOKEN;
   const octokit = createGitHubOctokit(token);
   try {
@@ -884,7 +961,7 @@ function isGithubLoaderIgnoredPath(path: string): boolean {
 export async function listGithubRepoPathsForPreindex(
   repoUrl: string,
   githubToken?: string,
-  maxPaths = 500
+  maxPaths = 500,
 ): Promise<{
   paths: string[];
   defaultBranch: string;
@@ -915,7 +992,8 @@ export async function listGithubRepoPathsForPreindex(
     });
     const raw = (treeData.tree || [])
       .filter(
-        (item) => item.type === "blob" && item.path && isPreindexTreePath(item.path)
+        (item) =>
+          item.type === "blob" && item.path && isPreindexTreePath(item.path),
       )
       .map((item) => normalizePathPreindex(item.path!))
       .filter(Boolean);
@@ -941,7 +1019,7 @@ export async function fetchGithubPreindexFileContents(
   ref: string,
   githubToken?: string,
   maxCharsPerFile = 7500,
-  maxFiles = 24
+  maxFiles = 24,
 ): Promise<PreindexFetchedFile[]> {
   const token = githubToken || process.env.GITHUB_TOKEN;
   const octokit = createGitHubOctokit(token);
@@ -966,9 +1044,7 @@ export async function fetchGithubPreindexFileContents(
       const truncated = raw.length > maxCharsPerFile;
       const text = truncated ? raw.slice(0, maxCharsPerFile) : raw;
       out.push({ path, text, truncated });
-    } catch {
-
-    }
+    } catch {}
   }
   return out;
 }

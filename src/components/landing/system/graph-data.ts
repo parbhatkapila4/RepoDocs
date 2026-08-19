@@ -52,7 +52,7 @@ export const MODULE_NODES: ModuleNode[] = [
     label: "embeddings",
     kind: "service",
     position: { x: 280, y: 200 },
-    description: "Gemini text-embedding-004",
+    description: "Gemini gemini-embedding-001 (768d)",
   },
   {
     id: "memory",

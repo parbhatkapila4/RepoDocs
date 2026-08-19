@@ -4,6 +4,9 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useMountedRef } from "@/hooks/useMountedRef";
 import Link from "next/link";
 import { useProjectsContext } from "@/context/ProjectsContext";
+import { useUser } from "@/hooks/useUser";
+import { isPaidPlan } from "@/lib/plan";
+import { UpgradePanel } from "@/components/UpgradePanel";
 import { motion } from "motion/react";
 import {
   Network,
@@ -18,6 +21,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import type { ArchitectureNode, ArchitectureEdge } from "@/lib/architecture";
 import { previewToCopyText } from "@/lib/architecture-preview";
+import { friendlyError } from "@/lib/friendly-error";
 import GitHubRateLimitNotice, {
   isRateLimitError,
 } from "@/components/GitHubRateLimitNotice";
@@ -68,6 +72,7 @@ function PreviewCopyButton({ text }: { text: string }) {
 
 export default function ArchitecturePage() {
   const { projects, selectedProjectId } = useProjectsContext();
+  const { user } = useUser();
   const [nodes, setNodes] = useState<ArchitectureNode[]>([]);
   const [edges, setEdges] = useState<ArchitectureEdge[]>([]);
   const [loading, setLoading] = useState(false);
@@ -239,13 +244,30 @@ export default function ArchitecturePage() {
     );
     return { width: w, height: h };
   }, [nodes.length]);
+  const drawableEdges = React.useMemo(
+    () =>
+      edges.filter(
+        (e) => nodePositions[e.from] !== undefined && nodePositions[e.to] !== undefined
+      ),
+    [edges, nodePositions]
+  );
 
   const incoming = selectedId
-    ? edges.filter((e) => e.to === selectedId).map((e) => e.from)
+    ? drawableEdges.filter((e) => e.to === selectedId).map((e) => e.from)
     : [];
   const outgoing = selectedId
-    ? edges.filter((e) => e.from === selectedId).map((e) => e.to)
+    ? drawableEdges.filter((e) => e.from === selectedId).map((e) => e.to)
     : [];
+  if (user && !isPaidPlan(user.plan)) {
+    return (
+      <div className="min-h-screen bg-black relative">
+        <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-[#333] to-transparent" />
+        <div className="relative w-full max-w-2xl mx-auto px-6 py-12">
+          <UpgradePanel feature="architecture" />
+        </div>
+      </div>
+    );
+  }
 
   if (!currentProject) {
     return (
@@ -312,7 +334,7 @@ export default function ArchitecturePage() {
             </div>
             {nodes.length > 0 && (
               <span className="text-xs font-mono text-[#666]">
-                {nodes.length} files · {edges.length} edges
+                {nodes.length} files · {drawableEdges.length} edges
               </span>
             )}
           </div>
@@ -347,7 +369,7 @@ export default function ArchitecturePage() {
                   style={{ color: colors.orange }}
                 />
                 <span className="text-sm" style={{ color: colors.orange }}>
-                  {error}
+                  {friendlyError(error)}
                 </span>
               </div>
             )}
@@ -400,10 +422,9 @@ export default function ArchitecturePage() {
                     preserveAspectRatio="xMidYMid meet"
                     style={{ minHeight: 320 }}
                   >
-                    {edges.map((e, i) => {
+                    {drawableEdges.map((e, i) => {
                       const fromPos = nodePositions[e.from];
                       const toPos = nodePositions[e.to];
-                      if (!fromPos || !toPos) return null;
                       return (
                         <line
                           key={`e-${i}`}

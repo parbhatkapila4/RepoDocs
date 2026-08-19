@@ -1,3 +1,4 @@
+import { log } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import prisma from "@/lib/prisma";
@@ -19,6 +20,7 @@ import {
 import { z } from "zod";
 import { decryptSecret } from "@/lib/secret-crypto";
 import { isProjectOverBudget, BUDGET_EXCEEDED_MESSAGE } from "@/lib/budget";
+import { requirePaidPlan, isGuardFailure } from "@/lib/api-guards";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -57,6 +59,9 @@ export async function POST(request: NextRequest) {
     if (!dbUserId) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
+
+    const gate = await requirePaidPlan(dbUserId, "chat");
+    if (isGuardFailure(gate)) return gate.response;
 
     const parsed = QuerySchema.safeParse(
       await request.json().catch(() => null)
@@ -100,9 +105,11 @@ export async function POST(request: NextRequest) {
     });
 
     if (embeddingsCount === 0) {
-      void import("@/lib/indexing-worker-kick").then((m) =>
-        m.kickIndexingWorker().catch(() => { })
-      );
+      void import("@/lib/indexing-worker-kick")
+        .then((m) => m.kickIndexingWorker())
+        .catch((kickError) =>
+          log.warn("[query] Failed to kick indexing worker:", kickError)
+        );
 
       const preResult = await queryCodebasePreindex(
         project.repoUrl,
@@ -152,7 +159,7 @@ export async function POST(request: NextRequest) {
     if (cached) {
       const latencyMs = Date.now() - startMs;
 
-      console.log("[QueryMetrics] Recording success (cache hit)", { projectId, routeType: "query", latencyMs });
+      log.debug("[QueryMetrics] Recording success (cache hit)", { projectId, routeType: "query", latencyMs });
       void recordQueryMetrics(prisma, {
         projectId,
         routeType: "query",
@@ -201,7 +208,7 @@ export async function POST(request: NextRequest) {
     );
 
 
-    console.log("[QueryMetrics] Recording success", { projectId, routeType: "query", latencyMs });
+    log.debug("[QueryMetrics] Recording success", { projectId, routeType: "query", latencyMs });
     void recordQueryMetrics(prisma, {
       projectId,
       routeType: "query",
@@ -223,7 +230,9 @@ export async function POST(request: NextRequest) {
         INSERT INTO "CodebaseQueries" ("projectId", "question", "answer", "sourcesCount", "createdAt")
         VALUES (${projectId}, ${question}, ${result.answer}, ${result.sources.length}, NOW())
       `;
-    } catch (dbError) { }
+    } catch (dbError) {
+      console.error("[query] Failed to persist chat history:", dbError);
+    }
 
     extractMemoriesFromConversation(question, result.answer)
       .then((items) => {
@@ -250,7 +259,7 @@ export async function POST(request: NextRequest) {
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
 
-      console.log("[QueryMetrics] Recording failure", { projectId: projectIdForMetrics, routeType: "query", latencyMs, success: false });
+      log.debug("[QueryMetrics] Recording failure", { projectId: projectIdForMetrics, routeType: "query", latencyMs, success: false });
       void recordQueryMetrics(prisma, {
         projectId: projectIdForMetrics,
         routeType: "query",
@@ -298,6 +307,9 @@ export async function GET(request: NextRequest) {
     if (!dbUserId) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
+
+    const gate = await requirePaidPlan(dbUserId, "chat");
+    if (isGuardFailure(gate)) return gate.response;
 
     const searchParams = request.nextUrl.searchParams;
     const projectId = searchParams.get("projectId");

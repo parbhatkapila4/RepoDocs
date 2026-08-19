@@ -94,6 +94,7 @@ import {
   DeleteAllQnaDialog,
 } from "@/components/docs-readme/QnaDialogs";
 import { QnaPanel } from "@/components/docs-readme/QnaPanel";
+import { friendlyError } from "@/lib/friendly-error";
 
 interface DocsData {
   id: string;
@@ -1000,7 +1001,7 @@ function DocsPage() {
       {error && !isRateLimitError(error) && (
         <Alert className="mb-6 mx-4 border-red-500/50 bg-red-500/10">
           <AlertCircle className="h-4 w-4 text-red-400" />
-          <AlertDescription className="text-red-300">{error}</AlertDescription>
+          <AlertDescription className="text-red-300">{friendlyError(error)}</AlertDescription>
         </Alert>
       )}
 

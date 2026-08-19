@@ -159,19 +159,19 @@ export default function PrivacyPolicyPage() {
             <BulletList
               items={[
                 "TLS for data in transit",
-                "Encrypted database storage",
-                "Authenticated, scoped access to APIs",
-                "Regular dependency and security audits",
+                "Encryption at rest provided by our database host",
+                "Stored GitHub tokens encrypted with AES-256-GCM",
+                "Authenticated, owner-scoped access on every API route",
               ]}
             />
           </Surface>
           <Surface label="operational security">
             <BulletList
               items={[
-                "Least-privilege access for operators",
-                "Audit-friendly request observability",
-                "Backups with retention policies",
-                "Incident response procedures",
+                "RepoDoc is operated by one person; access is limited to that operator",
+                "Every AI request logged with model, tokens, latency and cost",
+                "Backups handled by our managed database provider",
+                "Lint, typecheck and tests run in CI on every push",
               ]}
             />
           </Surface>

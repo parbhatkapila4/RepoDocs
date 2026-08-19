@@ -14,6 +14,7 @@ const isPublicRoute = createRouteMatcher([
   "/api/gumroad-webhook(.*)",
   "/api/webhooks(.*)",
   "/api/clerk(.*)",
+  "/api/contact",
   "/readme/(.*)",
   "/docs/(.*)",
   "/about",
@@ -24,10 +25,6 @@ const isPublicRoute = createRouteMatcher([
   "/documentation",
   "/changelog",
   "/api",
-  "/careers",
-  "/blog",
-  "/security",
-  "/status",
 ]);
 
 const isDev = process.env.NODE_ENV === "development";

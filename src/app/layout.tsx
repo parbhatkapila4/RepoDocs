@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "@/app/globals.css";
-import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/provider/ThemeProvider";
@@ -8,15 +7,6 @@ import { ReduxProvider } from "@/provider/ReduxProvider";
 import { MotionProvider } from "@/provider/MotionProvider";
 import { ConsoleFilter } from "@/components/ConsoleFilter";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "RepoDoc  -  AI infrastructure for understanding code",
@@ -90,21 +80,23 @@ export default function RootLayout({
       signInForceRedirectUrl="/dashboard"
       signInFallbackRedirectUrl="/dashboard"
     >
-      <html lang="en" suppressHydrationWarning>
+      <html
+        lang="en"
+        className="dark"
+        style={{ colorScheme: "dark" }}
+        suppressHydrationWarning
+      >
         <head>
           <link rel="apple-touch-icon" href="/favicon.png" />
           <link rel="manifest" href="/site.webmanifest" />
         </head>
-        <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-          suppressHydrationWarning
-        >
+        <body className="antialiased" suppressHydrationWarning>
           <ConsoleFilter />
           <ReduxProvider>
             <ThemeProvider
               attribute="class"
               defaultTheme="dark"
-              enableSystem
+              forcedTheme="dark"
               disableTransitionOnChange
             >
               <MotionProvider>{children}</MotionProvider>

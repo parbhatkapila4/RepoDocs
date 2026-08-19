@@ -10,10 +10,10 @@ export const metadata = {
 };
 
 const STATS = [
-  { label: "p50 query latency", value: "142 ms" },
-  { label: "p99 query latency", value: "487 ms" },
-  { label: "files / minute", value: "847" },
-  { label: "cache hit rate", value: "73%" },
+  { label: "embedding dims", value: "768" },
+  { label: "files per answer", value: "top 5" },
+  { label: "worker lease", value: "5 min" },
+  { label: "unit tests", value: "20" },
 ];
 
 const STACK = [
@@ -21,8 +21,8 @@ const STACK = [
   { label: "database", value: "Postgres + pgvector" },
   { label: "orm", value: "Prisma" },
   { label: "auth", value: "Clerk" },
-  { label: "models", value: "Gemini 2.5 Flash" },
-  { label: "fallback", value: "OpenRouter" },
+  { label: "chat model", value: "Gemini 2.5 Flash" },
+  { label: "llm gateway", value: "OpenRouter" },
 ];
 
 export default function AboutPage() {
@@ -76,7 +76,7 @@ export default function AboutPage() {
             ))}
           </div>
           <p className="mt-3 text-center font-mono text-[10.5px] uppercase tracking-[0.22em] text-white/30">
-            production metrics, last 30 days
+            fixed parameters of the pipeline, read from the source
           </p>
         </div>
       </section>
@@ -92,8 +92,8 @@ export default function AboutPage() {
         <p className="mt-5 text-[15px] leading-[1.7] text-white/65">
           We built RepoDoc because the source code is the only thing that
           stays accurate. Make the code itself queryable, and the staleness
-          problem goes away  -  every answer comes back tied to the lines that
-          justify it.
+          problem goes away  -  every answer comes back with the files it was
+          grounded in.
         </p>
       </Section>
 
@@ -112,12 +112,12 @@ export default function AboutPage() {
           <Step
             n="03"
             title="Embed"
-            body="Summaries are embedded with text-embedding-004 (768 dimensions) and stored in PostgreSQL through pgvector."
+            body="Summaries are embedded with gemini-embedding-001 (768 dimensions) and stored in PostgreSQL through pgvector."
           />
           <Step
             n="04"
             title="Retrieve"
-            body="Queries run cosine similarity against the file index, then pass the top matches into the answer prompt for grounding and citations."
+            body="Queries run cosine similarity against the file index, then pass the top 5 matching files into the answer prompt for grounding and citation."
           />
         </ol>
       </Section>

@@ -10,40 +10,40 @@ const PAPER = "#f3eee4";
 const CAPS = [
   {
     n: "01",
-    title: "Understands your architecture.",
-    body: "Builds a connected model of modules, dependencies, and relationships, so answers reason across files  -  not one snippet at a time.",
+    title: "Retrieves by meaning, not keywords.",
+    body: "Each file is summarized by an LLM and that summary is embedded  -  so 'where are rate limits configured' finds the rate limiter even when it shares no words with your question.",
   },
   {
     n: "02",
-    title: "Cites the exact source.",
-    body: "Every claim links to the precise lines it came from. No hallucinated APIs, no 'trust me'  -  click through and verify.",
+    title: "Shows its sources.",
+    body: "Every answer lists the files it was built from, with their similarity scores. Open them and check the code yourself.",
   },
   {
     n: "03",
-    title: "Generates docs that stay true.",
-    body: "READMEs and module docs written from the real code, regenerated as the repo changes so they never go stale.",
+    title: "Generates docs from the real code.",
+    body: "READMEs and module docs written from the indexed source, not from the old README. Regenerate whenever the repo has moved on.",
   },
   {
     n: "04",
-    title: "Answers in seconds.",
-    body: "Ask in plain English. Retrieval pulls the right files and a grounded answer arrives before you've switched tabs.",
+    title: "Answers before indexing finishes.",
+    body: "Ask on day one: while the index builds, answers come from a live fetch of the repo's highest-value files, flagged as pre-index.",
   },
   {
     n: "05",
-    title: "Maps the whole system.",
-    body: "An interactive architecture view  -  trace a request from the route handler all the way down to the database.",
+    title: "Maps how files depend on each other.",
+    body: "A browsable view of every indexed file with its import edges drawn. Click a file to see exactly what it imports and what imports it. Relationships are parsed out of the source, not guessed at by a model.",
   },
   {
     n: "06",
     title: "Works with any GitHub repo.",
-    body: "Public or private. Paste a URL, add a token if needed, and it indexes in around thirty seconds.",
+    body: "Public or private. Paste a URL, add a token if the repo is private, and indexing runs as a background job you can watch.",
   },
 ];
 
 const METRICS = [
-  { label: "Indexing", value: "~30s", note: "URL to queryable" },
-  { label: "Cited", value: "100%", note: "Every answer sourced" },
-  { label: "Questions", value: "∞", note: "Ask all you want" },
+  { label: "Indexed", value: "All", note: "Every file, not a sample" },
+  { label: "Sourced", value: "Top 5", note: "Files behind each answer" },
+  { label: "Embedding", value: "768d", note: "gemini-embedding-001" },
   { label: "Repo", value: "Any", note: "Public + private" },
 ];
 

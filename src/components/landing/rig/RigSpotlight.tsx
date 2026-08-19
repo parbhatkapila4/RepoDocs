@@ -21,20 +21,33 @@ const COLS: { icon: LucideIcon; label: string; title: string; body: string }[] =
     icon: MessageSquare,
     label: "Chat",
     title: "Ask in plain English",
-    body: "What does this service do? Where's auth handled? RepoDoc answers from the indexed source in seconds  -  no spelunking.",
+    body: "What does this service do? Where's auth handled? RepoDoc answers from the indexed source  -  no spelunking.",
   },
   {
     icon: Quote,
-    label: "Citations",
-    title: "Trust every answer",
-    body: "Each response cites the exact lines it came from. Click through and verify against the real code.",
+    label: "Sources",
+    title: "Check every answer",
+    body: "Each response lists the files it was built from, ranked by similarity. Open them and verify against the real code.",
   },
   {
     icon: BookText,
     label: "Docs",
-    title: "Docs that stay true",
-    body: "README and module docs generated from the code, and regenerated as it changes  -  never stale.",
+    title: "Docs written from code",
+    body: "README and module docs generated from the indexed source rather than the last README  -  regenerate them whenever the repo moves on.",
   },
+];
+const ORBITS = [
+  { path: "M10,160 a150,25 0 1,0 300,0 a150,25 0 1,0 -300,0", dur: 16, color: GREEN, r: 2, opacity: 0.8, reverse: false },
+  { path: "M80,160 a80,150 0 1,0 160,0 a80,150 0 1,0 -160,0", dur: 26, color: PAPER, r: 1.8, opacity: 0.45, reverse: true },
+  { path: "M10,160 a150,150 0 1,0 300,0 a150,150 0 1,0 -300,0", dur: 34, color: PAPER, r: 1.6, opacity: 0.35, reverse: false },
+];
+
+const NODE_DOTS = [
+  { x: 98, y: 118, r: 2.5, dur: 4.4, begin: 0 },
+  { x: 60, y: 205, r: 2, dur: 5.6, begin: 1.2 },
+  { x: 125, y: 255, r: 2, dur: 3.8, begin: 2.1 },
+  { x: 235, y: 100, r: 2, dur: 6.2, begin: 0.6 },
+  { x: 210, y: 225, r: 1.8, dur: 4.9, begin: 2.8 },
 ];
 
 function Globe() {
@@ -55,12 +68,30 @@ function Globe() {
         <line x1="160" y1="10" x2="160" y2="310" />
       </g>
       <g fill="rgba(243,238,228,0.18)">
-        <circle cx="98" cy="118" r="2.5" />
-        <circle cx="60" cy="205" r="2" />
-        <circle cx="125" cy="255" r="2" />
-        <circle cx="235" cy="100" r="2" />
-        <circle cx="210" cy="225" r="1.8" />
+        {NODE_DOTS.map((d) => (
+          <circle key={`${d.x}-${d.y}`} cx={d.x} cy={d.y} r={d.r}>
+            <animate
+              attributeName="opacity"
+              values="0.5;1;0.5"
+              dur={`${d.dur}s`}
+              begin={`${d.begin}s`}
+              repeatCount="indefinite"
+            />
+          </circle>
+        ))}
       </g>
+      {ORBITS.map((o, i) => (
+        <circle key={i} r={o.r} fill={o.color} opacity={o.opacity}>
+          <animateMotion
+            dur={`${o.dur}s`}
+            repeatCount="indefinite"
+            path={o.path}
+            calcMode="linear"
+            keyPoints={o.reverse ? "1;0" : "0;1"}
+            keyTimes="0;1"
+          />
+        </circle>
+      ))}
     </svg>
   );
 }
@@ -78,14 +109,14 @@ function FlowCard({
 }) {
   return (
     <div
-      className={`border px-5 py-2.5 text-center font-mono text-[11px] uppercase tracking-[0.16em] ${highlighted ? "border-white/25" : "border-white/[0.12]"
+      className={`border px-5 py-2.5 text-center font-mono text-[11px] uppercase tracking-[0.16em] ${highlighted ? "rig-core-glow border-white/25" : "border-white/[0.12]"
         }`}
       style={{ backgroundColor: "rgba(10,10,10,0.95)" }}
     >
       <div className={dim ? "text-white/40" : "text-[#f3eee4]"}>{children}</div>
       {accent && (
         <div
-          className="mt-1 flex items-center justify-center gap-1 text-[9.5px]"
+          className="rig-mapped mt-1 flex items-center justify-center gap-1 text-[9.5px]"
           style={{ color: GREEN }}
         >
           <span>✓</span>
@@ -96,15 +127,15 @@ function FlowCard({
   );
 }
 
-function Connector({ label }: { label: string }) {
+function Connector({ label, delay = 0 }: { label: string; delay?: number }) {
   return (
-    <div className="flex flex-col items-center">
+    <div className="relative flex flex-col items-center">
       <span
         className="h-4 w-px"
         style={{ background: `linear-gradient(to bottom, transparent, ${GREEN})` }}
       />
       <span
-        className="my-1 font-mono text-[8.5px] uppercase tracking-[0.18em]"
+        className="relative z-10 my-1 font-mono text-[8.5px] uppercase tracking-[0.18em]"
         style={{ color: GREEN }}
       >
         {label}
@@ -112,6 +143,15 @@ function Connector({ label }: { label: string }) {
       <span
         className="h-4 w-px"
         style={{ background: `linear-gradient(to top, transparent, ${GREEN})` }}
+      />
+      <span
+        aria-hidden
+        className="rig-packet absolute left-1/2 top-0 h-[5px] w-[3px] -translate-x-1/2 rounded-full"
+        style={{
+          backgroundColor: GREEN,
+          boxShadow: `0 0 8px ${GREEN}`,
+          animationDelay: `${delay}s`,
+        }}
       />
     </div>
   );
@@ -156,13 +196,32 @@ export default function RigSpotlight() {
                 <Network className="h-5 w-5" style={{ color: RED }} />
               </div>
 
+              <style>{`
+                @keyframes rig-packet-drop {
+                  0% { top: -6%; opacity: 0; }
+                  14% { opacity: 0.9; }
+                  80% { opacity: 0.9; }
+                  100% { top: 102%; opacity: 0; }
+                }
+                .rig-packet { animation: rig-packet-drop 2.4s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+                @keyframes rig-core-glow {
+                  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+                  50% { box-shadow: 0 0 26px -4px rgba(34, 197, 94, 0.4); }
+                }
+                .rig-core-glow { animation: rig-core-glow 4.8s ease-in-out infinite; }
+                @keyframes rig-mapped-pulse {
+                  0%, 100% { opacity: 0.65; }
+                  50% { opacity: 1; }
+                }
+                .rig-mapped { animation: rig-mapped-pulse 2.4s ease-in-out infinite; }
+              `}</style>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <FlowCard dim>Scattered files</FlowCard>
                 <Connector label="indexed" />
                 <FlowCard highlighted accent="MAPPED">
                   RepoDoc
                 </FlowCard>
-                <Connector label="linked" />
+                <Connector label="linked" delay={1.2} />
                 <FlowCard dim>Connected system</FlowCard>
               </div>
             </div>
@@ -176,12 +235,13 @@ export default function RigSpotlight() {
                 className="mt-6 text-[clamp(2.2rem,4.6vw,3.6rem)] font-black leading-[1.0] tracking-[-0.035em]"
                 style={{ color: PAPER }}
               >
-                See the whole system.
+                See the whole repo.
               </h2>
               <p className="mt-5 max-w-md text-[15px] leading-[1.6] text-white/55">
-                Modules, services, schemas  -  RepoDoc traces how every piece
-                connects, so you can follow a request from the route handler all
-                the way to the database.
+                Every indexed file in one map, with the import edges between
+                them drawn. Click a file to see its dependencies in both
+                directions, read straight out of the source  -  so you start
+                from the shape of the repo instead of a folder tree.
               </p>
             </div>
           </div>

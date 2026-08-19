@@ -32,6 +32,8 @@
     "next-env.d.ts",
     "src/**/*.ts",
     "src/**/*.tsx",
+    "__tests__/**/*.ts",
+    "jest.setup.js",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],

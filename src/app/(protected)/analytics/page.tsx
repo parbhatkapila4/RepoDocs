@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useMountedRef } from "@/hooks/useMountedRef";
 import { motion } from "motion/react";
 import { LoadingButton } from "@/components/LoadingButton";
+import { friendlyError } from "@/lib/friendly-error";
 import {
   Users,
   FolderOpen,
@@ -187,7 +188,7 @@ export default function AnalyticsPage() {
           <h2 className="text-xl font-bold text-white mb-2">
             Error Loading Analytics
           </h2>
-          <p className="text-[#666] text-sm mb-4">{error}</p>
+          <p className="text-[#666] text-sm mb-4">{friendlyError(error)}</p>
           <LoadingButton
             onClick={fetchAnalytics}
             loading={loading}

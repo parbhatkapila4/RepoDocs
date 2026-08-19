@@ -1,61 +1,3 @@
-export class AppError extends Error {
-  constructor(
-    message: string,
-    public statusCode: number = 500,
-    public code?: string,
-    public isOperational: boolean = true
-  ) {
-    super(message);
-    this.name = this.constructor.name;
-    Error.captureStackTrace(this, this.constructor);
-  }
-}
-
-export class AuthenticationError extends AppError {
-  constructor(message: string = "Authentication failed") {
-    super(message, 401, "AUTH_ERROR");
-  }
-}
-
-export class AuthorizationError extends AppError {
-  constructor(message: string = "Not authorized") {
-    super(message, 403, "FORBIDDEN");
-  }
-}
-
-export class NotFoundError extends AppError {
-  constructor(resource: string = "Resource") {
-    super(`${resource} not found`, 404, "NOT_FOUND");
-  }
-}
-
-export class ValidationError extends AppError {
-  constructor(
-    message: string = "Validation failed",
-    public details?: any
-  ) {
-    super(message, 400, "VALIDATION_ERROR");
-  }
-}
-
-export class RateLimitError extends AppError {
-  constructor(message: string = "Rate limit exceeded") {
-    super(message, 429, "RATE_LIMIT");
-  }
-}
-
-export class ExternalAPIError extends AppError {
-  constructor(service: string, message?: string) {
-    super(message || `${service} API error`, 502, "EXTERNAL_API_ERROR");
-  }
-}
-
-export class DatabaseError extends AppError {
-  constructor(message: string = "Database operation failed") {
-    super(message, 500, "DATABASE_ERROR");
-  }
-}
-
 export async function retryAsync<T>(
   fn: () => Promise<T>,
   options: {
@@ -96,26 +38,6 @@ export async function retryAsync<T>(
   throw lastError;
 }
 
-export async function withTimeout<T>(
-  promise: Promise<T>,
-  timeoutMs: number,
-  errorMessage: string = "Operation timed out"
-): Promise<T> {
-  let timeoutId: NodeJS.Timeout;
-
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(() => {
-      reject(new AppError(errorMessage, 408, "TIMEOUT"));
-    }, timeoutMs);
-  });
-
-  try {
-    return await Promise.race([promise, timeoutPromise]);
-  } finally {
-    clearTimeout(timeoutId!);
-  }
-}
-
 export function logError(error: any, context?: Record<string, any>) {
   const errorMessage = error?.message || "Unknown error";
   const errorStack = error?.stack;
@@ -134,18 +56,4 @@ export function logError(error: any, context?: Record<string, any>) {
       );
     }
   }
-}
-
-export function asyncHandler(handler: (req: any, res?: any) => Promise<any>) {
-  return async (req: any, res?: any) => {
-    try {
-      return await handler(req, res);
-    } catch (error) {
-      logError(error, {
-        url: req.url,
-        method: req.method,
-      });
-      throw error;
-    }
-  };
 }

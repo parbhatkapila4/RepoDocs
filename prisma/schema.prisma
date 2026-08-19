@@ -160,8 +160,11 @@ model IndexingJob {
   lastCommitSha  String?
   indexedBranch  String?
   resumeAfter    String?           @db.Text
+  attempts       Int               @default(0)
+  nextAttemptAt  DateTime?
 
   @@index([status, lockedAt])
+  @@index([status, nextAttemptAt])
   @@index([projectId])
   @@map("IndexingJob")
 }

@@ -50,6 +50,7 @@ jest.mock("../../src/lib/prisma", () => ({
   default: {
     project: { findFirst: jest.fn() },
     sourceCodeEmbeddings: { count: jest.fn() },
+    user: { findUnique: jest.fn() },
     $executeRaw: jest.fn(),
   },
 }));
@@ -68,6 +69,7 @@ const mockQueryCodebasePreindex = queryCodebasePreindex as unknown as jest.Mock;
 const mockPrisma = prisma as unknown as {
   project: { findFirst: jest.Mock };
   sourceCodeEmbeddings: { count: jest.Mock };
+  user: { findUnique: jest.Mock };
   $executeRaw: jest.Mock;
 };
 
@@ -76,6 +78,8 @@ describe("/api/query", () => {
     jest.clearAllMocks();
     mockAuth.mockResolvedValue({ userId: "user123" });
     mockGetDbUserId.mockResolvedValue("user123");
+    // Chat is a paid capability; these cases exercise an entitled account.
+    mockPrisma.user.findUnique.mockResolvedValue({ plan: "professional" });
   });
 
   it("returns 401 if user is not authenticated", async () => {
@@ -103,6 +107,24 @@ describe("/api/query", () => {
 
     const response = await POST(request);
     expect(response.status).toBe(400);
+  });
+
+  it("returns 402 for a free account - chat is a paid capability", async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({ plan: "starter" });
+
+    const request = new NextRequest("http://localhost:3000/api/query", {
+      method: "POST",
+      body: JSON.stringify({ projectId: "p1", question: "how does auth work?" }),
+    });
+
+    const response = await POST(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(402);
+    expect(body.reason).toBe("upgrade_required");
+    expect(body.feature).toBe("chat");
+    expect(mockQueryCodebase).not.toHaveBeenCalled();
+    expect(mockQueryCodebasePreindex).not.toHaveBeenCalled();
   });
 
   it("returns 404 if user is not found in database", async () => {

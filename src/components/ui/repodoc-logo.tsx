@@ -40,19 +40,15 @@ export function RepoDocLogo({ size = "md", className = "" }: RepoDocLogoProps) {
   }
 
   return (
-    <div
-      className={`${sizeClasses[size]} ${className} relative rounded-xl overflow-hidden`}
-    >
-      <Image
-        src="/repodoc.png"
-        alt="RepoDoc Logo"
-        width={pixelSizes[size]}
-        height={pixelSizes[size]}
-        className="w-full h-full object-cover rounded-xl mix-blend-lighten"
-        priority
-        onError={() => setImageError(true)}
-      />
-    </div>
+    <Image
+      src="/repodoc.png"
+      alt="RepoDoc Logo"
+      width={pixelSizes[size]}
+      height={pixelSizes[size]}
+      className={`${sizeClasses[size]} ${className} object-contain`}
+      priority
+      onError={() => setImageError(true)}
+    />
   );
 }
 

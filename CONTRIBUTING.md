@@ -14,7 +14,7 @@ First off, thank you for considering contributing to RepoDoc! It's people like y
 
 ## Code of Conduct
 
-This project and everyone participating in it is governed by our Code of Conduct. By participating, you are expected to uphold this code. Please report unacceptable behavior to conduct@repodoc.dev.
+This project and everyone participating in it is governed by our Code of Conduct. By participating, you are expected to uphold this code. Please report unacceptable behavior to parbhat@parbhat.work.
 
 ## Getting Started
 
@@ -30,13 +30,13 @@ This project and everyone participating in it is governed by our Code of Conduct
 1. Fork the repository on GitHub
 2. Clone your fork locally:
 ```bash
-git clone https://github.com/YOUR_USERNAME/repodoc.git
-cd repodoc
+git clone https://github.com/YOUR_USERNAME/RepoDocs.git
+cd RepoDocs
 ```
 
 3. Add upstream remote:
 ```bash
-git remote add upstream https://github.com/ORIGINAL_OWNER/repodoc.git
+git remote add upstream https://github.com/parbhatkapila4/RepoDocs.git
 ```
 
 ### Set Up Development Environment
@@ -283,7 +283,7 @@ describe('API Integration', () => {
 
 ### Test Coverage
 
-- Aim for >80% coverage
+- `jest.config.js` sets a 50% global threshold. Actual coverage is ~3.3% of statements, so `npm run test:coverage` fails on the threshold even though `npm run test:ci` passes — raise coverage toward the threshold rather than lowering it
 - Focus on critical paths
 - Test edge cases
 - Mock external dependencies
@@ -323,7 +323,7 @@ Update API.md if you:
 ## Questions?
 
 Feel free to ask questions:
-- 📧 Email: parbhat@parbhat.dev
+- 📧 Email: parbhat@parbhat.work
 
 ## Recognition
 

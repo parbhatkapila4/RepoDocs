@@ -12,20 +12,18 @@ concurrency:
 
 jobs:
   verify:
-    name: lint, typecheck, test
+    name: lint, typecheck, build, test
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
     env:
       DATABASE_URL: postgresql://user:pass@localhost:5432/repodoc_test
-      DIRECT_URL: postgresql://user:pass@localhost:5432/repodoc_test
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_ci
+      DIRECT_URL: postgresql://user:pass@localhost:5432/repodoc_test`````````````````````````````````````````````````
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2xlcmsuZXhhbXBsZS5jb20k
       CLERK_SECRET_KEY: sk_test_ci
       GEMINI_API_KEY: ci_gemini_key
       OPENROUTER_API_KEY: ci_openrouter_key
       GITHUB_TOKEN_FOR_LOADER: ci_github_token
-      STRIPE_SECRET_KEY: sk_test_ci
-      STRIPE_WEBHOOK_SECRET: whsec_ci
       NEXT_PUBLIC_APP_URL: http://localhost:3000
 
     steps:
@@ -49,6 +47,9 @@ jobs:
 
       - name: Typecheck
         run: npm run type-check
+
+      - name: Build
+        run: npm run build
 
       - name: Test
         run: npm run test:ci

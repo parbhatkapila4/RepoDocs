@@ -1,3 +1,4 @@
+import { log } from "./logger";
 import prisma from "@/lib/prisma";
 import { getGenerateEmbeddings } from "./gemini";
 import { openrouterChatCompletion } from "./openrouter";
@@ -243,7 +244,7 @@ export function recordAnalysisSuccess(
     modelUsed
   );
 
-  console.log("[QueryMetrics] Recording success", { projectId, routeType, latencyMs });
+  log.debug("[QueryMetrics] Recording success", { projectId, routeType, latencyMs });
   void recordQueryMetrics(prisma, {
     projectId,
     routeType,
@@ -266,7 +267,7 @@ export function recordAnalysisFailure(
   latencyMs: number,
   errorMessage: string
 ): void {
-  console.log("[QueryMetrics] Recording failure", { projectId, routeType, latencyMs, success: false });
+  log.debug("[QueryMetrics] Recording failure", { projectId, routeType, latencyMs, success: false });
   void recordQueryMetrics(prisma, {
     projectId,
     routeType,

@@ -24,7 +24,6 @@ export function normalizePath(p: string): string {
   return s;
 }
 
-
 function resolveRelative(fromFilePath: string, importPath: string): string | null {
   if (!importPath.startsWith(".")) return null;
   const parts = fromFilePath.split("/").filter(Boolean);
@@ -40,6 +39,48 @@ function resolveRelative(fromFilePath: string, importPath: string): string | nul
   }
   const resolved = normalizePath(dirParts.join("/"));
   return resolved || null;
+}
+
+
+const RESOLVE_EXTENSIONS = [
+  ".ts",
+  ".tsx",
+  ".js",
+  ".jsx",
+  ".mjs",
+  ".cjs",
+  ".mts",
+  ".cts",
+];
+
+export function resolveImportTarget(
+  fromFilePath: string,
+  importPath: string,
+  known: Set<string>
+): string | null {
+  const base = resolveRelative(fromFilePath, importPath);
+  if (!base) return null;
+
+  if (known.has(base)) return base;
+
+  for (const ext of RESOLVE_EXTENSIONS) {
+    const candidate = base + ext;
+    if (known.has(candidate)) return candidate;
+  }
+
+  for (const ext of RESOLVE_EXTENSIONS) {
+    const candidate = `${base}/index${ext}`;
+    if (known.has(candidate)) return candidate;
+  }
+  const withoutJsExt = base.replace(/\.(?:m|c)?jsx?$/, "");
+  if (withoutJsExt !== base) {
+    for (const ext of RESOLVE_EXTENSIONS) {
+      const candidate = withoutJsExt + ext;
+      if (known.has(candidate)) return candidate;
+    }
+  }
+
+  return null;
 }
 
 
@@ -109,8 +150,8 @@ export async function buildDependencyGraph(
 
     const importPaths = extractImportPaths(row.sourceCode);
     for (const rawImport of importPaths) {
-      const toPath = resolveRelative(fromPath, rawImport);
-      if (toPath == null || toPath === "") continue;
+      const toPath = resolveImportTarget(fromPath, rawImport, pathSet);
+      if (!toPath || toPath === fromPath) continue;
       const key = edgeKey(fromPath, toPath);
       if (edgesSet.has(key)) continue;
       edgesSet.add(key);
@@ -174,8 +215,8 @@ export async function buildDependencyGraphFromRepo(
 
     const importPaths = extractImportPaths(String(d.pageContent || ""));
     for (const rawImport of importPaths) {
-      const toPath = resolveRelative(fromPath, rawImport);
-      if (!toPath) continue;
+      const toPath = resolveImportTarget(fromPath, rawImport, pathSet);
+      if (!toPath || toPath === fromPath) continue;
       const key = edgeKey(fromPath, toPath);
       if (edgesSet.has(key)) continue;
       edgesSet.add(key);

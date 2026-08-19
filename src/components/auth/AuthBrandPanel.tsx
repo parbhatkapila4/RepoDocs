@@ -5,7 +5,7 @@ const PILLARS = [
   {
     num: "01",
     label: "retrieval",
-    body: "Cosine similarity over file-level embeddings in pgvector. Top-5 grounded, citations on every answer.",
+    body: "Cosine similarity over file-level embeddings in pgvector. Top-5 grounded, source files on every answer.",
   },
   {
     num: "02",
@@ -22,7 +22,6 @@ const PILLARS = [
 export function AuthBrandPanel() {
   return (
     <aside className="relative hidden overflow-hidden bg-[#040406] lg:flex lg:flex-col">
-      {/* Layered ambient art: grid texture, abstract graph */}
       <BrandArt />
 
       <div className="relative z-10 flex flex-1 flex-col px-12 py-14 xl:px-16">
@@ -47,8 +46,8 @@ export function AuthBrandPanel() {
           </h2>
 
           <p className="mt-6 max-w-md text-[14.5px] leading-[1.65] text-white/55">
-            RepoDoc indexes a GitHub repository, traces the relationships
-            between modules, and turns the codebase into something you can
+            RepoDoc indexes a GitHub repository, maps how its modules import
+            each other, and turns the codebase into something you can
             interrogate, with every answer grounded in the source.
           </p>
         </div>

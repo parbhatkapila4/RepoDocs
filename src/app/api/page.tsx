@@ -53,20 +53,14 @@ const ENDPOINTS: {
       method: "POST",
       path: "/api/search",
       summary:
-        "Run a semantic search over file embeddings for a project. Returns the top matches by cosine similarity.",
+        "Discover repositories on GitHub by keyword, language, and topic. This searches GitHub, not your indexed projects  -  vector search over an indexed codebase runs inside /api/query and is not exposed as its own endpoint.",
       request: `{
-  "projectId": "uuid",
   "query": "rate limiting",
-  "limit": 10
-}`,
-      response: `{
-  "results": [
-    {
-      "fileName": "src/lib/rate-limit.ts",
-      "similarity": 0.81,
-      "summary": "Token bucket implementation"
-    }
-  ]
+  "backendLanguages": ["Go"],
+  "frontendLanguages": ["React"],
+  "databases": ["Postgres"],
+  "page": 1,
+  "perPage": 10
 }`,
     },
     {
@@ -75,23 +69,28 @@ const ENDPOINTS: {
       summary:
         "Retrieve aggregated usage and indexing metrics for the authenticated user across their projects.",
       response: `{
-  "totalProjects": 12,
-  "totalQueries": 4821,
-  "avgLatencyMs": 142,
-  "cacheHitRate": 0.73
+  "overview": {
+    "totalProjects": 0,
+    "totalEmbeddings": 0,
+    "totalQuestions": 0,
+    "totalActiveShares": 0
+  },
+  "projectMetrics": { "avgFilesPerProject": 0, "topProjects": [] },
+  "codeMetrics": { "languageDistribution": [] },
+  "recentActivity": { "last30Days": {}, "dailyActivity": [] }
 }`,
     },
     {
       method: "GET",
       path: "/api/architecture",
       summary:
-        "Return the resolved import graph for a project  -  nodes, edges, and module groupings used by the architecture view.",
+        "Return the import graph for a project. Nodes are indexed file paths; edges are resolved from relative import specifiers only (aliased imports such as @/lib/... are not resolved).",
       response: `{
   "nodes": [
-    { "id": "src/app/page.tsx", "group": "app" }
+    { "id": "src/app/page.tsx", "path": "src/app/page.tsx" }
   ],
   "edges": [
-    { "from": "src/app/page.tsx", "to": "src/lib/auth.ts" }
+    { "from": "src/app/page.tsx", "to": "src/lib/auth" }
   ]
 }`,
     },
@@ -155,14 +154,15 @@ export default function ApiReferencePage() {
           </code>{" "}
           when the session is missing or expired, and{" "}
           <code className="rounded bg-white/[0.04] px-1.5 py-0.5 font-mono text-[12px] text-white/80">
-            403 Forbidden
+            404 Not Found
           </code>{" "}
-          for projects you don&apos;t own.
+          for projects you don&apos;t own  -  ownership failures are not
+          distinguished from missing projects.
         </p>
         <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <KV label="base" value="https://repodoc.app" />
+          <KV label="base" value="https://repodoc.parbhat.dev" />
           <KV label="content-type" value="application/json" />
-          <KV label="rate limit" value="60 req / min" />
+          <KV label="rate limit" value="20 req / min" />
         </div>
       </Section>
 
@@ -200,18 +200,26 @@ export default function ApiReferencePage() {
       </Section>
       <Section label="03 / errors" title="Error shape">
         <p className="text-[14.5px] leading-[1.7] text-white/60">
-          Errors are returned with a non-2xx status and a JSON body. The
-          message is suitable for surfacing to end users; the code is stable
-          and intended for branching logic.
+          Errors are returned with a non-2xx status and a JSON body whose{" "}
+          <code className="font-mono text-[12.5px] text-white/80">error</code> is
+          a plain string. There is no machine-readable error code  -  branch on
+          the HTTP status, not on the message text. A{" "}
+          <code className="font-mono text-[12.5px] text-white/80">429</code> is
+          the exception: it adds{" "}
+          <code className="font-mono text-[12.5px] text-white/80">message</code>{" "}
+          and <code className="font-mono text-[12.5px] text-white/80">resetAt</code>{" "}
+          to the body, plus{" "}
+          <code className="font-mono text-[12.5px] text-white/80">Retry-After</code>{" "}
+          and{" "}
+          <code className="font-mono text-[12.5px] text-white/80">X-RateLimit-Reset</code>{" "}
+          headers. A project over its configured spend limit returns{" "}
+          <code className="font-mono text-[12.5px] text-white/80">402</code>.
         </p>
         <div className="mt-5">
           <CodeBlock
             label="error"
             code={`{
-  "error": {
-    "code": "project_not_found",
-    "message": "No project with that id exists for this account."
-  }
+  "error": "Project not found or unauthorized"
 }`}
           />
         </div>

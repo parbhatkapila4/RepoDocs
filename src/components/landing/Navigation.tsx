@@ -92,9 +92,10 @@ export default function Navigation() {
           <Image
             src="/repodoc.png"
             alt="RepoDoc"
-            width={30}
-            height={30}
-            className="rounded-md"
+            width={32}
+            height={32}
+            className="h-8 w-8"
+            priority
           />
           <span
             className="text-lg font-bold tracking-tight transition-colors duration-300"

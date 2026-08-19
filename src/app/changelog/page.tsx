@@ -28,149 +28,137 @@ const changeColor: Record<ChangeType, string> = {
 interface Release {
   version: string;
   date: string;
-  tag: "major" | "minor" | "patch";
+  tag: string;
   highlight?: string;
   changes: { type: ChangeType; items: string[] }[];
 }
 
 const RELEASES: Release[] = [
   {
-    version: "1.0.0",
-    date: "2026-05-06",
-    tag: "major",
+    version: "Diff mode",
+    date: "2026-06",
+    tag: "drift",
     highlight:
-      "First stable release. The full retrieval, documentation, and sharing surface goes live.",
+      "Analyze a pasted diff, or the net change between the commit a repo was indexed at and its current HEAD.",
     changes: [
       {
         type: "added",
         items: [
-          "GitHub repository ingestion via LangChain GithubRepoLoader",
-          "RAG-powered chat with Gemini 2.5 Flash and 768-dim embeddings",
-          "PostgreSQL + pgvector for similarity search",
-          "One-click documentation and README generation",
-          "Token-based public sharing for docs and READMEs",
+          "POST /api/repo-changes  -  compares the indexed baseline commit against branch HEAD",
+          "Baseline capture: indexedCommitSha, indexedBranch and indexedAt pinned at index start",
+          "Structured diff analysis  -  impacted files, risk level, tests to update",
+          "Shared guard and analysis core extracted so both diff modes run the same pipeline",
+        ],
+      },
+    ],
+  },
+  {
+    version: "Background jobs",
+    date: "2026-04",
+    tag: "indexing",
+    changes: [
+      {
+        type: "added",
+        items: [
+          "BackgroundJob model for README and docs regeneration",
+          "Fast and full indexing phases with a resume cursor",
+        ],
+      },
+    ],
+  },
+  {
+    version: "Leased job queue",
+    date: "2026-03",
+    tag: "indexing",
+    highlight:
+      "Indexing moved out of the request path into a Postgres-backed job with a lease.",
+    changes: [
+      {
+        type: "added",
+        items: [
+          "IndexingJob table with an atomic compare-and-swap claim",
+          "Five-minute lease so a crashed worker's job is reclaimed, not lost",
+          "Time-boxed worker runs that save a cursor and requeue before the platform timeout",
+          "Daily Vercel cron backstop plus on-demand worker kicks",
+          "Retry and cancel from the dashboard",
+        ],
+      },
+    ],
+  },
+  {
+    version: "Cost controls",
+    date: "2026-02",
+    tag: "observability",
+    changes: [
+      {
+        type: "added",
+        items: [
+          "QueryMetrics row per AI request: model, tokens, latency, estimated USD, success",
+          "Cold-start, cache-hit and memory-similarity flags on every metric row",
+          "Per-project monthlyCostLimitUsd  -  queries return 402 once exceeded",
+          "Indexing pauses and requeues instead of running past the limit",
+          "Observability page for cost and latency per project",
+        ],
+      },
+    ],
+  },
+  {
+    version: "Docs and analytics",
+    date: "2025-12",
+    tag: "product",
+    changes: [
+      {
+        type: "added",
+        items: [
+          "Token-based public share links for docs and README, revocable at any time",
           "Repository analytics with language distribution and GitHub stats",
-          "Multi-project support with per-project history",
-          "Stripe integration with subscription plans",
-          "Rate limiting and per-user request budgets",
-          "Inline citations on every answer",
+          "Markdown rendering with remark-gfm and syntax highlighting",
+          "Landing, about, contact, terms and privacy pages",
         ],
       },
     ],
   },
   {
-    version: "0.9.0",
-    date: "2026-03-14",
-    tag: "minor",
+    version: "Plans and tests",
+    date: "2025-11",
+    tag: "platform",
     changes: [
       {
         type: "added",
         items: [
-          "Public share links for documentation and README",
-          "Share link revocation",
-          "Markdown rendering with remark-gfm",
-          "Repository metadata: stars, forks, watchers, language mix",
-        ],
-      },
-      {
-        type: "changed",
-        items: [
-          "Improved chunking and retrieval quality on large codebases",
-          "Tightened embedding prompts for higher recall",
-          "Better loading and empty states across the app",
-        ],
-      },
-      {
-        type: "fixed",
-        items: [
-          "Vector search ranking on repos with many similar files",
-          "GitHub API rate-limit handling on initial index",
-          "Embedding generation for very large source files",
-        ],
-      },
-    ],
-  },
-  {
-    version: "0.8.0",
-    date: "2026-02-02",
-    tag: "minor",
-    changes: [
-      {
-        type: "added",
-        items: [
-          "Redux Toolkit for cross-route state",
-          "Project context and shared hooks",
-          "Analytics surface with platform metrics",
-          "Database indexes for faster project lookups",
-        ],
-      },
-      {
-        type: "changed",
-        items: [
-          "Migrated to Next.js App Router",
-          "Upgraded Prisma with first-class pgvector support",
-          "Reorganized API routes for predictability",
+          "Plan tiers with project-count limits enforced at create time",
+          "Gumroad checkout, with auto-downgrade on refund or cancellation",
+          "Jest scaffolding and the first unit tests",
         ],
       },
       {
         type: "security",
         items: [
           "Zod validation across API boundaries",
-          "Token-bucket rate limiting per user",
-          "Stronger CSRF and XSS posture",
+          "Fixed-window rate limiting per identity, returning 429 with Retry-After",
         ],
       },
     ],
   },
   {
-    version: "0.7.0",
-    date: "2025-12-18",
-    tag: "minor",
+    version: "First build",
+    date: "2025-09",
+    tag: "foundation",
     changes: [
       {
         type: "added",
         items: [
-          "Landing page with product demo",
-          "Pricing, about, contact, terms, and privacy pages",
-        ],
-      },
-      {
-        type: "changed",
-        items: [
-          "Refreshed marketing copy and section structure",
-          "Mobile responsiveness pass on all marketing pages",
-        ],
-      },
-    ],
-  },
-  {
-    version: "0.6.0",
-    date: "2025-11-04",
-    tag: "minor",
-    changes: [
-      {
-        type: "added",
-        items: [
-          "Jest and React Testing Library scaffolding",
-          "Coverage on the RAG pipeline and core API routes",
-        ],
-      },
-      {
-        type: "changed",
-        items: [
-          "Stricter TypeScript settings across the codebase",
-          "Lint rules brought in line with the rest of the org",
+          "GitHub repository ingestion via LangChain GithubRepoLoader",
+          "File summaries embedded with gemini-embedding-001 at 768 dimensions",
+          "PostgreSQL + pgvector cosine similarity search",
+          "Grounded chat that lists the source files behind each answer",
+          "README and documentation generation",
+          "Clerk auth and Redux Toolkit for cross-route state",
         ],
       },
     ],
   },
 ];
-
-const tagColor: Record<Release["tag"], string> = {
-  major: "text-amber-300/90",
-  minor: "text-sky-300/85",
-  patch: "text-emerald-300/85",
-};
 
 export default function ChangelogPage() {
   return (
@@ -195,11 +183,13 @@ export default function ChangelogPage() {
         <h1 className="mt-6 text-[clamp(2rem,4.4vw,3.2rem)] font-medium leading-[1.08] tracking-[-0.03em] text-white">
           What changed.
           <br />
-          <span className="text-white/45">In order, with dates.</span>
+          <span className="text-white/45">In order, from the commit log.</span>
         </h1>
         <p className="mt-6 max-w-2xl text-[15px] leading-[1.6] text-white/55">
-          A running log of every release. The most recent build is at the top.
-          Anything user-visible eventually lands here.
+          A development log grouped by the month the work landed, most recent
+          first. RepoDoc ships continuously and isn&apos;t cut into tagged
+          releases, so these are milestones rather than version numbers  -  the
+          git history is the record.
         </p>
       </section>
 
@@ -235,7 +225,7 @@ export default function ChangelogPage() {
                         {r.version}
                       </span>
                       <span
-                        className={`font-mono text-[10px] uppercase tracking-[0.22em] ${tagColor[r.tag]}`}
+                        className="font-mono text-[10px] uppercase tracking-[0.22em] text-sky-300/85"
                       >
                         {r.tag}
                       </span>
