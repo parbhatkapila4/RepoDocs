@@ -68,6 +68,7 @@ export default function RouteTransitionLoader() {
     }
 
     if (pathname !== prevPathnameRef.current) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (!isNavigatingRef.current) start();
       prevPathnameRef.current = pathname;
       const t = setTimeout(finish, 150);

@@ -2,13 +2,10 @@
 
 import { useEffect, Suspense, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { MotionConfig } from "motion/react";
 import { toast } from "sonner";
 import { useUser } from "@/hooks/useUser";
-import {
-  Navigation,
-  Footer,
-  CommandPalette,
-} from "@/components/landing";
+import { Navigation, Footer, CommandPalette } from "@/components/landing";
 
 import HeroRig from "@/components/landing/HeroRig";
 import RigProblem from "@/components/landing/rig/RigProblem";
@@ -45,8 +42,7 @@ function PaymentStatusHandler() {
           await refreshUser();
           await new Promise((resolve) => setTimeout(resolve, 1500));
           await refreshUser();
-        } catch {
-        }
+        } catch {}
         router.push("/dashboard");
       };
 
@@ -63,7 +59,7 @@ function PaymentStatusHandler() {
               ? "You cancelled the payment. Feel free to try again when you're ready."
               : "Your payment could not be processed. Please try again.",
           duration: 5000,
-        }
+        },
       );
 
       router.replace("/", { scroll: false });
@@ -75,18 +71,20 @@ function PaymentStatusHandler() {
 
 function LandingPageContent() {
   return (
-    <div className="min-h-screen bg-[#040406]">
-      <Navigation />
-      <HeroRig />
-      <RigProblem />
-      <RigIntro />
-      <RigSpotlight />
-      <RigApproach />
-      <RigCapabilities />
-      <RigEngineered />
-      <Footer />
-      <CommandPalette />
-    </div>
+    <MotionConfig reducedMotion="user">
+      <div className="min-h-screen bg-[#040406]">
+        <Navigation />
+        <HeroRig />
+        <RigProblem />
+        <RigIntro />
+        <RigSpotlight />
+        <RigApproach />
+        <RigCapabilities />
+        <RigEngineered />
+        <Footer />
+        <CommandPalette />
+      </div>
+    </MotionConfig>
   );
 }
 

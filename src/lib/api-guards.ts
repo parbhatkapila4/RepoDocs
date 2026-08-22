@@ -33,7 +33,14 @@ export async function requireAuthAndRateLimit(
 
   if (!userId) {
     return {
-      response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+      response: NextResponse.json(
+        {
+          error: "Unauthorized",
+          message:
+            "Your session has expired. Refresh the page and sign in again.",
+        },
+        { status: 401 },
+      ),
     };
   }
 
@@ -46,7 +53,14 @@ export async function requireAuthAndRateLimit(
   const dbUserId = await getDbUserId(userId);
   if (!dbUserId) {
     return {
-      response: NextResponse.json({ error: "User not found" }, { status: 404 }),
+      response: NextResponse.json(
+        {
+          error: "User not found",
+          message:
+            "Your account could not be found. Sign out and back in, then try again.",
+        },
+        { status: 404 },
+      ),
     };
   }
 
@@ -68,7 +82,11 @@ export async function requireOwnedProjectWithinBudget(
   if (!project) {
     return {
       response: NextResponse.json(
-        { error: "Project not found or unauthorized" },
+        {
+          error: "Project not found or unauthorized",
+          message:
+            "This project doesn't exist or isn't accessible from the account you're signed in with.",
+        },
         { status: 404 },
       ),
     };
@@ -101,6 +119,7 @@ export async function requirePaidPlan(
       response: NextResponse.json(
         {
           error: upgradeMessage(feature),
+          message: upgradeMessage(feature),
           reason: "upgrade_required",
           feature,
           plan,

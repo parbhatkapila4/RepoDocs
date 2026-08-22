@@ -13,7 +13,7 @@ const lastWake = new Map<string, number>();
 
 function nudgeWorkerIfDue(
   projectId: string,
-  job: { status: string; nextAttemptAt: Date | null; lockedAt: Date | null }
+  job: { status: string; nextAttemptAt: Date | null; lockedAt: Date | null },
 ): void {
   if (job.status !== "queued" || job.lockedAt) return;
   if (job.nextAttemptAt && job.nextAttemptAt.getTime() > Date.now()) return;
@@ -26,11 +26,24 @@ function nudgeWorkerIfDue(
   void kickIndexingWorker();
 }
 
+const STATUS_UNAVAILABLE = {
+  status: "unavailable" as const,
+  progress: 0,
+  error: null,
+  updatedAt: null,
+  filesProcessed: 0,
+  filesTotal: 0,
+  phase: null,
+  attempts: 0,
+  nextAttemptAt: null,
+  lockedAt: null,
+};
+
 export async function getIndexingStatus(projectId: string) {
   try {
     const { userId } = await auth();
     if (!userId) {
-      throw new Error("Unauthorized");
+      return STATUS_UNAVAILABLE;
     }
 
     let dbUser = await prisma.user.findUnique({
@@ -52,7 +65,7 @@ export async function getIndexingStatus(projectId: string) {
     }
 
     if (!dbUser) {
-      throw new Error("User not found");
+      return STATUS_UNAVAILABLE;
     }
 
     const project = await prisma.project.findFirst({
@@ -65,7 +78,7 @@ export async function getIndexingStatus(projectId: string) {
     });
 
     if (!project) {
-      throw new Error("Project not found or unauthorized");
+      return STATUS_UNAVAILABLE;
     }
     if (!isPaidPlan(project.user?.plan)) {
       return {
@@ -89,7 +102,7 @@ export async function getIndexingStatus(projectId: string) {
         "[getIndexingStatus] baseline reconcile failed:",
         reconcileError instanceof Error
           ? reconcileError.message
-          : String(reconcileError)
+          : String(reconcileError),
       );
     }
 
@@ -348,12 +361,12 @@ export async function cancelIndexingJob(projectId: string) {
 
 export type SetBaselineResult =
   | {
-    success: true;
-    indexedCommitSha: string;
-    indexedBranch: string;
-    indexedAt: string;
-    alreadySet: boolean;
-  }
+      success: true;
+      indexedCommitSha: string;
+      indexedBranch: string;
+      indexedAt: string;
+      alreadySet: boolean;
+    }
   | { success: false; error: string };
 
 function describeGithubFetchError(e: unknown): string {
@@ -376,7 +389,7 @@ function describeGithubFetchError(e: unknown): string {
 }
 
 export async function setProjectBaselineNow(
-  projectId: string
+  projectId: string,
 ): Promise<SetBaselineResult> {
   try {
     const { userId } = await auth();

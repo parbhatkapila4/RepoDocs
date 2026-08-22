@@ -5,6 +5,7 @@ import { useUser } from "@/hooks/useUser";
 import { isPaidPlan } from "@/lib/plan";
 import { UpgradePanel } from "@/components/UpgradePanel";
 import { checkEmbeddingsStatus } from "@/lib/actions";
+import { fetchJson } from "@/lib/fetch-json";
 import { useMountedRef } from "@/hooks/useMountedRef";
 import {
   Loader2,
@@ -76,9 +77,21 @@ const models = [
 ];
 
 const starters = [
-  { label: "Project structure", prompt: "How is the project structured?", icon: Layers },
-  { label: "Auth flow", prompt: "Walk me through the authentication flow", icon: GitBranch },
-  { label: "API overview", prompt: "What does the API layer look like?", icon: Terminal },
+  {
+    label: "Project structure",
+    prompt: "How is the project structured?",
+    icon: Layers,
+  },
+  {
+    label: "Auth flow",
+    prompt: "Walk me through the authentication flow",
+    icon: GitBranch,
+  },
+  {
+    label: "API overview",
+    prompt: "What does the API layer look like?",
+    icon: Terminal,
+  },
 ];
 
 function IndexingBar({ state }: { state: IndexingState }) {
@@ -124,7 +137,11 @@ function CopyButton({ text }: { text: string }) {
       }}
       className="absolute top-2.5 right-2.5 p-1 rounded bg-white/[0.06] hover:bg-white/[0.12] text-white/30 hover:text-white/50 transition-all opacity-0 group-hover/code:opacity-100"
     >
-      {copied ? <CheckCheck className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+      {copied ? (
+        <CheckCheck className="w-3 h-3" />
+      ) : (
+        <Copy className="w-3 h-3" />
+      )}
     </button>
   );
 }
@@ -152,8 +169,7 @@ export default function ChatPage() {
   const mountedRef = useMountedRef();
 
   const currentProject = projects.find((p) => p.id === selectedProjectId);
-  const userName =
-    user?.firstName || user?.emailAddress?.split("@")[0] || "";
+  const userName = user?.firstName || user?.emailAddress?.split("@")[0] || "";
 
   const prevMessagesLengthRef = useRef(messages.length);
 
@@ -189,7 +205,7 @@ export default function ChatPage() {
         setIsLoading(false);
       });
     }
-  }, [selectedProjectId]);
+  }, [selectedProjectId, mountedRef]);
 
   const runCheck = useCallback(
     async (projectId: string) => {
@@ -210,12 +226,20 @@ export default function ChatPage() {
         setIndexState((prev) => ({ ...prev, hasEmbeddings: false }));
       }
     },
-    [mountedRef]
+    [mountedRef],
   );
 
   useEffect(() => {
     if (!selectedProjectId) {
-      setIndexState({ hasEmbeddings: false, indexing: false, progress: 0, phase: "fast", filesTotal: 0, filesProcessed: 0, jobError: null });
+      setIndexState({
+        hasEmbeddings: false,
+        indexing: false,
+        progress: 0,
+        phase: "fast",
+        filesTotal: 0,
+        filesProcessed: 0,
+        jobError: null,
+      });
       setInitialCheckDone(false);
       return;
     }
@@ -278,18 +302,33 @@ export default function ChatPage() {
 
     const work = (async () => {
       try {
-        const response = await fetch("/api/query", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            projectId: pid,
-            question,
-            conversationHistory,
-            mode,
-          }),
-        });
+        const response = await fetchJson<{
+          answer?: string;
+          sources?: Message["sources"];
+          message?: string;
+          error?: string;
+        }>(
+          "/api/query",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              projectId: pid,
+              question,
+              conversationHistory,
+              mode,
+            }),
+          },
+          { retryOnceOnNonJson: true },
+        );
 
-        const data = await response.json();
+        if (response.nonJson) {
+          throw new Error(
+            "The reply was interrupted before it reached the browser (page reload or session refresh mid-request). Please ask again.",
+          );
+        }
+
+        const data = response.data ?? {};
         let next: Message[];
 
         if (!response.ok) {
@@ -308,13 +347,17 @@ export default function ChatPage() {
             };
             next = [...msgsWithUser, rateMsg];
           } else {
-            throw new Error(data.message || "Failed to get response");
+            throw new Error(
+              data.message ||
+                data.error ||
+                `Failed to get response (HTTP ${response.status})`,
+            );
           }
         } else {
           const assistantMessage: Message = {
             id: (Date.now() + 1).toString(),
             role: "assistant",
-            content: data.answer,
+            content: data.answer ?? "",
             sources: data.sources,
             timestamp: new Date(),
           };
@@ -337,7 +380,9 @@ export default function ChatPage() {
           role: "assistant",
           content: isRate
             ? "GitHub's API limit has been reached. This is temporary and resets automatically within the hour. Your data is safe -- just try again in a few minutes."
-            : "Something went wrong. Please try again.",
+            : errText && !errText.startsWith("Failed to get response")
+              ? errText
+              : "Something went wrong. Please try again.",
           timestamp: new Date(),
         };
         const next = [...msgsWithUser, errorMessage];
@@ -362,7 +407,8 @@ export default function ChatPage() {
 
   const showIndexingBar =
     initialCheckDone &&
-    (indexState.indexing || (!indexState.hasEmbeddings && indexState.progress < 100));
+    (indexState.indexing ||
+      (!indexState.hasEmbeddings && indexState.progress < 100));
 
   if (user && !isPaidPlan(user.plan)) {
     return (
@@ -448,7 +494,9 @@ export default function ChatPage() {
                   className="flex items-center justify-between gap-3 px-2.5 py-2 rounded-md cursor-pointer text-[13px] hover:bg-white/[0.05] focus:bg-white/[0.05]"
                 >
                   <div className="min-w-0">
-                    <div className="font-medium text-white/80">{model.name}</div>
+                    <div className="font-medium text-white/80">
+                      {model.name}
+                    </div>
                     <div className="text-[11px] text-white/25 mt-0.5 truncate">
                       {model.description}
                     </div>
@@ -475,12 +523,10 @@ export default function ChatPage() {
         </button>
       </header>
 
-
       <div className="flex-1 flex flex-col overflow-hidden">
         {messages.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center px-5">
             <div className="w-full max-w-[640px]">
-
               <div className="mb-8">
                 <h1 className="text-[28px] sm:text-[32px] font-semibold text-white tracking-[-0.03em] leading-tight">
                   {userName ? `What's on your mind,` : "What would you like"}
@@ -492,8 +538,10 @@ export default function ChatPage() {
                 </h1>
               </div>
 
-              <GitHubRateLimitNotice error={indexState.jobError} className="mb-4" />
-
+              <GitHubRateLimitNotice
+                error={indexState.jobError}
+                className="mb-4"
+              />
 
               <form onSubmit={handleSubmit}>
                 <div className="group/input rounded-2xl border border-white/[0.08] bg-[#111114] shadow-lg shadow-black/20 overflow-hidden transition-all focus-within:border-white/[0.15] focus-within:shadow-xl focus-within:shadow-black/30">
@@ -532,7 +580,6 @@ export default function ChatPage() {
                 </div>
               </form>
 
-
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-4">
                 {starters.map((s) => (
                   <button
@@ -554,7 +601,6 @@ export default function ChatPage() {
             </div>
           </div>
         ) : (
-
           <div
             ref={scrollRef}
             className="flex-1 overflow-y-auto min-h-0 scrollbar-thin"
@@ -571,13 +617,15 @@ export default function ChatPage() {
                     </div>
                   ) : (
                     <div className="space-y-3">
-
                       <div className="flex gap-3.5">
                         <div className="shrink-0 w-6 h-6 rounded-full bg-white/[0.08] flex items-center justify-center mt-0.5">
-                          <span className="text-[10px] font-bold text-white/50">R</span>
+                          <span className="text-[10px] font-bold text-white/50">
+                            R
+                          </span>
                         </div>
                         <div className="flex-1 min-w-0 text-[14px] leading-[1.75] text-white/75">
-                          <div className="prose prose-sm prose-invert max-w-none
+                          <div
+                            className="prose prose-sm prose-invert max-w-none
                             [&>*:first-child]:mt-0 [&>*:last-child]:mb-0
                             prose-p:text-white/75 prose-p:leading-[1.75] prose-p:mb-3
                             prose-headings:text-white/90 prose-headings:font-semibold prose-headings:tracking-[-0.01em] prose-headings:mt-5 prose-headings:mb-2
@@ -589,7 +637,8 @@ export default function ChatPage() {
                             prose-a:text-sky-300/60 prose-a:underline prose-a:underline-offset-2 prose-a:decoration-sky-300/20 hover:prose-a:text-sky-300/80 prose-a:transition-colors
                             prose-blockquote:border-l-2 prose-blockquote:border-white/[0.08] prose-blockquote:pl-4 prose-blockquote:text-white/40 prose-blockquote:not-italic
                             prose-hr:border-white/[0.06] prose-hr:my-5
-                          ">
+                          "
+                          >
                             <ReactMarkdown
                               components={{
                                 code({
@@ -602,12 +651,19 @@ export default function ChatPage() {
                                   className?: string;
                                   children?: React.ReactNode;
                                 }) {
-                                  const match = /language-(\w+)/.exec(className || "");
-                                  const codeStr = String(children).replace(/\n$/, "");
+                                  const match = /language-(\w+)/.exec(
+                                    className || "",
+                                  );
+                                  const codeStr = String(children).replace(
+                                    /\n$/,
+                                    "",
+                                  );
                                   return !inline && match ? (
                                     <div className="group/code relative my-3">
                                       <div className="flex items-center justify-between px-4 py-2 border-b border-white/[0.04] bg-white/[0.02] rounded-t-lg">
-                                        <span className="text-[11px] font-mono text-white/20">{match[1]}</span>
+                                        <span className="text-[11px] font-mono text-white/20">
+                                          {match[1]}
+                                        </span>
                                       </div>
                                       <SyntaxHighlighter
                                         style={vscDarkPlus}
@@ -619,7 +675,8 @@ export default function ChatPage() {
                                           padding: "14px 16px",
                                           margin: 0,
                                           borderRadius: "0 0 8px 8px",
-                                          border: "1px solid rgba(255,255,255,0.05)",
+                                          border:
+                                            "1px solid rgba(255,255,255,0.05)",
                                           borderTop: "none",
                                           background: "rgba(0,0,0,0.25)",
                                           overflowX: "auto",
@@ -647,13 +704,16 @@ export default function ChatPage() {
                         </div>
                       </div>
 
-
                       {message.sources && message.sources.length > 0 && (
                         <div className="ml-[38px]">
                           <details className="group">
                             <summary className="inline-flex items-center gap-1.5 cursor-pointer text-[11px] text-white/20 hover:text-white/35 transition-colors select-none list-none [&::-webkit-details-marker]:hidden">
                               <FileCode className="w-3 h-3" />
-                              <span>{message.sources.length} source{message.sources.length !== 1 ? "s" : ""} referenced</span>
+                              <span>
+                                {message.sources.length} source
+                                {message.sources.length !== 1 ? "s" : ""}{" "}
+                                referenced
+                              </span>
                               <ChevronDown className="w-3 h-3 transition-transform group-open:rotate-180" />
                             </summary>
                             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -665,7 +725,9 @@ export default function ChatPage() {
                                 >
                                   <FileCode className="w-2.5 h-2.5 text-white/15" />
                                   {source.fileName.split("/").pop()}
-                                  <span className="text-white/10">{(source.similarity * 100).toFixed(0)}%</span>
+                                  <span className="text-white/10">
+                                    {(source.similarity * 100).toFixed(0)}%
+                                  </span>
                                 </span>
                               ))}
                             </div>
@@ -694,7 +756,6 @@ export default function ChatPage() {
             </div>
           </div>
         )}
-
 
         {messages.length > 0 && (
           <div className="shrink-0 border-t border-white/[0.06] bg-[#0a0a0c]/90 backdrop-blur-sm px-5 py-3.5">

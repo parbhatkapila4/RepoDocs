@@ -50,7 +50,6 @@ async function findEligibleJob() {
           githubToken: true,
           name: true,
           user: { select: { plan: true } },
-          _count: { select: { sourceCodeEmbeddings: true } },
         },
       },
     },
@@ -59,13 +58,7 @@ async function findEligibleJob() {
   const eligible = candidates.filter((c) => isPaidPlan(c.project.user?.plan));
 
   if (eligible.length === 0) return null;
-
-  eligible.sort((a, b) => {
-    const ea = a.project._count.sourceCodeEmbeddings;
-    const eb = b.project._count.sourceCodeEmbeddings;
-    if (ea !== eb) return ea - eb;
-    return a.createdAt.getTime() - b.createdAt.getTime();
-  });
+  eligible.sort((a, b) => a.updatedAt.getTime() - b.updatedAt.getTime());
 
   return eligible[0];
 }
@@ -136,26 +129,24 @@ function generateWorkerId(): string {
 
 export async function runIndexingWorkerOnce(): Promise<IndexingWorkerHttpResult> {
   const workerId = generateWorkerId();
-  log.debug(`[Worker ${workerId}] Invoked at ${new Date().toISOString()}`);
+  const wlog = log.with({ workerId });
+  wlog.debug(`Worker invoked at ${new Date().toISOString()}`);
 
   try {
     const job = await findEligibleJob();
     if (!job) {
-      log.debug(`[Worker ${workerId}] No eligible jobs found`);
+      wlog.debug("No eligible jobs found");
       return {
         status: 200,
         body: { status: "idle", message: "No jobs to process" },
       };
     }
 
-    log.debug(
-      `[Worker ${workerId}] Processing job ${job.id} for project ${job.projectId} (phase: ${job.phase})`,
-    );
+    const jlog = wlog.with({ jobId: job.id, projectId: job.projectId });
+    jlog.debug(`Processing job (phase: ${job.phase})`);
     const claimed = await claimJob(job.id, workerId);
     if (!claimed) {
-      log.debug(
-        `[Worker ${workerId}] Job ${job.id} was claimed by another worker; skipping`,
-      );
+      jlog.debug("Job was claimed by another worker; skipping");
       return {
         status: 200,
         body: { status: "contended", message: "Job already claimed" },
@@ -166,6 +157,43 @@ export async function runIndexingWorkerOnce(): Promise<IndexingWorkerHttpResult>
       const result = await processIndexingJob(job, workerId);
 
       if (result.needsResume) {
+        const madeProgress = result.successCount > 0 || result.failCount > 0;
+
+        if (!madeProgress) {
+          const attempts = (job.attempts ?? 0) + 1;
+          const willRetry = attempts < MAX_ATTEMPTS;
+          const retryInMs = backoffFor(attempts - 1);
+          await prisma.indexingJob.update({
+            where: { id: job.id },
+            data: {
+              status: willRetry ? "queued" : "failed",
+              resumeAfter: result.resumeAfter,
+              attempts,
+              nextAttemptAt: willRetry
+                ? new Date(Date.now() + retryInMs)
+                : null,
+              error:
+                "No files were processed in the last pass - the summarization or embedding service may be temporarily unavailable. Retrying with backoff.",
+              lockedAt: null,
+              lockedBy: null,
+              updatedAt: new Date(),
+            },
+          });
+          jlog.warn(
+            `Pass made no progress (attempt ${attempts}/${MAX_ATTEMPTS}); ${willRetry ? `backing off ${Math.round(retryInMs / 1000)}s` : "marking failed"}`,
+          );
+          return {
+            status: 200,
+            body: {
+              status: willRetry ? "stalled" : "error",
+              jobId: job.id,
+              projectId: job.projectId,
+              attempts,
+              retryInMs: willRetry ? retryInMs : undefined,
+            },
+          };
+        }
+
         await prisma.indexingJob.update({
           where: { id: job.id },
           data: {
@@ -179,8 +207,8 @@ export async function runIndexingWorkerOnce(): Promise<IndexingWorkerHttpResult>
             updatedAt: new Date(),
           },
         });
-        log.debug(
-          `[Worker ${workerId}] Job ${job.id} hit its time box; will resume from "${result.resumeAfter}"`,
+        jlog.debug(
+          `Job hit its time box; will resume from "${result.resumeAfter}"`,
         );
         const { kickIndexingWorker } = await import("./indexing-worker-kick");
         void kickIndexingWorker();
@@ -195,6 +223,47 @@ export async function runIndexingWorkerOnce(): Promise<IndexingWorkerHttpResult>
         };
       }
 
+      if (result.failCount > 0) {
+        const attempts = (job.attempts ?? 0) + 1;
+        if (attempts < MAX_ATTEMPTS) {
+          const retryInMs = backoffFor(attempts - 1);
+          await prisma.indexingJob.update({
+            where: { id: job.id },
+            data: {
+              status: "queued",
+              resumeAfter: null,
+              attempts,
+              nextAttemptAt: new Date(Date.now() + retryInMs),
+              error: `${result.failCount} file(s) failed to index (provider errors); retrying the missing files with backoff.`,
+              lockedAt: null,
+              lockedBy: null,
+              updatedAt: new Date(),
+            },
+          });
+          jlog.warn(
+            `Pass finished but ${result.failCount} file(s) failed; requeueing (attempt ${attempts}/${MAX_ATTEMPTS}) in ${Math.round(retryInMs / 1000)}s`,
+          );
+          return {
+            status: 200,
+            body: {
+              status: "requeued_incomplete",
+              jobId: job.id,
+              projectId: job.projectId,
+              failCount: result.failCount,
+              retryInMs,
+            },
+          };
+        }
+        jlog.warn(
+          `Completing despite ${result.failCount} skipped file(s) after ${attempts} attempts`,
+        );
+      }
+
+      const completionNote =
+        result.failCount > 0 && (job.attempts ?? 0) + 1 >= MAX_ATTEMPTS
+          ? `Index completed, but ${result.failCount} file(s) could not be indexed after repeated attempts.`
+          : null;
+
       await prisma.indexingJob.update({
         where: { id: job.id },
         data: {
@@ -206,7 +275,7 @@ export async function runIndexingWorkerOnce(): Promise<IndexingWorkerHttpResult>
           nextAttemptAt: null,
           lockedAt: null,
           lockedBy: null,
-          error: null,
+          error: completionNote,
           updatedAt: new Date(),
         },
       });
@@ -216,20 +285,18 @@ export async function runIndexingWorkerOnce(): Promise<IndexingWorkerHttpResult>
           { maxRetries: 3, initialDelay: 400 },
         );
         if (mirroredSha) {
-          log.debug(
-            `[Worker ${workerId}] Job ${job.id} mirrored baseline ${mirroredSha} -> project ${job.projectId}`,
-          );
+          jlog.debug(`Mirrored baseline ${mirroredSha} -> project`);
         }
       } catch (mirrorError) {
-        console.error(
-          `[Worker ${workerId}] Job ${job.id} completed but baseline mirror failed (will reconcile on next status read):`,
+        jlog.error(
+          "Job completed but baseline mirror failed (will reconcile on next status read):",
           mirrorError instanceof Error
             ? mirrorError.message
             : String(mirrorError),
         );
       }
 
-      log.debug(`[Worker ${workerId}] Job ${job.id} completed successfully`);
+      jlog.debug("Job completed successfully");
       return {
         status: 200,
         body: { status: "success", jobId: job.id, projectId: job.projectId },
@@ -254,13 +321,13 @@ export async function runIndexingWorkerOnce(): Promise<IndexingWorkerHttpResult>
       });
 
       if (willRetry) {
-        console.error(
-          `[Worker ${workerId}] Job ${job.id} failed (attempt ${attempts}/${MAX_ATTEMPTS}); retrying in ${Math.round(retryInMs / 1000)}s:`,
+        jlog.error(
+          `Job failed (attempt ${attempts}/${MAX_ATTEMPTS}); retrying in ${Math.round(retryInMs / 1000)}s:`,
           errorMessage,
         );
       } else {
-        console.error(
-          `[Worker ${workerId}] Job ${job.id} failed permanently after ${attempts} attempts:`,
+        jlog.error(
+          `Job failed permanently after ${attempts} attempts:`,
           errorMessage,
         );
       }
@@ -279,7 +346,7 @@ export async function runIndexingWorkerOnce(): Promise<IndexingWorkerHttpResult>
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`[Worker ${workerId}] Unexpected error:`, errorMessage);
+    wlog.error("Unexpected error:", errorMessage);
     return { status: 500, body: { status: "error", error: errorMessage } };
   }
 }

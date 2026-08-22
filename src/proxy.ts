@@ -41,13 +41,15 @@ export default clerkMiddleware(
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
     if (!isPublicRoute(req)) {
+      if (!userId && req.nextUrl.pathname.startsWith("/api/")) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
       await auth.protect();
     }
   },
   {
-
     clockSkewInMs: isDev ? 30_000 : 5_000,
-  }
+  },
 );
 
 export const config = {

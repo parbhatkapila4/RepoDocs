@@ -16,31 +16,47 @@ jest.mock("octokit", () => {
   };
 });
 
-jest.mock("@langchain/community/document_loaders/web/github", () => ({
-  GithubRepoLoader: jest.fn().mockImplementation(() => ({
-    load: jest.fn().mockResolvedValue([]),
-  })),
-}));
-
+import { gzipSync } from "zlib";
+import * as tar from "tar-stream";
 import {
   getGitHubRepositoryInfo,
   loadGithubRepository,
 } from "../../src/lib/github";
 import { Octokit } from "octokit";
-import { GithubRepoLoader } from "@langchain/community/document_loaders/web/github";
 
 const octokitMock = new (Octokit as unknown as jest.Mock)();
 const reposGet = octokitMock.rest.repos.get as jest.Mock;
 const reposListLanguages = octokitMock.rest.repos.listLanguages as jest.Mock;
 const reposGetAllTopics = octokitMock.rest.repos.getAllTopics as jest.Mock;
-const githubRepoLoaderMock = GithubRepoLoader as unknown as jest.Mock;
+const fetchMock = jest.fn();
+const realFetch = global.fetch;
+
+async function tarGzBuffer(
+  files: { name: string; content: string }[],
+): Promise<Blob> {
+  const pack = tar.pack();
+  const chunks: Buffer[] = [];
+  pack.on("data", (c: Buffer) => chunks.push(c));
+  const done = new Promise<Buffer>((resolve, reject) => {
+    pack.on("end", () => resolve(Buffer.concat(chunks)));
+    pack.on("error", reject);
+  });
+  for (const f of files) pack.entry({ name: f.name }, f.content);
+  pack.finalize();
+  return new Blob([new Uint8Array(gzipSync(await done))]);
+}
 
 describe("GitHub Integration", () => {
   beforeEach(() => {
     reposGet.mockReset();
     reposListLanguages.mockReset();
     reposGetAllTopics.mockReset();
-    githubRepoLoaderMock.mockClear();
+    fetchMock.mockReset();
+    global.fetch = fetchMock as unknown as typeof fetch;
+  });
+
+  afterAll(() => {
+    global.fetch = realFetch;
   });
 
   describe("getGitHubRepositoryInfo", () => {
@@ -109,55 +125,84 @@ describe("GitHub Integration", () => {
 
     it("handles non-existent repositories", async () => {
       reposGet.mockRejectedValue({ status: 404, message: "Not Found" });
+      reposListLanguages.mockResolvedValue({ data: {} });
+      reposGetAllTopics.mockResolvedValue({ data: { names: [] } });
 
       const result = await getGitHubRepositoryInfo(
-        "https://github.com/nonexistent/repo-12345"
+        "https://github.com/nonexistent/repo-12345",
       );
       expect(result).toBeNull();
     });
   });
 
   describe("loadGithubRepository", () => {
-    it("successfully loads a repository", async () => {
+    it("downloads one tarball at the resolved default branch, bypassing the fetch cache", async () => {
       const repoUrl = "https://github.com/test/repo";
       reposGet.mockResolvedValue({
         data: { default_branch: "master" },
       });
-      githubRepoLoaderMock.mockImplementation(() => ({
-        load: jest.fn().mockResolvedValue([
-          { pageContent: "test content", metadata: { source: "test.ts" } },
-        ]),
-      }));
+      fetchMock.mockResolvedValue(
+        new Response(
+          await tarGzBuffer([
+            { name: "test-repo-abc123/test.ts", content: "test content" },
+          ]),
+        ),
+      );
 
       const result = await loadGithubRepository(repoUrl);
 
-      expect(result).toBeDefined();
-      expect(Array.isArray(result)).toBe(true);
-      expect(githubRepoLoaderMock).toHaveBeenCalledWith(
-        repoUrl,
-        expect.objectContaining({ branch: "master" })
-      );
+      expect(result).toEqual([
+        { pageContent: "test content", metadata: { source: "test.ts" } },
+      ]);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const [url, init] = fetchMock.mock.calls[0];
+      expect(url).toContain("/repos/test/repo/tarball/master");
+      expect(init.cache).toBe("no-store");
     });
 
-    it("handles private repositories with a token", async () => {
-      const privateRepoUrl = "https://github.com/private/repo";
-      const token = "test-token";
-      reposGet.mockResolvedValue({
-        data: { default_branch: "main" },
-      });
-      githubRepoLoaderMock.mockImplementation(() => ({
-        load: jest.fn().mockResolvedValue([]),
-      }));
-
-      await loadGithubRepository(privateRepoUrl, token);
-
-      expect(githubRepoLoaderMock).toHaveBeenCalledWith(
-        privateRepoUrl,
-        expect.objectContaining({
-          accessToken: token,
-          branch: "main",
-        })
+    it("pins to an explicit ref and sends the token", async () => {
+      fetchMock.mockResolvedValue(
+        new Response(
+          await tarGzBuffer([{ name: "p-r-9f31c2e/src/a.ts", content: "a" }]),
+        ),
       );
+
+      await loadGithubRepository(
+        "https://github.com/private/repo",
+        "test-token",
+        "9f31c2e",
+      );
+
+      expect(reposGet).not.toHaveBeenCalled();
+      const [url, init] = fetchMock.mock.calls[0];
+      expect(url).toContain("/repos/private/repo/tarball/9f31c2e");
+      expect(init.headers.Authorization).toBe("token test-token");
+    });
+
+    it("serves repeat loads of an immutable SHA from the doc cache", async () => {
+      const sha = "a".repeat(40);
+      fetchMock.mockResolvedValue(
+        new Response(
+          await tarGzBuffer([
+            { name: `c-d-${sha.slice(0, 7)}/x.ts`, content: "cached" },
+          ]),
+        ),
+      );
+
+      const first = await loadGithubRepository(
+        "https://github.com/cache/demo",
+        undefined,
+        sha,
+      );
+      const second = await loadGithubRepository(
+        "https://github.com/cache/demo",
+        undefined,
+        sha,
+      );
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(second).toBe(first);
+      expect(second[0].pageContent).toBe("cached");
     });
   });
 });

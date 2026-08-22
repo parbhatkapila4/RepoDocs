@@ -12,6 +12,8 @@ import { getDbUserId } from "./get-db-user-id";
 import { isLikelyGitHubRateLimitMessage } from "./github-rate-limit-message";
 import { githubCoreQuotaRecovered } from "./github-rate-limit-status";
 import { getGitHubRepositoryInfo, type GitHubRepoInfo } from "./github";
+import { fetchRepoInfoForProject } from "./project-repo-info";
+import { withGenerationStamp } from "./generated-stamp";
 import type { Project } from "@prisma/client";
 
 export type CreateProjectResult =
@@ -38,7 +40,7 @@ function normalizePlanName(plan: string): keyof typeof PLAN_LIMITS {
 export async function createProject(
   name: string,
   githubUrl: string,
-  githubToken?: string
+  githubToken?: string,
 ): Promise<CreateProjectResult> {
   try {
     const project = await createProjectWithAuth(name, githubUrl, githubToken);
@@ -283,7 +285,7 @@ export async function checkProjectLimit() {
 
 async function isProjectWithinQuota(
   projectId: string,
-  userId: string
+  userId: string,
 ): Promise<{ allowed: boolean; reason?: string }> {
   let plan: keyof typeof PLAN_LIMITS = "starter";
   try {
@@ -369,7 +371,7 @@ function isDatabaseUnreachable(error: unknown): boolean {
   }
   const msg = error instanceof Error ? error.message : String(error);
   return /can't reach database|connection refused|timeout|ECONNREFUSED|ETIMEDOUT/i.test(
-    msg
+    msg,
   );
 }
 
@@ -431,7 +433,7 @@ export async function getUserProjects() {
     console.error("Error fetching user projects:", error);
     if (isDatabaseUnreachable(error)) {
       throw new Error(
-        "Cannot reach the database. If you use Neon: resume the project in the Neon console, confirm DATABASE_URL uses the pooled connection string, and ensure sslmode=require. Then retry."
+        "Cannot reach the database. If you use Neon: resume the project in the Neon console, confirm DATABASE_URL uses the pooled connection string, and ensure sslmode=require. Then retry.",
       );
     }
     return [];
@@ -439,7 +441,7 @@ export async function getUserProjects() {
 }
 
 export async function fetchRepositoryInfo(
-  repoUrl: string
+  repoUrl: string,
 ): Promise<{ data: any } | { error: string }> {
   try {
     const repoInfo = await getGitHubRepositoryInfo(repoUrl);
@@ -457,7 +459,10 @@ export async function fetchRepositoryInfo(
       const resetHeader = error?.response?.headers?.["x-ratelimit-reset"];
       let resetNote = "";
       if (resetHeader) {
-        const secs = Math.max(0, Number(resetHeader) - Math.floor(Date.now() / 1000));
+        const secs = Math.max(
+          0,
+          Number(resetHeader) - Math.floor(Date.now() / 1000),
+        );
         resetNote = ` reset in ${secs}s`;
       }
       return {
@@ -620,35 +625,13 @@ export async function regenerateProjectReadme(projectId: string) {
         },
       });
 
-      let repoInfo: Partial<GitHubRepoInfo> | null = null;
-      try {
-        repoInfo = await getGitHubRepositoryInfo(
-          project.repoUrl,
-          decryptSecret(project.githubToken) || undefined
-        );
-        if (!repoInfo) {
-          repoInfo = await getGitHubRepositoryInfo(project.repoUrl);
-        }
-      } catch (repoError) {
-        console.error("Error fetching repo info:", repoError);
-      }
-
-      if (!repoInfo) {
-        repoInfo = {
-          name: project.name,
-          htmlUrl: project.repoUrl,
-          description: null,
-          language: null,
-          stars: 0,
-          forks: 0,
-        };
-      }
+      const repoInfo = await fetchRepoInfoForProject(project);
 
       const { generateReadmeFromCodebase } = await import("./gemini");
       const readmeContent = await generateReadmeFromCodebase(
         project.name,
         [],
-        repoInfo
+        repoInfo,
       );
 
       const readme = await prisma.readme.upsert({
@@ -671,39 +654,15 @@ export async function regenerateProjectReadme(projectId: string) {
     }
 
     const summaries = sourceCodeEmbeddings.map(
-      (embedding) => embedding.Summary
+      (embedding) => embedding.Summary,
     );
 
-    let repoInfo: Partial<GitHubRepoInfo> | null = null;
-    try {
-      repoInfo = await getGitHubRepositoryInfo(
-        project.repoUrl,
-        decryptSecret(project.githubToken) || undefined
-      );
-
-      if (!repoInfo) {
-        repoInfo = await getGitHubRepositoryInfo(project.repoUrl);
-      }
-    } catch (repoError) {
-      console.error("Error fetching repo info:", repoError);
-    }
-
-    if (!repoInfo) {
-      repoInfo = {
-        name: project.name,
-        htmlUrl: project.repoUrl,
-        description: null,
-        language: null,
-        stars: 0,
-        forks: 0,
-      };
-    }
+    const repoInfo = await fetchRepoInfoForProject(project);
 
     const { generateReadmeFromCodebase } = await import("./gemini");
-    const readmeContent = await generateReadmeFromCodebase(
-      project.name,
-      summaries,
-      repoInfo
+    const readmeContent = withGenerationStamp(
+      await generateReadmeFromCodebase(project.name, summaries, repoInfo),
+      { repoUrl: project.repoUrl, commitSha: project.indexedCommitSha },
     );
 
     const readme = await prisma.readme.upsert({
@@ -775,7 +734,7 @@ export async function modifyReadmeWithQna(projectId: string, question: string) {
     const modifiedContent = await modifyReadmeWithQuery(
       currentReadme.content,
       question,
-      project.name
+      project.name,
     );
 
     const updatedReadme = await prisma.readme.update({
@@ -922,7 +881,7 @@ export async function createReadmeShare(projectId: string) {
     const userPlan = user?.plan ? normalizePlanName(user.plan) : "starter";
     if (userPlan === "starter") {
       throw new Error(
-        "Sharing is only available for Professional and Enterprise plans. Please upgrade to share your README."
+        "Sharing is only available for Professional and Enterprise plans. Please upgrade to share your README.",
       );
     }
 
@@ -1259,10 +1218,10 @@ export async function checkEmbeddingsStatus(projectId: string) {
               error: null,
               ...(prevStatus === "failed"
                 ? {
-                  status: "queued",
-                  lockedAt: null,
-                  lockedBy: null,
-                }
+                    status: "queued",
+                    lockedAt: null,
+                    lockedBy: null,
+                  }
                 : {}),
               updatedAt: now,
             },
@@ -1276,9 +1235,7 @@ export async function checkEmbeddingsStatus(projectId: string) {
       if (job?.status === "queued" && job.lockedAt == null) {
         void kickIndexingWorker();
       }
-      const jobExtrasFresh = job as
-        | (typeof job & JobExtras)
-        | null;
+      const jobExtrasFresh = job as (typeof job & JobExtras) | null;
 
       const isIndexing = job
         ? job.status === "queued" || job.status === "processing"
@@ -1472,35 +1429,13 @@ export async function regenerateProjectDocs(projectId: string) {
         },
       });
 
-      let repoInfo: Partial<GitHubRepoInfo> | null = null;
-      try {
-        repoInfo = await getGitHubRepositoryInfo(
-          project.repoUrl,
-          decryptSecret(project.githubToken) || undefined
-        );
-        if (!repoInfo) {
-          repoInfo = await getGitHubRepositoryInfo(project.repoUrl);
-        }
-      } catch (repoError) {
-        console.error("Error fetching repo info:", repoError);
-      }
-
-      if (!repoInfo) {
-        repoInfo = {
-          name: project.name,
-          htmlUrl: project.repoUrl,
-          description: null,
-          language: null,
-          stars: 0,
-          forks: 0,
-        };
-      }
+      const repoInfo = await fetchRepoInfoForProject(project);
 
       const { generateDocsFromCodebase } = await import("./gemini");
       const docsContent = await generateDocsFromCodebase(
         project.name,
         [],
-        repoInfo
+        repoInfo,
       );
 
       const docs = await prisma.docs.upsert({
@@ -1523,39 +1458,15 @@ export async function regenerateProjectDocs(projectId: string) {
     }
 
     const summaries = sourceCodeEmbeddings.map(
-      (embedding) => embedding.Summary
+      (embedding) => embedding.Summary,
     );
 
-    let repoInfo: Partial<GitHubRepoInfo> | null = null;
-    try {
-      repoInfo = await getGitHubRepositoryInfo(
-        project.repoUrl,
-        decryptSecret(project.githubToken) || undefined
-      );
-
-      if (!repoInfo) {
-        repoInfo = await getGitHubRepositoryInfo(project.repoUrl);
-      }
-    } catch (repoError) {
-      console.error("Error fetching repo info:", repoError);
-    }
-
-    if (!repoInfo) {
-      repoInfo = {
-        name: project.name,
-        htmlUrl: project.repoUrl,
-        description: null,
-        language: null,
-        stars: 0,
-        forks: 0,
-      };
-    }
+    const repoInfo = await fetchRepoInfoForProject(project);
 
     const { generateDocsFromCodebase } = await import("./gemini");
-    const docsContent = await generateDocsFromCodebase(
-      project.name,
-      summaries,
-      repoInfo
+    const docsContent = withGenerationStamp(
+      await generateDocsFromCodebase(project.name, summaries, repoInfo),
+      { repoUrl: project.repoUrl, commitSha: project.indexedCommitSha },
     );
 
     const docs = await prisma.docs.upsert({
@@ -1724,7 +1635,7 @@ export async function getBackgroundJob(jobId: string) {
         projectId: true,
         createdAt: true,
       },
-    })
+    }),
   );
 
   if (!job) return null;
@@ -1775,7 +1686,7 @@ export async function modifyDocsWithQna(projectId: string, question: string) {
     const modifiedContent = await modifyDocsWithQuery(
       currentDocs.content,
       question,
-      project.name
+      project.name,
     );
 
     const updatedDocs = await prisma.docs.update({
@@ -1816,7 +1727,9 @@ export async function modifyDocsWithQna(projectId: string, question: string) {
         msg.includes("OPENROUTER_API_KEY") ||
         msg.includes("OpenRouter API error") ||
         msg.includes("Failed to modify docs with AI") ||
-        msg.includes("Documentation modification resulted in missing sections") ||
+        msg.includes(
+          "Documentation modification resulted in missing sections",
+        ) ||
         msg.includes("removed too many sections")
       ) {
         throw error;
@@ -1827,7 +1740,7 @@ export async function modifyDocsWithQna(projectId: string, question: string) {
     }
 
     throw new Error(
-      "Failed to modify docs. Check that OPENROUTER_API_KEY is set and try again."
+      "Failed to modify docs. Check that OPENROUTER_API_KEY is set and try again.",
     );
   }
 }
@@ -1946,7 +1859,7 @@ export async function createDocsShare(projectId: string) {
     const userPlan = user?.plan ? normalizePlanName(user.plan) : "starter";
     if (userPlan === "starter") {
       throw new Error(
-        "Sharing is only available for Professional and Enterprise plans. Please upgrade to share your documentation."
+        "Sharing is only available for Professional and Enterprise plans. Please upgrade to share your documentation.",
       );
     }
 

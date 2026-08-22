@@ -35,6 +35,8 @@ import GitHubRateLimitNotice, {
 import Image from "next/image";
 import { LoadingButton } from "@/components/LoadingButton";
 import { IndexingMeter } from "@/components/IndexingMeter";
+
+const REPO_CACHE_TTL_MS = 10 * 60 * 1000;
 import { friendlyError } from "@/lib/friendly-error";
 
 const terminalColors = {
@@ -64,8 +66,6 @@ function ReposPage() {
   const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
 
   const currentProject = projects.find((p) => p.id === selectedProjectId);
-
-  const REPO_CACHE_TTL_MS = 10 * 60 * 1000;
 
   const isCachedFresh = useCallback(() => {
     if (!currentProject?.repoUrl) return false;
@@ -250,10 +250,7 @@ function ReposPage() {
           </div>
         </motion.div>
 
-        <IndexingMeter
-          key={currentProject.id}
-          projectId={currentProject.id}
-        />
+        <IndexingMeter key={currentProject.id} projectId={currentProject.id} />
 
         <GitHubRateLimitNotice error={error} className="mb-6" />
 
@@ -264,7 +261,9 @@ function ReposPage() {
             animate={{ opacity: 1 }}
           >
             <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-white/30" />
-            <span className="text-[13px] text-white/40">{friendlyError(error)}</span>
+            <span className="text-[13px] text-white/40">
+              {friendlyError(error)}
+            </span>
           </motion.div>
         )}
 
@@ -541,10 +540,11 @@ function ReposPage() {
                   ].map((feature) => (
                     <div
                       key={feature.label}
-                      className={`flex items-center gap-2 p-3 rounded-lg ${feature.enabled
-                        ? "bg-green-500/10 border border-green-500/20"
-                        : "bg-[#252525] border border-[#333]"
-                        }`}
+                      className={`flex items-center gap-2 p-3 rounded-lg ${
+                        feature.enabled
+                          ? "bg-green-500/10 border border-green-500/20"
+                          : "bg-[#252525] border border-[#333]"
+                      }`}
                     >
                       <feature.icon
                         className={`w-4 h-4 ${feature.enabled ? "text-green-400" : "text-[#666]"}`}
@@ -593,7 +593,7 @@ function ReposPage() {
                       <Zap className="w-4 h-4 text-[#f1fa8c]" />
                       <span className="text-[#888] text-sm">
                         {new Date(repoInfo.pushedAt) >
-                          new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+                        new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
                           ? "Actively maintained"
                           : "Last activity over 30 days ago"}
                       </span>
@@ -619,7 +619,7 @@ function ReposPage() {
                   {Object.entries(repoInfo.languages).map(([lang, bytes]) => {
                     const total = Object.values(repoInfo.languages).reduce(
                       (a, b) => a + b,
-                      0
+                      0,
                     );
                     const percentage = (bytes / total) * 100;
                     return (
@@ -640,7 +640,7 @@ function ReposPage() {
                   {Object.entries(repoInfo.languages).map(([lang, bytes]) => {
                     const total = Object.values(repoInfo.languages).reduce(
                       (a, b) => a + b,
-                      0
+                      0,
                     );
                     const percentage = ((bytes / total) * 100).toFixed(1);
                     return (

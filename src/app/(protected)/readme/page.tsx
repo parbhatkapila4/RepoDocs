@@ -113,7 +113,7 @@ interface ReadmeWithQna extends ReadmeData {
 }
 
 function readCachedRepoInfo(
-  projectId: string | null | undefined
+  projectId: string | null | undefined,
 ): RepositoryInfoResult | null {
   if (!projectId || typeof window === "undefined") return null;
   try {
@@ -126,17 +126,16 @@ function readCachedRepoInfo(
 
 function writeCachedRepoInfo(
   projectId: string | null | undefined,
-  info: RepositoryInfoResult | null | undefined
+  info: RepositoryInfoResult | null | undefined,
 ): void {
   if (!projectId || typeof window === "undefined" || !info) return;
   try {
     localStorage.setItem(`repoInfo:${projectId}`, JSON.stringify(info));
-  } catch {
-  }
+  } catch {}
 }
 
 function hasUsefulRepoInfo(
-  info: RepositoryInfoResult | null | undefined
+  info: RepositoryInfoResult | null | undefined,
 ): boolean {
   if (!info) return false;
   const stars = info.stars ?? info.stargazersCount ?? 0;
@@ -197,7 +196,7 @@ function ReadmePage() {
 
   const parseReadmeMetadata = (
     content: string,
-    repositoryInfo?: RepositoryInfoResult | null
+    repositoryInfo?: RepositoryInfoResult | null,
   ): ReadmeMetadata => {
     const lines = content.split("\n");
     let title = "README";
@@ -267,7 +266,7 @@ function ReadmePage() {
 
   const fetchRepositoryInfo = (
     projectId: string,
-    repoUrl: string | null | undefined
+    repoUrl: string | null | undefined,
   ) => fetchProjectRepositoryInfo(projectId, repoUrl);
 
   const fetchReadme = async () => {
@@ -559,6 +558,7 @@ function ReadmePage() {
       fetchQnaHistory();
       fetchShareData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProjectId]);
 
   if (!selectedProjectId) {
@@ -742,7 +742,9 @@ function ReadmePage() {
       {error && !isRateLimitError(error) && (
         <Alert className="mb-6 mx-4 border-red-500/50 bg-red-500/10">
           <AlertCircle className="h-4 w-4 text-red-400" />
-          <AlertDescription className="text-red-300">{friendlyError(error)}</AlertDescription>
+          <AlertDescription className="text-red-300">
+            {friendlyError(error)}
+          </AlertDescription>
         </Alert>
       )}
 
@@ -887,11 +889,11 @@ function ReadmePage() {
                             ),
                             p: ({ children }) => {
                               const hasOnlyImages = React.Children.toArray(
-                                children
+                                children,
                               ).every(
                                 (child) =>
                                   React.isValidElement(child) &&
-                                  child.type === "img"
+                                  child.type === "img",
                               );
 
                               return (
@@ -1140,7 +1142,7 @@ function ReadmePage() {
                                       <Clock className="h-3 w-3" />
                                       <span>
                                         {new Date(
-                                          qna.createdAt
+                                          qna.createdAt,
                                         ).toLocaleString()}
                                       </span>
                                     </div>

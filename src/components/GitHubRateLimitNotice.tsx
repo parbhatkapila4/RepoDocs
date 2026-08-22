@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Clock, X } from "lucide-react";
 import { isLikelyGitHubRateLimitMessage } from "@/lib/github-rate-limit-message";
 
@@ -13,21 +13,15 @@ function isRateLimitError(error: string | null): boolean {
   return isLikelyGitHubRateLimitMessage(error);
 }
 
-export default function GitHubRateLimitNotice({ error, className = "" }: Props) {
-  const [dismissed, setDismissed] = useState(false);
-  const [minutesLeft, setMinutesLeft] = useState<number | null>(null);
+export default function GitHubRateLimitNotice({
+  error,
+  className = "",
+}: Props) {
+  const [dismissedFor, setDismissedFor] = useState<string | null>(null);
+  const dismissed = dismissedFor !== null && dismissedFor === error;
 
-  useEffect(() => {
-    if (!isRateLimitError(error)) return;
-    setDismissed(false);
-
-    const resetMatch = error?.match(/reset\s*(?:in\s+)?(\d+)/i);
-    if (resetMatch) {
-      setMinutesLeft(Math.ceil(Number(resetMatch[1]) / 60));
-    } else {
-      setMinutesLeft(null);
-    }
-  }, [error]);
+  const resetMatch = error?.match(/reset\s*(?:in\s+)?(\d+)/i);
+  const minutesLeft = resetMatch ? Math.ceil(Number(resetMatch[1]) / 60) : null;
 
   if (!isRateLimitError(error) || dismissed) return null;
 
@@ -51,7 +45,7 @@ export default function GitHubRateLimitNotice({ error, className = "" }: Props) 
         </p>
       </div>
       <button
-        onClick={() => setDismissed(true)}
+        onClick={() => setDismissedFor(error)}
         className="shrink-0 mt-0.5 p-1 rounded text-white/15 hover:text-white/30 transition-colors"
       >
         <X className="w-3.5 h-3.5" />

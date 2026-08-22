@@ -81,10 +81,7 @@ import GitHubRateLimitNotice, {
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { exportMarkdownToPdf } from "@/lib/export-pdf";
-import {
-  exportMarkdownToDocx,
-  exportMarkdownToFile,
-} from "@/lib/export-docx";
+import { exportMarkdownToDocx, exportMarkdownToFile } from "@/lib/export-docx";
 import {
   fetchProjectRepositoryInfo,
   type RepositoryInfoResult,
@@ -124,7 +121,6 @@ interface QnaRecord {
 interface DocsWithQna extends DocsData {
   qnaHistory?: QnaRecord[];
 }
-
 
 function DocsPage() {
   const { selectedProjectId, projects } = useProjectsContext();
@@ -262,13 +258,13 @@ function DocsPage() {
 
       return { headingText, badges, contentWithoutHeading };
     },
-    [selectedProject]
+    [selectedProject],
   );
 
   const parseDocsMetadata = useCallback(
     (
       content: string,
-      repositoryInfo?: RepositoryInfoResult | null
+      repositoryInfo?: RepositoryInfoResult | null,
     ): DocsMetadata => {
       const lines = content.split("\n");
       let title = "Technical Documentation";
@@ -332,7 +328,7 @@ function DocsPage() {
 
       return { title, description, stars, forks, language, license };
     },
-    []
+    [],
   );
 
   const handleCopyCode = async () => {
@@ -359,7 +355,7 @@ function DocsPage() {
   const fetchRepositoryInfo = useCallback(
     (projectId: string, repoUrl: string | null | undefined) =>
       fetchProjectRepositoryInfo(projectId, repoUrl),
-    []
+    [],
   );
 
   const fetchDocs = useCallback(async () => {
@@ -372,7 +368,7 @@ function DocsPage() {
 
     try {
       const project = projectsRef.current.find(
-        (p) => p.id === selectedProjectId
+        (p) => p.id === selectedProjectId,
       );
 
       const repoUrl = project?.repoUrl;
@@ -402,13 +398,18 @@ function DocsPage() {
       console.error("Error fetching docs:", err);
       if (docsMountedRef.current) {
         setError(
-          err instanceof Error ? err.message : "Failed to fetch documentation"
+          err instanceof Error ? err.message : "Failed to fetch documentation",
         );
       }
     } finally {
       if (docsMountedRef.current) setIsLoading(false);
     }
-  }, [selectedProjectId, parseDocsMetadata, fetchRepositoryInfo, docsMountedRef]);
+  }, [
+    selectedProjectId,
+    parseDocsMetadata,
+    fetchRepositoryInfo,
+    docsMountedRef,
+  ]);
 
   const docsBgJob = useBackgroundRegenJob({
     projectId: selectedProjectId,
@@ -453,7 +454,7 @@ function DocsPage() {
       try {
         const result = await modifyDocsWithQna(
           selectedProjectId,
-          questionValue
+          questionValue,
         );
         toast.success("Documentation updated successfully!", {
           description:
@@ -716,14 +717,18 @@ function DocsPage() {
     }
   }, [selectedProjectId, fetchDocs, fetchQnaHistory, fetchShareData]);
 
-  useEffect(() => {
-    if (docsData?.content) {
-      setMetadata(parseDocsMetadata(docsData.content, repositoryInfo));
-    }
-  }, [repositoryInfo, docsData?.id, parseDocsMetadata]);
+  const docsContent = docsData?.content ?? null;
+  const docsPrompt = docsData?.prompt ?? null;
+  const hasDocs = docsData != null;
 
   useEffect(() => {
-    if (!selectedProjectId || !docsData) {
+    if (docsContent) {
+      setMetadata(parseDocsMetadata(docsContent, repositoryInfo));
+    }
+  }, [repositoryInfo, docsContent, parseDocsMetadata]);
+
+  useEffect(() => {
+    if (!selectedProjectId || !hasDocs) {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
         pollingIntervalRef.current = null;
@@ -732,8 +737,8 @@ function DocsPage() {
     }
 
     const isPreview =
-      docsData.prompt?.toLowerCase().includes("demo") ||
-      docsData.prompt?.toLowerCase().includes("preview");
+      docsPrompt?.toLowerCase().includes("demo") ||
+      docsPrompt?.toLowerCase().includes("preview");
 
     if (
       isPreview &&
@@ -789,7 +794,8 @@ function DocsPage() {
     }
   }, [
     selectedProjectId,
-    docsData?.id,
+    hasDocs,
+    docsPrompt,
     hasEmbeddings,
     hasShownIndexingCompleteToast,
   ]);
@@ -863,8 +869,9 @@ function DocsPage() {
 
         <div
           ref={disclaimerRef}
-          className={`hidden show-disclaimer items-center justify-start flex-1 -ml-16 ${!showDisclaimer ? "invisible" : ""
-            }`}
+          className={`hidden show-disclaimer items-center justify-start flex-1 -ml-16 ${
+            !showDisclaimer ? "invisible" : ""
+          }`}
         >
           <p className="text-white/40 text-xs italic text-center animate-pulse">
             ✨ This may take time because we focus on quality documentation
@@ -1001,7 +1008,9 @@ function DocsPage() {
       {error && !isRateLimitError(error) && (
         <Alert className="mb-6 mx-4 border-red-500/50 bg-red-500/10">
           <AlertCircle className="h-4 w-4 text-red-400" />
-          <AlertDescription className="text-red-300">{friendlyError(error)}</AlertDescription>
+          <AlertDescription className="text-red-300">
+            {friendlyError(error)}
+          </AlertDescription>
         </Alert>
       )}
 
@@ -1212,10 +1221,10 @@ function DocsPage() {
                           }
 
                           const badgeTexts = new Set(
-                            badges.map((b) => b.text.toLowerCase())
+                            badges.map((b) => b.text.toLowerCase()),
                           );
                           const uniqueTechBadges = techBadges.filter(
-                            (b) => !badgeTexts.has(b.text.toLowerCase())
+                            (b) => !badgeTexts.has(b.text.toLowerCase()),
                           );
                           const allBadges = [...badges, ...uniqueTechBadges];
 
@@ -1254,7 +1263,7 @@ function DocsPage() {
                                         !b.text.includes("STARS") &&
                                         !b.text.includes("FORKS") &&
                                         b.text !== metadata?.language &&
-                                        b.text !== metadata?.license
+                                        b.text !== metadata?.license,
                                     )
                                     .map((badge, idx) => {
                                       const badgeColors: Record<
@@ -1275,14 +1284,14 @@ function DocsPage() {
 
                                       const bgColor =
                                         badgeColors[
-                                        badge.color.toLowerCase()
+                                          badge.color.toLowerCase()
                                         ] ||
                                         badge.color ||
                                         "#3b82f6";
                                       const isProjectBadge =
                                         badge.icon === "pin" ||
                                         badge.text.toLowerCase() ===
-                                        selectedProject?.name?.toLowerCase();
+                                          selectedProject?.name?.toLowerCase();
 
                                       return (
                                         <div

@@ -32,8 +32,7 @@ function getGenAi(): GoogleGenAI {
 }
 
 const OPENROUTER_DOCS_MODIFY_MODEL =
-  process.env.OPENROUTER_DOCS_MODIFY_MODEL?.trim() ||
-  "google/gemini-2.5-flash";
+  process.env.OPENROUTER_DOCS_MODIFY_MODEL?.trim() || "google/gemini-2.5-flash";
 const OPENROUTER_README_MODEL =
   process.env.OPENROUTER_README_MODEL?.trim() || "google/gemini-2.5-pro";
 
@@ -510,10 +509,7 @@ export async function generateDocsFromCodebase(
           shared,
           specs: repairSpecs,
           includeHeader: !preamble,
-          maxTokens: Math.min(
-            30000,
-            Math.max(8000, repairSpecs.length * 6000),
-          ),
+          maxTokens: Math.min(30000, Math.max(8000, repairSpecs.length * 6000)),
         });
         if (!preamble && repair.preamble) preamble = repair.preamble;
         for (const [num, text] of repair.sections) {
@@ -536,7 +532,6 @@ export async function generateDocsFromCodebase(
     }
 
     if (!preamble) {
-
       preamble = `# 📘 ${projectName} - Technical Documentation`;
     }
 
@@ -547,9 +542,7 @@ export async function generateDocsFromCodebase(
       );
     }
 
-    log.debug(
-      `✅ Docs assembled: 17/17 sections, ${docsContent.length} chars`,
-    );
+    log.debug(`✅ Docs assembled: 17/17 sections, ${docsContent.length} chars`);
     return docsContent;
   } catch (error) {
     console.error("Error generating docs:", error);
@@ -657,9 +650,6 @@ export async function modifyDocsWithQuery(
     const sectionCount = sectionHeaders.length;
     const originalLength = currentDocs.length;
 
-    const removeSectionMatch = userQuery.match(
-      /remove\s+(?:the\s+)?(?:first|1st|section\s+)?(\d+|one|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth)/i,
-    );
     const isRemovalRequest =
       /remove|delete|drop/i.test(userQuery) && /section/i.test(userQuery);
 
@@ -667,64 +657,25 @@ export async function modifyDocsWithQuery(
       .map((header, idx) => `${idx + 1}. ${header}`)
       .join("\n");
 
-    const prompt = `You are an expert technical writer. You need to modify existing technical documentation based on a user's specific request.
+    const prompt = `You are editing an existing technical document for "${projectName}". Apply the user's request as a surgical edit and return the complete document.
 
-PROJECT: ${projectName}
+CURRENT DOCUMENT (${sectionCount} numbered sections):
+${sectionsList}
 
-CURRENT DOCUMENTATION CONTENT:
 ${currentDocs}
 
 USER REQUEST:
 ${userQuery}
 
-🚨 CRITICAL: DO NOT REGENERATE CONTENT - ONLY MODIFY WHAT IS REQUESTED 🚨
-
-CURRENT DOCUMENTATION STRUCTURE:
-The documentation currently has ${sectionCount} main sections:
-${sectionsList}
-
-ABSOLUTE REQUIREMENTS FOR MODIFICATIONS:
-1. **PRESERVE ALL SECTIONS** - Unless the user explicitly asks to remove a specific section, you MUST keep ALL sections exactly as they are
-2. **If removing a section**: Remove ONLY that specific section, keep ALL other sections completely intact with their original content
-3. **If modifying a section**: Modify ONLY that section's content, keep ALL other sections exactly as they are
-4. **DO NOT regenerate**: Use the existing content from the original documentation - do NOT rewrite or regenerate sections
-5. **DO NOT truncate**: Return the COMPLETE documentation with all sections (except the one being removed if requested)
-
-SPECIFIC INSTRUCTIONS:
-${
-  isRemovalRequest
-    ? `⚠️ REMOVAL REQUEST DETECTED:
-- Remove ONLY the section(s) explicitly mentioned in the user request
-- Keep ALL other sections (${sectionCount - 1} sections) with their EXACT original content
-- Do NOT modify, rewrite, or regenerate any other sections
-- Simply delete the requested section and return everything else unchanged
-
-EXAMPLE: If user says "remove the first section":
-- Delete section "## 1. [First Section Title]" and all its content
-- Keep sections 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 EXACTLY as they are
-- Do NOT remove any other sections
-- Do NOT regenerate any content`
-    : `⚠️ MODIFICATION REQUEST:
-- Modify ONLY the section(s) mentioned in the user request
-- Keep ALL other sections (${sectionCount} sections) with their EXACT original content
-- Do NOT modify, rewrite, or regenerate sections not mentioned in the request
-
-EXAMPLE: If user says "update section 3":
-- Modify ONLY section "## 3. [Section Title]" 
-- Copy sections 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 EXACTLY as they appear in the original
-- Do NOT change any other sections`
-}
-
-OUTPUT REQUIREMENTS:
-- Return the COMPLETE documentation with all sections (except removed ones)
-- Use the EXACT original content for sections you're not modifying
-- Only change what the user explicitly requested
-- Maintain all markdown formatting
-- Do NOT add explanations, comments, or notes
-- Do NOT include HTML tags
-- The output must be ${originalLength} characters or more (unless removing a section)
-
-Generate the COMPLETE modified documentation (preserving all unchanged sections exactly as they are):`;
+EDITING CONTRACT:
+- This is an edit, not a rewrite. Sections the request does not touch must be copied through verbatim — same wording, same formatting, same length.
+- ${
+      isRemovalRequest
+        ? `The request removes content: delete only the section(s) it names and return every other section unchanged (${sectionCount - 1} sections expected).`
+        : `The request modifies content: change only the section(s) it names and return all ${sectionCount} sections.`
+    }
+- Return the complete document from the first line to the last, in the original section order, with no truncation.
+- Output the document only — no explanations, no commentary, no HTML tags, standard markdown throughout.`;
 
     const maxModifyOutputTokens = Math.min(
       60000,
@@ -735,16 +686,7 @@ Generate the COMPLETE modified documentation (preserving all unchanged sections 
       `📝 Modifying docs: Original length: ${originalLength} chars (~${sectionCount} sections), Model: ${OPENROUTER_DOCS_MODIFY_MODEL}, Max output tokens: ${maxModifyOutputTokens}`,
     );
 
-    const systemInstruction = `🚨 CRITICAL SYSTEM INSTRUCTION 🚨
-
-You are modifying existing documentation. Your job is to:
-1. Copy sections EXACTLY as they appear in the original (unless explicitly asked to modify/remove them)
-2. Do NOT regenerate, rewrite, or summarize any section
-3. Do NOT truncate or cut off content
-4. If removing a section: Delete ONLY that section, keep ALL others with their EXACT original text
-5. If modifying a section: Change ONLY that section, copy ALL others exactly as they are
-
-The user wants you to PRESERVE existing content, not regenerate it.`;
+    const systemInstruction = `You edit existing documents surgically. Untouched sections are copied through verbatim — never regenerated, summarized, or truncated. The complete document comes back every time.`;
 
     const modifiedResult = await openrouterSingleMessage(
       prompt,
@@ -803,33 +745,21 @@ The user wants you to PRESERVE existing content, not regenerate it.`;
         `⚠️ Modified docs may be incomplete or has missing sections. Attempting retry with stronger instructions...`,
       );
 
-      const missingSectionsList = hasGaps
-        ? `\n\n🚨 MISSING SECTIONS DETECTED: ${missingSections.join(", ")} - You MUST include these sections!`
-        : "";
+      const issues = [
+        hasGaps ? `sections ${missingSections.join(", ")} were missing` : "",
+        modifiedSectionCount < sectionCount * 0.8
+          ? `only ${modifiedSectionCount} of ${isRemovalRequest ? sectionCount - 1 : sectionCount} sections came back`
+          : "",
+        lengthRatio < 0.6
+          ? `the output was ${(lengthRatio * 100).toFixed(0)}% of the original length, which means content was dropped`
+          : "",
+      ]
+        .filter(Boolean)
+        .join("; ");
 
       const retryPrompt = `${prompt}
 
-🚨 CRITICAL RETRY INSTRUCTIONS - YOUR PREVIOUS RESPONSE WAS INCOMPLETE 🚨
-
-YOUR PREVIOUS RESPONSE HAD THESE ISSUES:
-${hasGaps ? `- Missing sections: ${missingSections.join(", ")}` : ""}
-${modifiedSectionCount < sectionCount * 0.8 ? `- Too few sections: Expected ${isRemovalRequest ? sectionCount - 1 : sectionCount}, got ${modifiedSectionCount}` : ""}
-${lengthRatio < 0.6 ? `- Response too short: Only ${(lengthRatio * 100).toFixed(1)}% of original length` : ""}
-
-ABSOLUTE REQUIREMENTS:
-- The original documentation had ${sectionCount} sections numbered 1 through ${sectionCount}
-${
-  isRemovalRequest
-    ? `- After removal, you MUST have sections: ${expectedSections.join(", ")} (${sectionCount - 1} sections total)`
-    : `- You MUST have ALL sections: ${expectedSections.join(", ")} (${sectionCount} sections total)`
-}
-- Section numbering MUST be sequential with NO gaps
-- For sections you're NOT modifying: Copy them EXACTLY word-for-word as they appear in the original documentation
-- Do NOT regenerate, rewrite, or summarize sections - use the EXACT original text
-- Only modify/remove the section(s) explicitly mentioned in the user request
-${missingSectionsList}
-
-GENERATE THE COMPLETE DOCUMENTATION NOW WITH ALL ${isRemovalRequest ? sectionCount - 1 : sectionCount} SECTIONS IN SEQUENTIAL ORDER:`;
+RETRY NOTE: Your previous attempt was incomplete — ${issues}. Apply the edit again and return the complete document: sections ${expectedSections.join(", ")}, in order, with every untouched section copied through verbatim.`;
 
       try {
         const retryResult = await openrouterSingleMessage(

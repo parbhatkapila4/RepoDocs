@@ -43,37 +43,59 @@ type ObservabilityData = {
 
 export default function ObservabilityPage() {
   const { projects, selectedProjectId } = useProjectsContext();
-  const [data, setData] = useState<ObservabilityData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{
+    projectId: string;
+    data: ObservabilityData | null;
+    error: string | null;
+  } | null>(null);
 
   const currentProject = projects.find((p) => p.id === selectedProjectId);
+  const currentProjectId = currentProject?.id;
+  const settled = result?.projectId === currentProjectId ? result : null;
+  const data = settled?.data ?? null;
+  const error = settled?.error ?? null;
+  const loading = !!currentProjectId && settled === null;
 
   useEffect(() => {
-    if (!selectedProjectId || !currentProject) {
-      setData(null);
-      setError(null);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
+    if (!selectedProjectId || !currentProjectId) return;
+    let cancelled = false;
 
     fetch(
-      `/api/observability?projectId=${encodeURIComponent(selectedProjectId)}&window=${WINDOW_DAYS}`
+      `/api/observability?projectId=${encodeURIComponent(selectedProjectId)}&window=${WINDOW_DAYS}`,
     )
       .then((res) => {
         if (!res.ok) {
           return res.json().then((body) => {
-            throw new Error(body.error || body.message || "Failed to load metrics");
+            throw new Error(
+              body.error || body.message || "Failed to load metrics",
+            );
           });
         }
         return res.json();
       })
-      .then(setData)
-      .catch((err) => setError(err instanceof Error ? err.message : "Something went wrong"))
-      .finally(() => setLoading(false));
-  }, [selectedProjectId, currentProject?.id]);
+      .then((payload) => {
+        if (!cancelled) {
+          setResult({
+            projectId: currentProjectId,
+            data: payload,
+            error: null,
+          });
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setResult({
+            projectId: currentProjectId,
+            data: null,
+            error: err instanceof Error ? err.message : "Something went wrong",
+          });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedProjectId, currentProjectId]);
 
   useEffect(() => {
     const main = document.querySelector('main[data-slot="sidebar-inset"]');
@@ -95,7 +117,8 @@ export default function ObservabilityPage() {
             No Project Selected
           </h2>
           <p className="text-[#888] text-sm text-center max-w-md">
-            Select a project from the sidebar to view AI usage and query metrics.
+            Select a project from the sidebar to view AI usage and query
+            metrics.
           </p>
           <Link
             href="/dashboard"
@@ -118,25 +141,25 @@ export default function ObservabilityPage() {
             Internal
           </span>
           <div className="flex flex-wrap items-center gap-3 mb-3">
-            <h1 className="text-4xl font-bold text-white">
-              Observability
-            </h1>
+            <h1 className="text-4xl font-bold text-white">Observability</h1>
             {data?.healthStatus && (
               <span
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm font-medium border ${data.healthStatus === "critical"
-                  ? "bg-red-500/10 text-red-400 border-red-500/30"
-                  : data.healthStatus === "warning"
-                    ? "bg-amber-500/10 text-amber-400 border-amber-500/30"
-                    : "bg-green-500/10 text-green-400 border-green-500/30"
-                  }`}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm font-medium border ${
+                  data.healthStatus === "critical"
+                    ? "bg-red-500/10 text-red-400 border-red-500/30"
+                    : data.healthStatus === "warning"
+                      ? "bg-amber-500/10 text-amber-400 border-amber-500/30"
+                      : "bg-green-500/10 text-green-400 border-green-500/30"
+                }`}
               >
                 <span
-                  className={`w-2 h-2 rounded-full shrink-0 ${data.healthStatus === "critical"
-                    ? "bg-red-500"
-                    : data.healthStatus === "warning"
-                      ? "bg-amber-500"
-                      : "bg-green-500"
-                    }`}
+                  className={`w-2 h-2 rounded-full shrink-0 ${
+                    data.healthStatus === "critical"
+                      ? "bg-red-500"
+                      : data.healthStatus === "warning"
+                        ? "bg-amber-500"
+                        : "bg-green-500"
+                  }`}
                 />
                 {data.healthStatus === "critical"
                   ? "Critical"
@@ -147,7 +170,8 @@ export default function ObservabilityPage() {
             )}
           </div>
           <p className="text-[#888] text-sm max-w-md">
-            Query metrics and estimated cost for this project (last {WINDOW_DAYS} days).
+            Query metrics and estimated cost for this project (last{" "}
+            {WINDOW_DAYS} days).
           </p>
         </div>
 
@@ -168,14 +192,20 @@ export default function ObservabilityPage() {
                 <p className="text-[#666] text-xs font-mono uppercase tracking-wider mb-1">
                   Total queries
                 </p>
-                <p className="text-2xl font-bold text-white">{data.totalQueries}</p>
-                <p className="text-[#888] text-xs mt-1">Last {WINDOW_DAYS} days</p>
+                <p className="text-2xl font-bold text-white">
+                  {data.totalQueries}
+                </p>
+                <p className="text-[#888] text-xs mt-1">
+                  Last {WINDOW_DAYS} days
+                </p>
               </div>
               <div className="bg-[#1a1a1a] border border-[#333] rounded-lg p-4">
                 <p className="text-[#666] text-xs font-mono uppercase tracking-wider mb-1">
                   Avg latency
                 </p>
-                <p className="text-2xl font-bold text-white">{data.avgLatencyMs.toFixed(0)} ms</p>
+                <p className="text-2xl font-bold text-white">
+                  {data.avgLatencyMs.toFixed(0)} ms
+                </p>
               </div>
               <div className="bg-[#1a1a1a] border border-[#333] rounded-lg p-4">
                 <p className="text-[#666] text-xs font-mono uppercase tracking-wider mb-1">
@@ -205,7 +235,6 @@ export default function ObservabilityPage() {
               </div>
             </div>
 
-
             <div className="bg-[#1a1a1a] border border-[#333] rounded-lg overflow-hidden">
               <div className="flex items-center gap-2 px-4 py-3 bg-[#252525] border-b border-[#333]">
                 <span className="text-[#888] text-sm font-mono">
@@ -216,8 +245,7 @@ export default function ObservabilityPage() {
                 <p className="text-[#888] text-sm">
                   Total cost (7d):{" "}
                   <span className="text-white font-mono">
-                    $
-                    {(data.totalCost7d ?? data.estimatedCostUsd7d).toFixed(4)}
+                    ${(data.totalCost7d ?? data.estimatedCostUsd7d).toFixed(4)}
                   </span>
                 </p>
                 {data.breakdown != null && (
@@ -249,7 +277,6 @@ export default function ObservabilityPage() {
               </div>
             </div>
 
-
             <div className="bg-[#1a1a1a] border border-[#333] rounded-lg p-4">
               <p className="text-[#666] text-xs font-mono uppercase tracking-wider mb-2">
                 Budget (30d)
@@ -258,19 +285,21 @@ export default function ObservabilityPage() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-[#888] text-sm">
-                      ${data.cost30d.toFixed(4)} of ${data.monthlyCostLimitUsd.toFixed(2)} limit
+                      ${data.cost30d.toFixed(4)} of $
+                      {data.monthlyCostLimitUsd.toFixed(2)} limit
                     </span>
                     <span
-                      className={`text-xs font-mono shrink-0 ${data.budgetStatus === "limit_exceeded"
-                        ? "text-red-500"
-                        : data.budgetStatus === "warning"
-                          ? "text-amber-500"
-                          : "text-[#888]"
-                        }`}
+                      className={`text-xs font-mono shrink-0 ${
+                        data.budgetStatus === "limit_exceeded"
+                          ? "text-red-500"
+                          : data.budgetStatus === "warning"
+                            ? "text-amber-500"
+                            : "text-[#888]"
+                      }`}
                     >
                       {Math.min(
                         100,
-                        (data.cost30d / data.monthlyCostLimitUsd) * 100
+                        (data.cost30d / data.monthlyCostLimitUsd) * 100,
                       ).toFixed(0)}
                       % used
                     </span>
@@ -281,7 +310,7 @@ export default function ObservabilityPage() {
                       style={{
                         width: `${Math.min(
                           100,
-                          (data.cost30d / data.monthlyCostLimitUsd) * 100
+                          (data.cost30d / data.monthlyCostLimitUsd) * 100,
                         )}%`,
                         backgroundColor:
                           data.budgetStatus === "limit_exceeded"
@@ -293,10 +322,14 @@ export default function ObservabilityPage() {
                     />
                   </div>
                   {data.budgetStatus === "warning" && (
-                    <p className="text-amber-500 text-xs">Approaching budget limit</p>
+                    <p className="text-amber-500 text-xs">
+                      Approaching budget limit
+                    </p>
                   )}
                   {data.budgetStatus === "limit_exceeded" && (
-                    <p className="text-red-500 text-xs">Budget limit exceeded</p>
+                    <p className="text-red-500 text-xs">
+                      Budget limit exceeded
+                    </p>
                   )}
                 </div>
               ) : (
@@ -304,90 +337,96 @@ export default function ObservabilityPage() {
               )}
             </div>
 
-
             {(data.coldStartCount !== undefined ||
               data.coldStartLatencyAvg !== undefined ||
               data.warmLatencyAvg !== undefined) && (
-                <div className="bg-[#1a1a1a] border border-[#333] rounded-lg p-4">
-                  <p className="text-[#666] text-xs font-mono uppercase tracking-wider mb-3">
-                    Cold starts (7d)
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <p className="text-[#666] text-xs mb-0.5">Cold starts</p>
-                      <p className="text-white font-mono">
-                        {data.coldStartCount ?? 0}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[#666] text-xs mb-0.5">Cold avg latency</p>
-                      <p className="text-white font-mono">
-                        {(data.coldStartLatencyAvg ?? 0) > 0
-                          ? `${(data.coldStartLatencyAvg ?? 0).toFixed(0)} ms`
-                          : "-"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[#666] text-xs mb-0.5">Warm avg latency</p>
-                      <p className="text-white font-mono">
-                        {(data.warmLatencyAvg ?? 0) > 0
-                          ? `${(data.warmLatencyAvg ?? 0).toFixed(0)} ms`
-                          : "-"}
-                      </p>
-                    </div>
+              <div className="bg-[#1a1a1a] border border-[#333] rounded-lg p-4">
+                <p className="text-[#666] text-xs font-mono uppercase tracking-wider mb-3">
+                  Cold starts (7d)
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <p className="text-[#666] text-xs mb-0.5">Cold starts</p>
+                    <p className="text-white font-mono">
+                      {data.coldStartCount ?? 0}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[#666] text-xs mb-0.5">
+                      Cold avg latency
+                    </p>
+                    <p className="text-white font-mono">
+                      {(data.coldStartLatencyAvg ?? 0) > 0
+                        ? `${(data.coldStartLatencyAvg ?? 0).toFixed(0)} ms`
+                        : "-"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[#666] text-xs mb-0.5">
+                      Warm avg latency
+                    </p>
+                    <p className="text-white font-mono">
+                      {(data.warmLatencyAvg ?? 0) > 0
+                        ? `${(data.warmLatencyAvg ?? 0).toFixed(0)} ms`
+                        : "-"}
+                    </p>
                   </div>
                 </div>
-              )}
-
+              </div>
+            )}
 
             {(data.cacheHitRate !== undefined ||
               data.avgLatencyCacheHit !== undefined ||
               data.avgLatencyCacheMiss !== undefined) && (
-                <div className="bg-[#1a1a1a] border border-[#333] rounded-lg p-4">
-                  <p className="text-[#666] text-xs font-mono uppercase tracking-wider mb-3">
-                    Cache (7d)
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <p className="text-[#666] text-xs mb-0.5">Cache hit rate</p>
-                      <p className="text-white font-mono">
-                        {data.cacheHitRate != null && data.totalQueries > 0
-                          ? `${(data.cacheHitRate * 100).toFixed(1)}%`
-                          : "-"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[#666] text-xs mb-0.5">
-                        Avg latency (cache hit)
-                      </p>
-                      <p className="text-white font-mono">
-                        {(data.avgLatencyCacheHit ?? 0) > 0
-                          ? `${(data.avgLatencyCacheHit ?? 0).toFixed(0)} ms`
-                          : "-"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[#666] text-xs mb-0.5">
-                        Avg latency (cache miss)
-                      </p>
-                      <p className="text-white font-mono">
-                        {(data.avgLatencyCacheMiss ?? 0) > 0
-                          ? `${(data.avgLatencyCacheMiss ?? 0).toFixed(0)} ms`
-                          : "-"}
-                      </p>
-                    </div>
+              <div className="bg-[#1a1a1a] border border-[#333] rounded-lg p-4">
+                <p className="text-[#666] text-xs font-mono uppercase tracking-wider mb-3">
+                  Cache (7d)
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <p className="text-[#666] text-xs mb-0.5">Cache hit rate</p>
+                    <p className="text-white font-mono">
+                      {data.cacheHitRate != null && data.totalQueries > 0
+                        ? `${(data.cacheHitRate * 100).toFixed(1)}%`
+                        : "-"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[#666] text-xs mb-0.5">
+                      Avg latency (cache hit)
+                    </p>
+                    <p className="text-white font-mono">
+                      {(data.avgLatencyCacheHit ?? 0) > 0
+                        ? `${(data.avgLatencyCacheHit ?? 0).toFixed(0)} ms`
+                        : "-"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[#666] text-xs mb-0.5">
+                      Avg latency (cache miss)
+                    </p>
+                    <p className="text-white font-mono">
+                      {(data.avgLatencyCacheMiss ?? 0) > 0
+                        ? `${(data.avgLatencyCacheMiss ?? 0).toFixed(0)} ms`
+                        : "-"}
+                    </p>
                   </div>
                 </div>
-              )}
+              </div>
+            )}
 
             <div className="bg-[#1a1a1a] border border-[#333] rounded-lg overflow-hidden">
               <div className="flex items-center gap-2 px-4 py-3 bg-[#252525] border-b border-[#333]">
                 <AlertCircle className="w-4 h-4 text-[#888]" />
-                <span className="text-[#888] text-sm font-mono">Recent errors</span>
+                <span className="text-[#888] text-sm font-mono">
+                  Recent errors
+                </span>
               </div>
               <div className="overflow-x-auto">
                 {data.recentErrors.length === 0 ? (
-                  <p className="p-6 text-[#666] text-sm">No errors in the last {WINDOW_DAYS} days.</p>
+                  <p className="p-6 text-[#666] text-sm">
+                    No errors in the last {WINDOW_DAYS} days.
+                  </p>
                 ) : (
                   <table className="w-full text-left">
                     <thead>
@@ -415,7 +454,10 @@ export default function ObservabilityPage() {
                           <td className="px-4 py-3 text-white text-sm font-mono">
                             {row.routeType}
                           </td>
-                          <td className="px-4 py-3 text-[#888] text-sm max-w-md truncate" title={row.errorMessage ?? undefined}>
+                          <td
+                            className="px-4 py-3 text-[#888] text-sm max-w-md truncate"
+                            title={row.errorMessage ?? undefined}
+                          >
                             {row.errorMessage ?? "-"}
                           </td>
                         </tr>

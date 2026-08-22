@@ -4,10 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import prisma from "@/lib/prisma";
 import { getDbUserId } from "@/lib/get-db-user-id";
 import { queryCodebase, queryCodebasePreindex } from "@/lib/rag";
-import {
-  extractMemoriesFromConversation,
-  storeMemories,
-} from "@/lib/memory";
+import { extractMemoriesFromConversation, storeMemories } from "@/lib/memory";
 import { estimateCostUsd } from "@/lib/cost";
 import { recordQueryMetrics } from "@/lib/query-metrics";
 import * as queryCache from "@/lib/query-cache";
@@ -33,7 +30,7 @@ const QuerySchema = z.object({
       z.object({
         role: z.enum(["user", "assistant"]),
         content: z.string(),
-      })
+      }),
     )
     .optional(),
   mode: z.enum(["guidance", "default"]).optional(),
@@ -46,30 +43,58 @@ export async function POST(request: NextRequest) {
     const { userId } = await auth();
 
     if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      log.warn("[query] rejected 401: no auth session");
+      return NextResponse.json(
+        {
+          error: "Unauthorized",
+          message:
+            "Your session has expired. Refresh the page and sign in again.",
+        },
+        { status: 401 },
+      );
     }
 
     const rl = await rateLimit(
       getRateLimitIdentifier(request, userId),
-      RATE_LIMITS.API
+      RATE_LIMITS.API,
     );
-    if (!rl.success) return rateLimitResponse(rl.resetTime);
+    if (!rl.success) {
+      log.warn("[query] rejected 429: rate limited", { userId });
+      return rateLimitResponse(rl.resetTime);
+    }
 
     const dbUserId = await getDbUserId(userId);
     if (!dbUserId) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      log.warn("[query] rejected 404: no db user for clerk id", { userId });
+      return NextResponse.json(
+        {
+          error: "User not found",
+          message:
+            "Your account could not be found. Sign out and back in, then try again.",
+        },
+        { status: 404 },
+      );
     }
 
     const gate = await requirePaidPlan(dbUserId, "chat");
-    if (isGuardFailure(gate)) return gate.response;
+    if (isGuardFailure(gate)) {
+      log.warn("[query] rejected: plan gate blocked chat", { dbUserId });
+      return gate.response;
+    }
 
     const parsed = QuerySchema.safeParse(
-      await request.json().catch(() => null)
+      await request.json().catch(() => null),
     );
     if (!parsed.success) {
+      log.warn("[query] rejected 400: invalid request body", {
+        issues: parsed.error.issues.map((i) => i.path.join(".")),
+      });
       return NextResponse.json(
-        { error: "Project ID and a non-empty question are required" },
-        { status: 400 }
+        {
+          error: "Project ID and a non-empty question are required",
+          message: "Project ID and a non-empty question are required.",
+        },
+        { status: 400 },
       );
     }
     const { projectId, question, conversationHistory } = parsed.data;
@@ -85,16 +110,25 @@ export async function POST(request: NextRequest) {
     });
 
     if (!project) {
+      log.warn("[query] rejected 404: project not found or not owned", {
+        projectId,
+        dbUserId,
+      });
       return NextResponse.json(
-        { error: "Project not found or unauthorized" },
-        { status: 404 }
+        {
+          error: "Project not found or unauthorized",
+          message:
+            "This project doesn't exist or isn't accessible from the account you're signed in with. Re-select the project and try again.",
+        },
+        { status: 404 },
       );
     }
 
     if (await isProjectOverBudget(projectId, project.monthlyCostLimitUsd)) {
+      log.warn("[query] rejected 402: project over budget", { projectId });
       return NextResponse.json(
         { error: "Budget exceeded", message: BUDGET_EXCEEDED_MESSAGE },
-        { status: 402 }
+        { status: 402 },
       );
     }
 
@@ -108,7 +142,7 @@ export async function POST(request: NextRequest) {
       void import("@/lib/indexing-worker-kick")
         .then((m) => m.kickIndexingWorker())
         .catch((kickError) =>
-          log.warn("[query] Failed to kick indexing worker:", kickError)
+          log.warn("[query] Failed to kick indexing worker:", kickError),
         );
 
       const preResult = await queryCodebasePreindex(
@@ -116,7 +150,7 @@ export async function POST(request: NextRequest) {
         decryptSecret(project.githubToken),
         question,
         conversationHistory,
-        { mode }
+        { mode },
       );
 
       const latencyMs = Date.now() - startMs;
@@ -137,7 +171,7 @@ export async function POST(request: NextRequest) {
         estimatedCostUsd: estimateCostUsd(
           promptTokens,
           completionTokens,
-          modelUsed
+          modelUsed,
         ),
         success: true,
         cacheHit: false,
@@ -159,7 +193,11 @@ export async function POST(request: NextRequest) {
     if (cached) {
       const latencyMs = Date.now() - startMs;
 
-      log.debug("[QueryMetrics] Recording success (cache hit)", { projectId, routeType: "query", latencyMs });
+      log.debug("[QueryMetrics] Recording success (cache hit)", {
+        projectId,
+        routeType: "query",
+        latencyMs,
+      });
       void recordQueryMetrics(prisma, {
         projectId,
         routeType: "query",
@@ -189,7 +227,16 @@ export async function POST(request: NextRequest) {
       projectId,
       question,
       conversationHistory,
-      { mode }
+      {
+        mode,
+        identity: {
+          name: project.name,
+          repoUrl: project.repoUrl,
+          githubToken: project.githubToken,
+          indexedCommitSha: project.indexedCommitSha ?? null,
+          fileCount: embeddingsCount,
+        },
+      },
     );
 
     queryCache.set(projectId, question, result.answer, result.sources);
@@ -204,11 +251,14 @@ export async function POST(request: NextRequest) {
     const estimatedCostUsd = estimateCostUsd(
       promptTokens,
       completionTokens,
-      modelUsed
+      modelUsed,
     );
 
-
-    log.debug("[QueryMetrics] Recording success", { projectId, routeType: "query", latencyMs });
+    log.debug("[QueryMetrics] Recording success", {
+      projectId,
+      routeType: "query",
+      latencyMs,
+    });
     void recordQueryMetrics(prisma, {
       projectId,
       routeType: "query",
@@ -259,7 +309,12 @@ export async function POST(request: NextRequest) {
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
 
-      log.debug("[QueryMetrics] Recording failure", { projectId: projectIdForMetrics, routeType: "query", latencyMs, success: false });
+      log.debug("[QueryMetrics] Recording failure", {
+        projectId: projectIdForMetrics,
+        routeType: "query",
+        latencyMs,
+        success: false,
+      });
       void recordQueryMetrics(prisma, {
         projectId: projectIdForMetrics,
         routeType: "query",
@@ -284,7 +339,7 @@ export async function POST(request: NextRequest) {
             ? error.message
             : "An unexpected error occurred",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -299,7 +354,7 @@ export async function GET(request: NextRequest) {
 
     const rl = await rateLimit(
       getRateLimitIdentifier(request, userId),
-      RATE_LIMITS.API
+      RATE_LIMITS.API,
     );
     if (!rl.success) return rateLimitResponse(rl.resetTime);
 
@@ -317,7 +372,7 @@ export async function GET(request: NextRequest) {
     if (!projectId) {
       return NextResponse.json(
         { error: "Project ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -332,7 +387,7 @@ export async function GET(request: NextRequest) {
     if (!project) {
       return NextResponse.json(
         { error: "Project not found or unauthorized" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -374,7 +429,7 @@ export async function GET(request: NextRequest) {
             ? error.message
             : "An unexpected error occurred",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

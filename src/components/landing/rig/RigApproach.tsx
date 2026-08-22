@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 
 import { RigEyebrow, STAGE, RED } from "./shared";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 
 const GREEN = "#22c55e";
 const PAPER = "#f3eee4";
@@ -105,7 +106,7 @@ const CODE_BARS = (() => {
 
 const SCAN_DUR = 7;
 
-function CodeRain() {
+function CodeRain({ reduced }: { reduced: boolean }) {
   return (
     <svg
       viewBox="0 0 300 700"
@@ -125,16 +126,26 @@ function CodeRain() {
           const arrival = ((b.y + 60) / 820) * SCAN_DUR;
           const isTyping = i % 9 === 4;
           return (
-            <rect key={i} x={b.x} y={b.y} width={b.w} height="5" rx="1" opacity="0.35">
-              <animate
-                attributeName="opacity"
-                values="0.35;1;0.35"
-                keyTimes="0;0.1;1"
-                dur={`${SCAN_DUR}s`}
-                begin={`${(arrival - 0.7).toFixed(2)}s`}
-                repeatCount="indefinite"
-              />
-              {isTyping && (
+            <rect
+              key={i}
+              x={b.x}
+              y={b.y}
+              width={b.w}
+              height="5"
+              rx="1"
+              opacity={reduced ? 0.55 : 0.35}
+            >
+              {!reduced && (
+                <animate
+                  attributeName="opacity"
+                  values="0.35;1;0.35"
+                  keyTimes="0;0.1;1"
+                  dur={`${SCAN_DUR}s`}
+                  begin={`${(arrival - 0.7).toFixed(2)}s`}
+                  repeatCount="indefinite"
+                />
+              )}
+              {!reduced && isTyping && (
                 <animate
                   attributeName="width"
                   values={`0;${b.w};${b.w}`}
@@ -149,18 +160,33 @@ function CodeRain() {
         })}
       </g>
 
-      <g>
-        <rect x="0" y="-56" width="300" height="56" fill="url(#rig-scan-tail)" />
-        <rect x="0" y="0" width="300" height="1.5" fill={GREEN} opacity="0.5" />
-        <animateTransform
-          attributeName="transform"
-          type="translate"
-          from="0 -60"
-          to="0 760"
-          dur={`${SCAN_DUR}s`}
-          repeatCount="indefinite"
-        />
-      </g>
+      {!reduced && (
+        <g>
+          <rect
+            x="0"
+            y="-56"
+            width="300"
+            height="56"
+            fill="url(#rig-scan-tail)"
+          />
+          <rect
+            x="0"
+            y="0"
+            width="300"
+            height="1.5"
+            fill={GREEN}
+            opacity="0.5"
+          />
+          <animateTransform
+            attributeName="transform"
+            type="translate"
+            from="0 -60"
+            to="0 760"
+            dur={`${SCAN_DUR}s`}
+            repeatCount="indefinite"
+          />
+        </g>
+      )}
     </svg>
   );
 }
@@ -171,16 +197,27 @@ function StatPanel({ panel }: { panel: Panel }) {
       className="rounded-xl border p-5 lg:p-7 shadow-[0_30px_80px_-40px_rgba(0,0,0,0.9)]"
       style={{ borderColor: `${RED}55`, backgroundColor: "rgba(10,8,9,0.85)" }}
     >
-      <div className="font-mono text-[12px] uppercase tracking-[0.22em]" style={{ color: PAPER }}>
+      <div
+        className="font-mono text-[12px] uppercase tracking-[0.22em]"
+        style={{ color: PAPER }}
+      >
         {panel.title}
       </div>
       <div className="mt-4 h-px w-full" style={{ backgroundColor: LINE }} />
-      <div className="mt-6 font-mono text-[11px] tracking-wide text-white/40">{panel.label}</div>
+      <div className="mt-6 font-mono text-[11px] tracking-wide text-white/40">
+        {panel.label}
+      </div>
 
       <div className="mt-4 space-y-3.5">
         {panel.rows.map((r) => (
-          <div key={r.name} className="flex items-center gap-2 lg:gap-3 font-mono text-[11px]">
-            <span className="w-24 shrink-0 lg:w-28" style={{ color: r.good ? GREEN : "rgba(243,238,228,0.45)" }}>
+          <div
+            key={r.name}
+            className="flex items-center gap-2 lg:gap-3 font-mono text-[11px]"
+          >
+            <span
+              className="w-24 shrink-0 lg:w-28"
+              style={{ color: r.good ? GREEN : "rgba(243,238,228,0.45)" }}
+            >
               {r.name}
             </span>
             <div
@@ -195,24 +232,33 @@ function StatPanel({ panel }: { panel: Panel }) {
                 style={
                   r.good
                     ? { backgroundColor: GREEN }
-                    : { backgroundColor: "rgba(243,238,228,0.12)", backgroundImage: HATCH }
+                    : {
+                        backgroundColor: "rgba(243,238,228,0.12)",
+                        backgroundImage: HATCH,
+                      }
                 }
               />
             </div>
-            <span className="w-20 shrink-0 text-right lg:w-24" style={{ color: r.good ? GREEN : "rgba(243,238,228,0.45)" }}>
+            <span
+              className="w-20 shrink-0 text-right lg:w-24"
+              style={{ color: r.good ? GREEN : "rgba(243,238,228,0.45)" }}
+            >
               {r.val}
             </span>
           </div>
         ))}
       </div>
 
-      <div className="mt-6 font-mono text-[11px] leading-[1.6] text-white/35">{panel.note}</div>
+      <div className="mt-6 font-mono text-[11px] leading-[1.6] text-white/35">
+        {panel.note}
+      </div>
     </div>
   );
 }
 
 export default function RigApproach() {
   const [active, setActive] = useState(0);
+  const reduced = usePrefersReducedMotion();
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -222,7 +268,10 @@ export default function RigApproach() {
   }, []);
 
   return (
-    <section className="relative mt-16 lg:mt-24" style={{ backgroundColor: STAGE }}>
+    <section
+      className="relative mt-16 lg:mt-24"
+      style={{ backgroundColor: STAGE }}
+    >
       <div className="mx-auto max-w-7xl px-6 py-20 lg:py-24">
         <div className="rounded-2xl border border-white/[0.1]">
           <motion.div
@@ -240,8 +289,8 @@ export default function RigApproach() {
               Grounded beats generic.
             </h2>
             <p className="mx-auto mt-5 max-w-2xl text-[15px] leading-[1.6] text-white/55">
-              RepoDoc is a closed loop  -  indexing, retrieval, mapping, and
-              sourcing  -  engineered together for one job: understanding real
+              RepoDoc is a closed loop - indexing, retrieval, mapping, and
+              sourcing - engineered together for one job: understanding real
               codebases, not guessing about them.
             </p>
           </motion.div>
@@ -298,7 +347,7 @@ export default function RigApproach() {
 
             <div className="relative hidden lg:flex lg:items-center">
               <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-br-2xl">
-                <CodeRain />
+                <CodeRain reduced={reduced} />
               </div>
               <div className="relative w-full px-10 py-12 xl:px-14">
                 <AnimatePresence mode="wait">

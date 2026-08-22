@@ -2,9 +2,12 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
-
-const POLL_MS = 4000;
+const POLL_BACKOFF_MS = [2000, 3000, 5000, 8000, 12000];
 const DEFAULT_IDLE_MS = 2 * 60 * 1000;
+
+function pollDelay(attempt: number): number {
+  return POLL_BACKOFF_MS[Math.min(attempt, POLL_BACKOFF_MS.length - 1)];
+}
 export type BackgroundJobSnapshot = {
   id: string;
   status: "running" | "completed" | "failed";
@@ -32,7 +35,7 @@ export function useBackgroundRegenJob(opts: {
   storageKey: string;
   idleMs?: number;
   enqueue: (
-    projectId: string
+    projectId: string,
   ) => Promise<{ jobId: string; continuing: boolean }>;
   getJob: (jobId: string) => Promise<BackgroundJobSnapshot>;
   onSync: () => void | Promise<void>;
@@ -56,7 +59,11 @@ export function useBackgroundRegenJob(opts: {
     toastFailed,
   } = opts;
 
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollAttemptRef = useRef(0);
+  const pausedWhileHiddenRef = useRef<{ jobId: string; pid: string } | null>(
+    null,
+  );
   const trackedJobIdRef = useRef<string | null>(null);
   const activelyWaitingRef = useRef(false);
   const resumedRef = useRef(false);
@@ -84,24 +91,25 @@ export function useBackgroundRegenJob(opts: {
 
   const clearPoll = useCallback(() => {
     if (pollRef.current) {
-      clearInterval(pollRef.current);
+      clearTimeout(pollRef.current);
       pollRef.current = null;
     }
+    pausedWhileHiddenRef.current = null;
   }, []);
 
   const handleTerminal = useCallback(
     async (
       status: "completed" | "failed",
       errorMsg: string | null,
-      pid: string
+      pid: string,
     ) => {
       clearPoll();
       trackedJobIdRef.current = null;
       try {
-        sessionStorage.removeItem(jobStorageKey(optsRef.current.storageKey, pid));
-      } catch {
-       
-      }
+        sessionStorage.removeItem(
+          jobStorageKey(optsRef.current.storageKey, pid),
+        );
+      } catch {}
 
       const {
         onSync: sync,
@@ -118,8 +126,7 @@ export function useBackgroundRegenJob(opts: {
         document.visibilityState === "visible";
       const idleExceeded = Date.now() - lastInteractionRef.current > idle;
       const userPresentForInline =
-        visible &&
-        (activelyWaitingRef.current || !idleExceeded);
+        visible && (activelyWaitingRef.current || !idleExceeded);
       const useAwayCopy = resumedRef.current || !userPresentForInline;
 
       if (status === "completed") {
@@ -131,18 +138,18 @@ export function useBackgroundRegenJob(opts: {
             try {
               sessionStorage.setItem(
                 noticeStorageKey(sk, pid),
-                JSON.stringify({ status: "completed", at: Date.now() })
+                JSON.stringify({ status: "completed", at: Date.now() }),
               );
-            } catch {
-              
-            }
+            } catch {}
           }
         } else if (mountedRef.current) {
           toast.success(tActive.title, { description: tActive.description });
           await Promise.resolve(sync());
         }
       } else {
-        const { title, description } = tFail(errorMsg || "Something went wrong");
+        const { title, description } = tFail(
+          errorMsg || "Something went wrong",
+        );
         if (useAwayCopy && !visible) {
           try {
             sessionStorage.setItem(
@@ -151,11 +158,9 @@ export function useBackgroundRegenJob(opts: {
                 status: "failed",
                 message: errorMsg,
                 at: Date.now(),
-              })
+              }),
             );
-          } catch {
-            
-          }
+          } catch {}
         } else if (mountedRef.current) {
           toast.error(title, { description });
         }
@@ -166,8 +171,25 @@ export function useBackgroundRegenJob(opts: {
       resumedRef.current = false;
       if (mountedRef.current) busy(false);
     },
-    [clearPoll]
+    [clearPoll],
   );
+
+  const pollLoopRef = useRef<(jobId: string, pid: string) => void>(() => {});
+
+  const scheduleNext = useCallback((jobId: string, pid: string) => {
+    if (
+      typeof document !== "undefined" &&
+      document.visibilityState === "hidden"
+    ) {
+      pausedWhileHiddenRef.current = { jobId, pid };
+      return;
+    }
+    const delay = pollDelay(pollAttemptRef.current);
+    pollAttemptRef.current += 1;
+    pollRef.current = setTimeout(() => {
+      pollLoopRef.current(jobId, pid);
+    }, delay);
+  }, []);
 
   const pollOnce = useCallback(
     async (jobId: string, pid: string) => {
@@ -180,24 +202,29 @@ export function useBackgroundRegenJob(opts: {
           if (mountedRef.current) optsRef.current.setBusy(false);
           return;
         }
-        if (row.status === "running") return;
+        if (row.status === "running") {
+          scheduleNext(jobId, pid);
+          return;
+        }
         await handleTerminal(row.status, row.error, pid);
       } catch (e) {
         console.error("[BackgroundRegenJob] poll failed:", e);
+        scheduleNext(jobId, pid);
       }
     },
-    [getJob, handleTerminal, clearPoll]
+    [getJob, handleTerminal, clearPoll, scheduleNext],
   );
+  pollLoopRef.current = (jobId: string, pid: string) => {
+    void pollOnce(jobId, pid);
+  };
 
   const startPolling = useCallback(
     (jobId: string, pid: string) => {
       clearPoll();
+      pollAttemptRef.current = 0;
       void pollOnce(jobId, pid);
-      pollRef.current = setInterval(() => {
-        void pollOnce(jobId, pid);
-      }, POLL_MS);
     },
-    [clearPoll, pollOnce]
+    [clearPoll, pollOnce],
   );
 
   const flushDeferredNotice = useCallback(async () => {
@@ -211,8 +238,11 @@ export function useBackgroundRegenJob(opts: {
         message?: string;
       };
       sessionStorage.removeItem(noticeStorageKey(sk, projectId));
-      const { toastSuccessAway: tAway, toastFailed: tFail, onSync: sync } =
-        optsRef.current;
+      const {
+        toastSuccessAway: tAway,
+        toastFailed: tFail,
+        onSync: sync,
+      } = optsRef.current;
       if (parsed.status === "completed") {
         toast.info(tAway.title, { description: tAway.description });
       } else if (parsed.status === "failed") {
@@ -220,9 +250,7 @@ export function useBackgroundRegenJob(opts: {
         toast.error(title, { description });
       }
       await Promise.resolve(sync());
-    } catch {
-      
-    }
+    } catch {}
   }, [projectId]);
 
   useEffect(() => {
@@ -247,7 +275,13 @@ export function useBackgroundRegenJob(opts: {
 
   useEffect(() => {
     const onVis = () => {
-      if (document.visibilityState === "visible") void flushDeferredNotice();
+      if (document.visibilityState !== "visible") return;
+      void flushDeferredNotice();
+      const paused = pausedWhileHiddenRef.current;
+      if (paused) {
+        pausedWhileHiddenRef.current = null;
+        pollLoopRef.current(paused.jobId, paused.pid);
+      }
     };
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
@@ -269,7 +303,7 @@ export function useBackgroundRegenJob(opts: {
     let stored: string | null = null;
     try {
       stored = sessionStorage.getItem(
-        jobStorageKey(optsRef.current.storageKey, projectId)
+        jobStorageKey(optsRef.current.storageKey, projectId),
       );
     } catch {
       stored = null;
@@ -300,9 +334,7 @@ export function useBackgroundRegenJob(opts: {
       trackedJobIdRef.current = jobId;
       try {
         sessionStorage.setItem(jobStorageKey(sk, projectId), jobId);
-      } catch {
-        
-      }
+      } catch {}
       startPolling(jobId, projectId);
     } catch (err) {
       activelyWaitingRef.current = false;

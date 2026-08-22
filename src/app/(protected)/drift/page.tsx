@@ -115,7 +115,13 @@ function formatElapsed(ms: number): string {
 }
 
 type JobSnapshot = {
-  status: "queued" | "processing" | "completed" | "failed" | "not_started";
+  status:
+    | "queued"
+    | "processing"
+    | "completed"
+    | "failed"
+    | "not_started"
+    | "unavailable";
   progress: number;
   filesProcessed: number;
   filesTotal: number;
@@ -310,14 +316,18 @@ function ChangedFiles({
 
 function friendlyCheckError(
   status: number,
-  data: { reason?: string; message?: string; error?: string } | null
+  data: { reason?: string; message?: string; error?: string } | null,
 ): string {
   const reason = data?.reason ?? "";
   const raw = data?.message || data?.error || "";
   if (/being processed/i.test(raw)) {
     return "RepoDoc is still reading this repository. This will be available once indexing finishes.";
   }
-  if (status === 404 || reason === "bad_repo_url" || /not found|404/i.test(raw)) {
+  if (
+    status === 404 ||
+    reason === "bad_repo_url" ||
+    /not found|404/i.test(raw)
+  ) {
     return "RepoDoc can't access this repository. If it's private, it needs a token with access; if the URL changed, re-add it in your project settings.";
   }
   if (status === 403 || /rate limit|rate-limit|403/i.test(raw)) {
@@ -349,7 +359,7 @@ function DriftChecker({ project }: { project: SidebarProject }) {
   const [isLoading, setIsLoading] = useState(false);
   const [changesMeta, setChangesMeta] = useState<ChangesMeta | null>(null);
   const [changesStatus, setChangesStatus] = useState<ChangesStatus | null>(
-    null
+    null,
   );
   const [baselineBusy, setBaselineBusy] = useState(false);
   const [reindexBusy, setReindexBusy] = useState(false);
@@ -384,7 +394,7 @@ function DriftChecker({ project }: { project: SidebarProject }) {
         toast.success(
           res.alreadySet
             ? "Already tracking changes for this repo"
-            : "Now tracking changes from today"
+            : "Now tracking changes from today",
         );
       } else {
         setActionError(res.error);
@@ -392,7 +402,7 @@ function DriftChecker({ project }: { project: SidebarProject }) {
     } catch (error) {
       if (mountedRef.current)
         setActionError(
-          error instanceof Error ? error.message : "Failed to set baseline."
+          error instanceof Error ? error.message : "Failed to set baseline.",
         );
     } finally {
       if (mountedRef.current) setBaselineBusy(false);
@@ -428,7 +438,7 @@ function DriftChecker({ project }: { project: SidebarProject }) {
         setActionError(
           error instanceof Error
             ? error.message
-            : "Couldn't start re-indexing. It may already be running - try again shortly."
+            : "Couldn't start re-indexing. It may already be running - try again shortly.",
         );
     } finally {
       if (mountedRef.current) setReindexBusy(false);
@@ -494,7 +504,7 @@ function DriftChecker({ project }: { project: SidebarProject }) {
       cancelled = true;
       stop();
     };
-  }, [project.id, reindexStartedAt, loadProjects]);
+  }, [project.id, reindexStartedAt, loadProjects, mountedRef]);
 
   useEffect(() => {
     if (reindexStartedAt === null) return;
@@ -627,8 +637,8 @@ function DriftChecker({ project }: { project: SidebarProject }) {
 
   const checkLabel =
     view.kind === "has_changes" ||
-      view.kind === "no_changes" ||
-      view.kind === "error"
+    view.kind === "no_changes" ||
+    view.kind === "error"
       ? "Check again"
       : "Check for changes";
 
@@ -736,7 +746,10 @@ function DriftChecker({ project }: { project: SidebarProject }) {
             <div className="h-2 w-full bg-[#222] rounded-full overflow-hidden">
               <div
                 className="h-full rounded-full transition-all duration-300"
-                style={{ width: `${reindexPct}%`, backgroundColor: colors.green }}
+                style={{
+                  width: `${reindexPct}%`,
+                  backgroundColor: colors.green,
+                }}
               />
             </div>
             <div className="mt-1.5 flex items-center justify-between text-xs font-mono text-[#666]">
@@ -774,8 +787,7 @@ function DriftChecker({ project }: { project: SidebarProject }) {
   const noBaselinePanelReason: NoBaselineReason =
     view.kind === "no_baseline" ? view.reason : "pre_tracking";
   const primaryIsReindex =
-    noBaselinePanelReason === "failed" ||
-    noBaselinePanelReason === "orphaned";
+    noBaselinePanelReason === "failed" || noBaselinePanelReason === "orphaned";
 
   const startTrackingPrimary = (
     <button
@@ -937,7 +949,10 @@ function DriftChecker({ project }: { project: SidebarProject }) {
 
   const loadingPanel = (
     <div className="flex items-center gap-3 px-4 py-6 text-[#888]">
-      <Loader2 className="w-4 h-4 animate-spin" style={{ color: colors.green }} />
+      <Loader2
+        className="w-4 h-4 animate-spin"
+        style={{ color: colors.green }}
+      />
       <span className="text-sm">Checking this repository&apos;s status…</span>
     </div>
   );
@@ -976,7 +991,9 @@ function DriftChecker({ project }: { project: SidebarProject }) {
               <History className="w-5 h-5" style={{ color: colors.green }} />
             </div>
             <div>
-              <h2 className="text-white font-semibold">Changes since indexed</h2>
+              <h2 className="text-white font-semibold">
+                Changes since indexed
+              </h2>
               <p className="text-[#666] text-xs">
                 See what&apos;s changed in your repo since RepoDoc last read it.
               </p>

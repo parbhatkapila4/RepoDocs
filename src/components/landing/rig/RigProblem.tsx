@@ -4,6 +4,7 @@ import React from "react";
 import { motion } from "motion/react";
 
 import { RigEyebrow, STAGE, RED } from "./shared";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 
 const LINE = "rgba(255,255,255,0.09)";
 
@@ -33,14 +34,14 @@ const CARDS = [
     body: "Assistants that don't know your codebase invent APIs and misread the architecture. No citations, no proof, no trust.",
   },
 ];
-
+const round2 = (n: number) => Math.round(n * 100) / 100;
 const EYE_TICKS = Array.from({ length: 24 }, (_, i) => {
   const a = (i / 24) * Math.PI * 2;
   return {
-    x1: 240 + Math.cos(a) * 196,
-    y1: 240 + Math.sin(a) * 196,
-    x2: 240 + Math.cos(a) * 210,
-    y2: 240 + Math.sin(a) * 210,
+    x1: round2(240 + Math.cos(a) * 196),
+    y1: round2(240 + Math.sin(a) * 196),
+    x2: round2(240 + Math.cos(a) * 210),
+    y2: round2(240 + Math.sin(a) * 210),
   };
 });
 
@@ -57,6 +58,7 @@ const BLIPS = [
 });
 
 function SearchIllustration() {
+  const reduced = usePrefersReducedMotion();
   return (
     <svg
       viewBox="0 0 480 480"
@@ -74,6 +76,9 @@ function SearchIllustration() {
           0%, 91%, 96%, 100% { transform: scaleY(1); }
           93.5% { transform: scaleY(0.05); }
         }
+        @media (prefers-reduced-motion: reduce) {
+          .rig-eye-blink { animation: none; }
+        }
       `}</style>
 
       <g opacity="0.22">
@@ -85,14 +90,27 @@ function SearchIllustration() {
           <line x1="240" y1="24" x2="240" y2="456" strokeWidth="0.4" />
           <line x1="24" y1="240" x2="456" y2="240" strokeWidth="0.4" />
           {EYE_TICKS.map((t, i) => (
-            <line key={i} x1={t.x1} y1={t.y1} x2={t.x2} y2={t.y2} strokeWidth="0.5" />
+            <line
+              key={i}
+              x1={t.x1}
+              y1={t.y1}
+              x2={t.x2}
+              y2={t.y2}
+              strokeWidth="0.5"
+            />
           ))}
           <path
             className="rig-eye-blink"
             d="M96 240 Q240 150 384 240 Q240 330 96 240 Z"
             strokeWidth="1.2"
           />
-          <circle className="rig-eye-blink" cx="240" cy="240" r="42" strokeWidth="1" />
+          <circle
+            className="rig-eye-blink"
+            cx="240"
+            cy="240"
+            r="42"
+            strokeWidth="1"
+          />
           <polyline points="44,78 44,44 78,44" strokeWidth="0.9" />
           <polyline points="436,78 436,44 402,44" strokeWidth="0.9" />
           <polyline points="436,402 436,436 402,436" strokeWidth="0.9" />
@@ -124,73 +142,128 @@ function SearchIllustration() {
         </g>
       </g>
 
-      <g>
-        <path d="M240 240 L134 70.4 A200 200 0 0 1 240 40 Z" fill={RED} opacity="0.06" />
-        <line x1="240" y1="240" x2="240" y2="40" stroke={RED} strokeWidth="1" opacity="0.4" />
-        <animateTransform
-          attributeName="transform"
-          type="rotate"
-          from="0 240 240"
-          to="360 240 240"
-          dur={`${SWEEP_DUR}s`}
-          repeatCount="indefinite"
-        />
-      </g>
+      {!reduced && (
+        <g>
+          <path
+            d="M240 240 L134 70.4 A200 200 0 0 1 240 40 Z"
+            fill={RED}
+            opacity="0.06"
+          />
+          <line
+            x1="240"
+            y1="240"
+            x2="240"
+            y2="40"
+            stroke={RED}
+            strokeWidth="1"
+            opacity="0.4"
+          />
+          <animateTransform
+            attributeName="transform"
+            type="rotate"
+            from="0 240 240"
+            to="360 240 240"
+            dur={`${SWEEP_DUR}s`}
+            repeatCount="indefinite"
+          />
+        </g>
+      )}
 
-      {[0, SWEEP_DUR / 2].map((begin) => (
-        <circle key={begin} cx="240" cy="240" r="30" fill="none" stroke={RED} strokeWidth="0.8">
-          <animate
-            attributeName="r"
-            values="30;200"
-            dur={`${SWEEP_DUR / 2}s`}
-            begin={`${begin}s`}
-            repeatCount="indefinite"
-          />
-          <animate
-            attributeName="opacity"
-            values="0.35;0"
-            dur={`${SWEEP_DUR / 2}s`}
-            begin={`${begin}s`}
-            repeatCount="indefinite"
-          />
-        </circle>
-      ))}
-      {BLIPS.map((b) => (
-        <g key={`${b.x}-${b.y}`}>
-          <circle cx={b.x} cy={b.y} r={b.r} fill="currentColor" opacity="0.18">
-            <animate
-              attributeName="opacity"
-              values="0.18;1;0.18"
-              keyTimes="0;0.06;1"
-              dur={`${SWEEP_DUR}s`}
-              begin={`${b.delay}s`}
-              repeatCount="indefinite"
-            />
-          </circle>
-          <circle cx={b.x} cy={b.y} r={b.r} fill="none" stroke={RED} strokeWidth="0.8" opacity="0">
+      {!reduced &&
+        [0, SWEEP_DUR / 2].map((begin) => (
+          <circle
+            key={begin}
+            cx="240"
+            cy="240"
+            r="30"
+            fill="none"
+            stroke={RED}
+            strokeWidth="0.8"
+          >
             <animate
               attributeName="r"
-              values={`${b.r};${b.r * 7};${b.r * 7}`}
-              keyTimes="0;0.2;1"
-              dur={`${SWEEP_DUR}s`}
-              begin={`${b.delay}s`}
+              values="30;200"
+              dur={`${SWEEP_DUR / 2}s`}
+              begin={`${begin}s`}
               repeatCount="indefinite"
             />
             <animate
               attributeName="opacity"
-              values="0.5;0;0"
-              keyTimes="0;0.2;1"
-              dur={`${SWEEP_DUR}s`}
-              begin={`${b.delay}s`}
+              values="0.35;0"
+              dur={`${SWEEP_DUR / 2}s`}
+              begin={`${begin}s`}
               repeatCount="indefinite"
             />
           </circle>
+        ))}
+      {BLIPS.map((b) => (
+        <g key={`${b.x}-${b.y}`}>
+          <circle
+            cx={b.x}
+            cy={b.y}
+            r={b.r}
+            fill="currentColor"
+            opacity={reduced ? 0.6 : 0.18}
+          >
+            {!reduced && (
+              <animate
+                attributeName="opacity"
+                values="0.18;1;0.18"
+                keyTimes="0;0.06;1"
+                dur={`${SWEEP_DUR}s`}
+                begin={`${b.delay}s`}
+                repeatCount="indefinite"
+              />
+            )}
+          </circle>
+          {!reduced && (
+            <circle
+              cx={b.x}
+              cy={b.y}
+              r={b.r}
+              fill="none"
+              stroke={RED}
+              strokeWidth="0.8"
+              opacity="0"
+            >
+              <animate
+                attributeName="r"
+                values={`${b.r};${b.r * 7};${b.r * 7}`}
+                keyTimes="0;0.2;1"
+                dur={`${SWEEP_DUR}s`}
+                begin={`${b.delay}s`}
+                repeatCount="indefinite"
+              />
+              <animate
+                attributeName="opacity"
+                values="0.5;0;0"
+                keyTimes="0;0.2;1"
+                dur={`${SWEEP_DUR}s`}
+                begin={`${b.delay}s`}
+                repeatCount="indefinite"
+              />
+            </circle>
+          )}
         </g>
       ))}
 
       <g className="rig-eye-blink">
-        <circle cx="240" cy="240" r="30" fill="none" stroke={RED} strokeWidth="1.5" opacity="0.5" />
-        <circle cx="240" cy="240" r="15" fill={RED} className="animate-pulse" />
+        <circle
+          cx="240"
+          cy="240"
+          r="30"
+          fill="none"
+          stroke={RED}
+          strokeWidth="1.5"
+          opacity="0.5"
+        />
+        <circle
+          cx="240"
+          cy="240"
+          r="15"
+          fill={RED}
+          className={reduced ? undefined : "animate-pulse"}
+        />
       </g>
     </svg>
   );
@@ -220,7 +293,10 @@ export default function RigProblem() {
             </h2>
           </div>
           <div className="h-px w-full" style={{ backgroundColor: LINE }} />
-          <div className="grid gap-px lg:grid-cols-3" style={{ backgroundColor: LINE }}>
+          <div
+            className="grid gap-px lg:grid-cols-3"
+            style={{ backgroundColor: LINE }}
+          >
             <div
               className="flex items-center justify-center p-10 lg:row-span-2"
               style={{ backgroundColor: STAGE }}
@@ -245,7 +321,9 @@ export default function RigProblem() {
                 <h3 className="text-[17px] font-semibold tracking-[-0.01em] text-white">
                   {c.title}
                 </h3>
-                <p className="text-[13px] leading-[1.6] text-white/45">{c.body}</p>
+                <p className="text-[13px] leading-[1.6] text-white/45">
+                  {c.body}
+                </p>
               </div>
             ))}
           </div>

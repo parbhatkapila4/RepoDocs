@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { motion } from "motion/react";
 
 import { RigEyebrow, STAGE, RED } from "./shared";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 
 const GREEN = "#22c55e";
 const PAPER = "#f3eee4";
@@ -31,13 +32,18 @@ function Anno({
 }) {
   const text = (
     <div className={side === "left" ? "text-right" : "text-left"}>
-      <div className="font-mono text-[11px] uppercase tracking-[0.18em]" style={{ color: PAPER }}>
+      <div
+        className="font-mono text-[11px] uppercase tracking-[0.18em]"
+        style={{ color: PAPER }}
+      >
         {title}
       </div>
       <div className="mt-1 text-[11px] leading-snug text-white/30">{desc}</div>
     </div>
   );
-  const line = <span className="h-px flex-1" style={{ backgroundColor: LINE }} />;
+  const line = (
+    <span className="h-px flex-1" style={{ backgroundColor: LINE }} />
+  );
   const dot = (
     <span
       className="h-2 w-2 shrink-0 rounded-full border"
@@ -63,7 +69,7 @@ function Anno({
   );
 }
 
-const FILES_TOTAL = 1284;
+const FILES_TOTAL = 196;
 const RUN_TICKS = 128;
 const HOLD_TICKS = 34;
 const CYCLE_TICKS = RUN_TICKS + HOLD_TICKS;
@@ -75,7 +81,7 @@ interface StepDef {
 }
 
 const STEPS: StepDef[] = [
-  { label: "clone acme/ledger", start: 0, end: 9 },
+  { label: "clone parbhatkapila4/repodocs", start: 0, end: 9 },
   { label: "walk source tree", start: 9, end: 26 },
   { label: "summarize files", start: 26, end: 78 },
   { label: "embed summaries", start: 78, end: 112 },
@@ -83,22 +89,22 @@ const STEPS: StepDef[] = [
 ];
 
 const LOGS: { at: number; text: string }[] = [
-  { at: 4, text: "fetch origin/main · 412 objects" },
+  { at: 4, text: "fetch tarball @ origin/main" },
   { at: 12, text: "tree walk · skip lockfiles, .git" },
-  { at: 21, text: "queued 1,284 files · lease w-01 acquired" },
-  { at: 30, text: "summarize src/ledger/postings.ts" },
-  { at: 38, text: "summarize src/api/transfers/route.ts" },
-  { at: 46, text: "summarize src/lib/idempotency.ts" },
+  { at: 21, text: "queued 196 files · lease w-01 acquired" },
+  { at: 30, text: "summarize src/lib/github/tarball.ts" },
+  { at: 38, text: "summarize src/lib/indexing-worker-run.ts" },
+  { at: 46, text: "summarize src/lib/rag.ts" },
   { at: 54, text: "summarize prisma/schema.prisma" },
-  { at: 62, text: "summarize src/workers/reconcile.ts" },
-  { at: 70, text: "summarize src/lib/audit-log.ts" },
-  { at: 82, text: "embed batch 07/26 · 768d · 50 rows" },
-  { at: 91, text: "embed batch 14/26 · 768d · 50 rows" },
-  { at: 100, text: "embed batch 21/26 · 768d · 50 rows" },
+  { at: 62, text: "summarize src/app/api/query/route.ts" },
+  { at: 70, text: "summarize src/lib/docs-sections.ts" },
+  { at: 82, text: "embed summaries · 768d · gemini-embedding-001" },
+  { at: 91, text: "embed summaries · 131/196" },
+  { at: 100, text: "embed summaries · 196/196" },
   { at: 108, text: "pgvector upsert · hnsw index warm" },
   { at: 116, text: "compose docs · 17 sections" },
-  { at: 122, text: "readme grounded · 41 source refs" },
-  { at: 127, text: "index complete · 1,284 files · 1,284 vectors" },
+  { at: 122, text: "readme grounded in 196 file summaries" },
+  { at: 127, text: "index complete · 196 files · 196 vectors" },
 ];
 
 const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
@@ -116,7 +122,7 @@ function stepMetric(t: number, index: number): string {
   const p = stepProgress(t, STEPS[index]);
   switch (index) {
     case 0:
-      return p >= 1 ? "9f31c2e · 0.9s" : p > 0 ? "receiving…" : "";
+      return p >= 1 ? "origin/main" : p > 0 ? "receiving…" : "";
     case 1:
       return p > 0 ? `${fmtInt(easeOut(p) * FILES_TOTAL)} files` : "";
     case 2:
@@ -131,10 +137,12 @@ function stepMetric(t: number, index: number): string {
 }
 
 function Monitor() {
-  const [tick, setTick] = useState(0);
+  const [liveTick, setTick] = useState(0);
   const [run, setRun] = useState(147);
+  const reduced = usePrefersReducedMotion();
 
   useEffect(() => {
+    if (reduced) return;
     const id = setInterval(() => {
       setTick((t) => {
         if (t + 1 >= CYCLE_TICKS) {
@@ -145,10 +153,12 @@ function Monitor() {
       });
     }, 100);
     return () => clearInterval(id);
-  }, []);
+  }, [reduced]);
 
+  // Reduced motion: show the completed run as a still frame.
+  const tick = reduced ? RUN_TICKS : liveTick;
   const t = Math.min(tick, RUN_TICKS);
-  const running = tick < RUN_TICKS;
+  const running = !reduced && tick < RUN_TICKS;
   const pct = Math.min(100, Math.round((t / RUN_TICKS) * 100));
   const elapsed = (t * 0.1).toFixed(1).padStart(4, "0");
   const visibleLogs = LOGS.filter((l) => l.at <= tick).slice(-4);
@@ -161,7 +171,10 @@ function Monitor() {
     >
       <div
         className="overflow-hidden rounded-xl border border-white/[0.07]"
-        style={{ backgroundColor: "#08070a", fontVariantNumeric: "tabular-nums" }}
+        style={{
+          backgroundColor: "#08070a",
+          fontVariantNumeric: "tabular-nums",
+        }}
       >
         <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-2.5">
           <span className="flex items-center gap-2 font-mono text-[11px] tracking-[0.08em] text-white/80">
@@ -169,9 +182,9 @@ function Monitor() {
               className={`h-1.5 w-1.5 rounded-full ${running ? "animate-pulse" : ""}`}
               style={{ backgroundColor: GREEN }}
             />
-            acme/ledger
+            parbhatkapila4/repodocs
             <span className="text-white/30">·</span>
-            <span className="text-white/35">main @ 9f31c2e</span>
+            <span className="text-white/35">main · self-index</span>
           </span>
           <span className="font-mono text-[10px] uppercase tracking-[0.15em]">
             {running ? (
@@ -188,19 +201,34 @@ function Monitor() {
             const active = running && t >= step.start && t < step.end;
             const metric = stepMetric(t, i);
             return (
-              <div key={step.label} className="flex items-baseline justify-between gap-4">
+              <div
+                key={step.label}
+                className="flex items-baseline justify-between gap-4"
+              >
                 <span className="flex items-baseline gap-2.5">
                   <span
                     className="inline-block w-3 text-center"
-                    style={{ color: done ? GREEN : active ? PAPER : "rgba(255,255,255,0.22)" }}
+                    style={{
+                      color: done
+                        ? GREEN
+                        : active
+                          ? PAPER
+                          : "rgba(255,255,255,0.22)",
+                    }}
                   >
                     {done ? "✓" : active ? SPINNER[tick % SPINNER.length] : "○"}
                   </span>
-                  <span className={done || active ? "text-white/85" : "text-white/30"}>
+                  <span
+                    className={
+                      done || active ? "text-white/85" : "text-white/30"
+                    }
+                  >
                     {step.label}
                   </span>
                 </span>
-                <span className={`text-[11px] ${active ? "text-white/60" : "text-white/35"}`}>
+                <span
+                  className={`text-[11px] ${active ? "text-white/60" : "text-white/35"}`}
+                >
                   {metric}
                 </span>
               </div>
@@ -226,7 +254,9 @@ function Monitor() {
               initial={{ opacity: 0, y: 5 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.25, ease: "easeOut" }}
-              style={{ color: `rgba(243,238,228,${logDim[i + (4 - visibleLogs.length)]})` }}
+              style={{
+                color: `rgba(243,238,228,${logDim[i + (4 - visibleLogs.length)]})`,
+              }}
             >
               {l.text}
             </motion.div>
@@ -237,7 +267,10 @@ function Monitor() {
       <div className="flex items-center justify-between px-3 pt-3 font-mono text-[9px] uppercase tracking-[0.22em] text-white/30">
         <span>RAG engine</span>
         <span className="flex items-center gap-1.5">
-          <span className="h-1 w-1 rounded-full" style={{ backgroundColor: RED }} />
+          <span
+            className="h-1 w-1 rounded-full"
+            style={{ backgroundColor: RED }}
+          />
           <span style={{ color: RED }}>pgvector</span>
         </span>
         <span>grounded</span>
@@ -248,7 +281,10 @@ function Monitor() {
 
 export default function RigEngineered() {
   return (
-    <section className="relative mt-16 overflow-hidden lg:mt-24" style={{ backgroundColor: STAGE }}>
+    <section
+      className="relative mt-16 overflow-hidden lg:mt-24"
+      style={{ backgroundColor: STAGE }}
+    >
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
@@ -300,8 +336,15 @@ export default function RigEngineered() {
           </div>
           <div className="mt-8 grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-white/[0.1] bg-white/[0.08] sm:grid-cols-2">
             {[...LEFT, ...RIGHT].map((a) => (
-              <div key={a.title} className="p-5" style={{ backgroundColor: STAGE }}>
-                <div className="font-mono text-[11px] uppercase tracking-[0.18em]" style={{ color: PAPER }}>
+              <div
+                key={a.title}
+                className="p-5"
+                style={{ backgroundColor: STAGE }}
+              >
+                <div
+                  className="font-mono text-[11px] uppercase tracking-[0.18em]"
+                  style={{ color: PAPER }}
+                >
                   {a.title}
                 </div>
                 <div className="mt-1 text-[12px] text-white/35">{a.desc}</div>

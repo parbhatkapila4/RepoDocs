@@ -34,7 +34,8 @@ type JobStatus =
   | "processing"
   | "completed"
   | "failed"
-  | "locked";
+  | "locked"
+  | "unavailable";
 
 interface Status {
   status: JobStatus;
@@ -157,7 +158,12 @@ export function IndexingMeter({ projectId }: { projectId: string }) {
     };
   }, [projectId, tick]);
 
-  if (!state || state.status === "not_started") return null;
+  if (
+    !state ||
+    state.status === "not_started" ||
+    state.status === "unavailable"
+  )
+    return null;
 
   if (state.status === "locked") {
     return <UpgradePanel feature="indexing" className="mb-8" />;

@@ -106,15 +106,17 @@ export default function ArchitecturePage() {
     };
   }, []);
 
+  const currentProjectId = currentProject?.id;
+
   const fetchGraph = useCallback(async () => {
-    if (!currentProject) return;
+    if (!currentProjectId) return;
     if (mountedRef.current) {
       setLoading(true);
       setError(null);
     }
     try {
       const res = await fetch(
-        `/api/architecture?projectId=${encodeURIComponent(currentProject.id)}`
+        `/api/architecture?projectId=${encodeURIComponent(currentProjectId)}`
       );
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -139,7 +141,7 @@ export default function ArchitecturePage() {
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [currentProject?.id, mountedRef]);
+  }, [currentProjectId, mountedRef]);
 
 
   useEffect(() => {
