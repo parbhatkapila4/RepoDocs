@@ -18,7 +18,7 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://user:pass@localhost:5432/repodoc_test
-      DIRECT_URL: postgresql://user:pass@localhost:5432/repodoc_test`````````````````````````````````````````````````
+      DIRECT_URL: postgresql://user:pass@localhost:5432/repodoc_test
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2xlcmsuZXhhbXBsZS5jb20k
       CLERK_SECRET_KEY: sk_test_ci
       GEMINI_API_KEY: ci_gemini_key
