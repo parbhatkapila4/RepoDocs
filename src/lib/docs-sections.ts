@@ -23,7 +23,7 @@ export const DOC_SECTION_SPECS: DocSectionSpec[] = [
     num: 3,
     header: "## 3. 🧱 Architecture Intelligence",
     instructions:
-      "Architecture type and main layers, design rationale and trade-offs, directory structure and code organization, data flow between components, the role of each major technology, and the scalability approach — all with real component and file names. Include a ```mermaid``` `graph TD` diagram of the real top-level components; skip the diagram only if no real components can be named from the summaries.",
+      "Architecture type and main layers, design rationale and trade-offs, directory structure and code organization, data flow between components, the role of each major technology, and the scalability approach - all with real component and file names. Include a ```mermaid``` `graph TD` diagram of the real top-level components; skip the diagram only if no real components can be named from the summaries.",
   },
   {
     num: 4,
@@ -41,7 +41,7 @@ export const DOC_SECTION_SPECS: DocSectionSpec[] = [
     num: 6,
     header: "## 6. 🧠 Technical Edge",
     instructions:
-      "5-8 specific technical insights or design advantages that make this codebase stand out. For each: what it is, why it matters, and its impact — 1-2 sentences each.",
+      "5-8 specific technical insights or design advantages that make this codebase stand out. For each: what it is, why it matters, and its impact - 1-2 sentences each.",
   },
   {
     num: 7,
@@ -53,7 +53,7 @@ export const DOC_SECTION_SPECS: DocSectionSpec[] = [
     num: 8,
     header: "## 8. 🔐 Security & Reliability",
     instructions:
-      "Authentication/authorization, secrets and env-variable management, input validation, error handling and monitoring, and encryption / rate limiting / security headers as actually observed — then the known gaps, stated honestly with recommendations.",
+      "Authentication/authorization, secrets and env-variable management, input validation, error handling and monitoring, and encryption / rate limiting / security headers as actually observed - then the known gaps, stated honestly with recommendations.",
   },
   {
     num: 9,
@@ -71,7 +71,7 @@ export const DOC_SECTION_SPECS: DocSectionSpec[] = [
     num: 11,
     header: "## 11. 🧩 Extensibility Map",
     instructions:
-      "Where new features can be added: new endpoints or models, UI modules, database models, auth methods, and configuration — with actual file paths and the existing patterns to follow, plus the testing expectations for new code.",
+      "Where new features can be added: new endpoints or models, UI modules, database models, auth methods, and configuration - with actual file paths and the existing patterns to follow, plus the testing expectations for new code.",
   },
   {
     num: 12,
@@ -95,7 +95,7 @@ export const DOC_SECTION_SPECS: DocSectionSpec[] = [
     num: 15,
     header: "## 15. 🧾 License & Deployment Details",
     instructions:
-      "The license as observed in the repository (or 'License not detected in repository'), deployment targets and CI/CD as configured, required environment variables, database setup and migrations, and monitoring/logging as present — sourced from the actual configuration files.",
+      "The license as observed in the repository (or 'License not detected in repository'), deployment targets and CI/CD as configured, required environment variables, database setup and migrations, and monitoring/logging as present - sourced from the actual configuration files.",
   },
   {
     num: 16,
@@ -107,7 +107,7 @@ export const DOC_SECTION_SPECS: DocSectionSpec[] = [
     num: 17,
     header: "## 17. 🗺️ Complete System Flow Diagram",
     instructions:
-      "START IMMEDIATELY (no introductory text) with ONE comprehensive ASCII-art diagram inside a ``` code fence, using box-drawing characters (┌ ┐ └ ┘ │ ─ ├ ┤ ┬ ┴) and arrows (→ ← ↑ ↓ ▼), showing the complete end-to-end flow with REAL component, route, and table names from the summaries — including error paths and background jobs where they exist. After the diagram, a short walkthrough of the flow. This is the final section of the document.",
+      "START IMMEDIATELY (no introductory text) with ONE comprehensive ASCII-art diagram inside a ``` code fence, using box-drawing characters (┌ ┐ └ ┘ │ ─ ├ ┤ ┬ ┴) and arrows (→ ← ↑ ↓ ▼), showing the complete end-to-end flow with REAL component, route, and table names from the summaries - including error paths and background jobs where they exist. After the diagram, a short walkthrough of the flow. This is the final section of the document.",
   },
 ];
 
@@ -115,7 +115,7 @@ export const DOC_HEADER_SPEC = `DOCUMENT HEADER
 Start the document with an H1 in exactly this form:
 # 📘 [Project Name]: [Short Tagline] - Technical Documentation
 
-Optionally follow it with ONE row of shields.io badges. A badge is a factual claim about this repository: emit a badge ONLY for a technology the codebase summaries actually show (conventional colors: TypeScript #3178c6, Python #3776ab, JavaScript #f7df1e, Next.js black, React #61dafb, green for databases, purple for auth providers, red for AI/ML). Never infer a technology from the project name or description. Never emit an AI/ML badge without direct evidence (a model SDK import, an inference call, an embedding model, a vector store). Never emit placeholder badges. If no badges are grounded, omit the badge row entirely — a header with no badges is a correct header.`;
+Optionally follow it with ONE row of shields.io badges. A badge is a factual claim about this repository: emit a badge ONLY for a technology the codebase summaries actually show (conventional colors: TypeScript #3178c6, Python #3776ab, JavaScript #f7df1e, Next.js black, React #61dafb, green for databases, purple for auth providers, red for AI/ML). Never infer a technology from the project name or description. Never emit an AI/ML badge without direct evidence (a model SDK import, an inference call, an embedding model, a vector store). Never emit placeholder badges. If no badges are grounded, omit the badge row entirely - a header with no badges is a correct header.`;
 
 export interface ParsedDocContent {
   preamble: string;

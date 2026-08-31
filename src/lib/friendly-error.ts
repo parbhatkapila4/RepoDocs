@@ -21,7 +21,7 @@ export function friendlyError(raw: unknown): string {
     s.includes("connection pool") ||
     s.includes("too many connections")
   ) {
-    return "The database is temporarily unreachable — it may be asleep or restarting. Wait a moment and try again.";
+    return "The database is temporarily unreachable - it may be asleep or restarting. Wait a moment and try again.";
   }
   if (
     s.includes("p1002") ||
@@ -41,7 +41,7 @@ export function friendlyError(raw: unknown): string {
   }
 
   if (isLikelyGitHubRateLimitMessage(msg)) {
-    return "GitHub's request limit was reached. It resets automatically — try again in a few minutes.";
+    return "GitHub's request limit was reached. It resets automatically - try again in a few minutes.";
   }
   if (s.includes("not found or private") || s.includes("404")) {
     return "That repository couldn't be found on GitHub. It may have been renamed, deleted, or made private.";
@@ -99,7 +99,7 @@ export function friendlyError(raw: unknown): string {
       msg,
     );
   if (looksTechnical) {
-    return "Something went wrong on our side. Try again — if it keeps happening, the details are in the server logs.";
+    return "Something went wrong on our side. Try again - if it keeps happening, the details are in the server logs.";
   }
   return msg;
 }

@@ -66,7 +66,7 @@ describe("extractFileMentions", () => {
   it("dedupes case-insensitively and caps the count", () => {
     expect(
       extractFileMentions(
-        "compare a.ts, A.ts, b.ts, c.ts, d.ts — which is the entrypoint?",
+        "compare a.ts, A.ts, b.ts, c.ts, d.ts - which is the entrypoint?",
       ),
     ).toEqual(["a.ts", "b.ts", "c.ts"]);
   });
@@ -80,7 +80,7 @@ describe("extractFileMentions", () => {
   it("ignores prose abbreviations and web domains", () => {
     expect(
       extractFileMentions(
-        "explain the auth flow, e.g. login and sessions, i.e. the cookie part — it runs at repodoc.parbhat.dev behind github.com",
+        "explain the auth flow, e.g. login and sessions, i.e. the cookie part - it runs at repodoc.parbhat.dev behind github.com",
       ),
     ).toEqual([]);
   });

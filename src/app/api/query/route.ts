@@ -18,6 +18,11 @@ import { z } from "zod";
 import { decryptSecret } from "@/lib/secret-crypto";
 import { isProjectOverBudget, BUDGET_EXCEEDED_MESSAGE } from "@/lib/budget";
 import { requirePaidPlan, isGuardFailure } from "@/lib/api-guards";
+import {
+  resolveThread,
+  appendMessageSafe,
+  type ChatSource,
+} from "@/lib/chat-threads";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -34,11 +39,13 @@ const QuerySchema = z.object({
     )
     .optional(),
   mode: z.enum(["guidance", "default"]).optional(),
+  threadId: z.string().min(1).optional(),
 });
 
 export async function POST(request: NextRequest) {
   const startMs = Date.now();
   let projectIdForMetrics: string | undefined;
+  let threadIdForPersistence: string | undefined;
   try {
     const { userId } = await auth();
 
@@ -97,7 +104,7 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-    const { projectId, question, conversationHistory } = parsed.data;
+    const { projectId, question, conversationHistory, threadId } = parsed.data;
     const mode = parsed.data.mode ?? "default";
     projectIdForMetrics = projectId;
 
@@ -130,6 +137,48 @@ export async function POST(request: NextRequest) {
         { error: "Budget exceeded", message: BUDGET_EXCEEDED_MESSAGE },
         { status: 402 },
       );
+    }
+    let thread: Awaited<ReturnType<typeof resolveThread>> = null;
+    let threadStoreDown = false;
+    try {
+      thread = await resolveThread({
+        threadId,
+        userId: dbUserId,
+        projectId,
+        question,
+        mode,
+      });
+    } catch (threadError) {
+      threadStoreDown = true;
+      log.error("[query] thread resolution failed; answering unpersisted", {
+        threadId,
+        projectId,
+        error: threadError,
+      });
+    }
+
+    if (!thread && !threadStoreDown) {
+      log.warn("[query] rejected 404: thread not found or not owned", {
+        threadId,
+        dbUserId,
+      });
+      return NextResponse.json(
+        {
+          error: "Conversation not found",
+          message:
+            "That conversation no longer exists. Start a new one and try again.",
+        },
+        { status: 404 },
+      );
+    }
+
+    if (thread) {
+      threadIdForPersistence = thread.id;
+      await appendMessageSafe({
+        threadId: thread.id,
+        role: "user",
+        content: question,
+      });
     }
 
     const embeddingsCount = await prisma.sourceCodeEmbeddings.count({
@@ -177,10 +226,21 @@ export async function POST(request: NextRequest) {
         cacheHit: false,
       }).catch((err) => console.error("[QueryMetrics]", err));
 
+      const preAssistant = thread
+        ? await appendMessageSafe({
+            threadId: thread.id,
+            role: "assistant",
+            content: preResult.answer,
+            sources: preResult.sources as ChatSource[],
+          })
+        : null;
+
       return NextResponse.json({
         success: true,
         answer: preResult.answer,
         sources: preResult.sources,
+        thread: thread ? { id: thread.id, title: thread.title } : null,
+        messageId: preAssistant?.id ?? null,
         metadata: {
           sourcesCount: preResult.sources.length,
           projectName: project.name,
@@ -212,10 +272,21 @@ export async function POST(request: NextRequest) {
         success: true,
         cacheHit: true,
       }).catch((err) => console.error("[QueryMetrics]", err));
+      const cachedAssistant = thread
+        ? await appendMessageSafe({
+            threadId: thread.id,
+            role: "assistant",
+            content: cached.answer,
+            sources: cached.sources as ChatSource[],
+          })
+        : null;
+
       return NextResponse.json({
         success: true,
         answer: cached.answer,
         sources: cached.sources,
+        thread: thread ? { id: thread.id, title: thread.title } : null,
+        messageId: cachedAssistant?.id ?? null,
         metadata: {
           sourcesCount: cached.sources.length,
           projectName: project.name,
@@ -292,10 +363,21 @@ export async function POST(request: NextRequest) {
       })
       .catch((err) => console.error("[RepoMemory] Failed to persist:", err));
 
+    const assistantMessage = thread
+      ? await appendMessageSafe({
+          threadId: thread.id,
+          role: "assistant",
+          content: result.answer,
+          sources: result.sources as ChatSource[],
+        })
+      : null;
+
     return NextResponse.json({
       success: true,
       answer: result.answer,
       sources: result.sources,
+      thread: thread ? { id: thread.id, title: thread.title } : null,
+      messageId: assistantMessage?.id ?? null,
       metadata: {
         sourcesCount: result.sources.length,
         projectName: project.name,
@@ -331,13 +413,22 @@ export async function POST(request: NextRequest) {
       }).catch((err) => console.error("[QueryMetrics]", err));
     }
 
+    const failureText =
+      error instanceof Error ? error.message : "An unexpected error occurred";
+    if (threadIdForPersistence) {
+      await appendMessageSafe({
+        threadId: threadIdForPersistence,
+        role: "assistant",
+        content: failureText,
+        status: "error",
+      });
+    }
+
     return NextResponse.json(
       {
         error: "Failed to process query",
-        message:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred",
+        message: failureText,
+        threadId: threadIdForPersistence ?? null,
       },
       { status: 500 },
     );

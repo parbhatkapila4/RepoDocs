@@ -13,7 +13,7 @@ function getKey(): Buffer | null {
     if (!warnedMissingKey) {
       warnedMissingKey = true;
       console.warn(
-        "[secret-crypto] ENCRYPTION_KEY is not set — secrets are stored in plaintext. Set a 32-byte key (hex/base64) to enable encryption at rest."
+        "[secret-crypto] ENCRYPTION_KEY is not set - secrets are stored in plaintext. Set a 32-byte key (hex/base64) to enable encryption at rest.",
       );
     }
     return null;
@@ -22,8 +22,7 @@ function getKey(): Buffer | null {
   try {
     const b64 = Buffer.from(raw, "base64");
     if (b64.length === 32) return b64;
-  } catch {
-  }
+  } catch {}
   return crypto.createHash("sha256").update(raw).digest();
 }
 
@@ -32,12 +31,12 @@ export function isEncrypted(value: string | null | undefined): boolean {
 }
 
 export function encryptSecret(
-  plaintext: string | null | undefined
+  plaintext: string | null | undefined,
 ): string | null {
   if (plaintext == null || plaintext === "") return null;
-  if (plaintext.startsWith(PREFIX)) return plaintext; 
+  if (plaintext.startsWith(PREFIX)) return plaintext;
   const key = getKey();
-  if (!key) return plaintext; 
+  if (!key) return plaintext;
 
   const iv = crypto.randomBytes(IV_LEN);
   const cipher = crypto.createCipheriv(ALGO, key, iv);
@@ -50,15 +49,15 @@ export function encryptSecret(
 }
 
 export function decryptSecret(
-  stored: string | null | undefined
+  stored: string | null | undefined,
 ): string | null {
   if (stored == null || stored === "") return null;
-  if (!stored.startsWith(PREFIX)) return stored; 
+  if (!stored.startsWith(PREFIX)) return stored;
 
   const key = getKey();
   if (!key) {
     console.error(
-      "[secret-crypto] ENCRYPTION_KEY missing — cannot decrypt a stored secret."
+      "[secret-crypto] ENCRYPTION_KEY missing - cannot decrypt a stored secret.",
     );
     return null;
   }

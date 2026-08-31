@@ -1,10 +1,10 @@
-> **Historical work log — do not follow these instructions.**
+> **Historical work log - do not follow these instructions.**
 > Kept for history, not as documentation. Known to be stale in at least three
 > ways: it calls Upstash Redis "required" (it is optional, with an in-memory
 > fallback), it tells you to generate a migration that already exists
 > (`20260219210000_add_indexing_job`), it says the worker picks jobs up "within
 > 1 minute" (the cron is daily at `0 6 * * *`, plus on-demand kicks), and its
-> "FIX 3" says token encryption was *not* implemented — it since has been
+> "FIX 3" says token encryption was *not* implemented - it since has been
 > (AES-256-GCM, `src/lib/secret-crypto.ts`). See `README.md` for current state.
 
 # Indexing Job System - Migration Guide

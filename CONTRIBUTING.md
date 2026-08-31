@@ -283,7 +283,7 @@ describe('API Integration', () => {
 
 ### Test Coverage
 
-- `jest.config.js` sets a 50% global threshold. Actual coverage is ~3.3% of statements, so `npm run test:coverage` fails on the threshold even though `npm run test:ci` passes — raise coverage toward the threshold rather than lowering it
+- `jest.config.js` sets a 50% global threshold. Actual coverage is ~3.3% of statements, so `npm run test:coverage` fails on the threshold even though `npm run test:ci` passes - raise coverage toward the threshold rather than lowering it
 - Focus on critical paths
 - Test edge cases
 - Mock external dependencies

@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { Github } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface RepoDocLogoProps {
   size?: "sm" | "md" | "lg";
@@ -32,7 +33,11 @@ export function RepoDocLogo({ size = "md", className = "" }: RepoDocLogoProps) {
   if (imageError) {
     return (
       <div
-        className={`${sizeClasses[size]} ${className} relative flex items-center justify-center rounded-full bg-linear-to-br from-gray-700 to-gray-900 border border-gray-600`}
+        className={cn(
+          sizeClasses[size],
+          "relative flex items-center justify-center rounded-full border border-gray-600 bg-linear-to-br from-gray-700 to-gray-900",
+          className,
+        )}
       >
         <Github className={`${iconSizes[size]} text-gray-300`} />
       </div>
@@ -45,7 +50,7 @@ export function RepoDocLogo({ size = "md", className = "" }: RepoDocLogoProps) {
       alt="RepoDoc Logo"
       width={pixelSizes[size]}
       height={pixelSizes[size]}
-      className={`${sizeClasses[size]} ${className} object-contain`}
+      className={cn(sizeClasses[size], "object-contain", className)}
       priority
       onError={() => setImageError(true)}
     />

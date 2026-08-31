@@ -94,7 +94,7 @@ const NEGATION_CUES = [
   "no longer",
   "unresolved",
 ];
-const CLAUSE_SEPARATOR = /;|—|\s-\s|\.\s+/;
+const CLAUSE_SEPARATOR = /;|\u2014|\s-\s|\.\s+/;
 
 function clauseAround(line: string, matchIndex: number): string {
   let cursor = 0;
@@ -143,11 +143,14 @@ function scanLine(
   line: string,
   file: string,
   lineNo: number,
-  out: Violation[]
+  out: Violation[],
 ): void {
   if (shouldSkipLine(line)) return;
   for (const rule of RULES) {
-    const re = new RegExp(rule.pattern.source, rule.pattern.flags.replace("g", "") + "g");
+    const re = new RegExp(
+      rule.pattern.source,
+      rule.pattern.flags.replace("g", "") + "g",
+    );
     let m: RegExpExecArray | null;
     while ((m = re.exec(line)) !== null) {
       if (m[0].length === 0) break;
@@ -163,7 +166,11 @@ function scanLine(
   }
 }
 
-function scanText(text: string, file: string, commentsOnly = false): Violation[] {
+function scanText(
+  text: string,
+  file: string,
+  commentsOnly = false,
+): Violation[] {
   const out: Violation[] = [];
   text.split(/\r?\n/).forEach((line, i) => {
     if (commentsOnly && !line.trimStart().startsWith("#")) return;
@@ -270,21 +277,21 @@ const MUST_NOT_FLAG: string[] = [
 describe("claim-drift guard self-test", () => {
   it("flags every claim class that was actually fabricated in this repo", () => {
     const missed = KNOWN_VIOLATIONS.filter(
-      (s) => scanText(s, "known-violation").length === 0
+      (s) => scanText(s, "known-violation").length === 0,
     );
     expect(missed).toEqual([]);
   });
 
   it("leaves true claims and negated statements alone", () => {
     const falsePositives = MUST_NOT_FLAG.flatMap((s) =>
-      scanText(s, "must-not-flag").map((v) => `[${v.rule}] ${s}`)
+      scanText(s, "must-not-flag").map((v) => `[${v.rule}] ${s}`),
     );
     expect(falsePositives).toEqual([]);
   });
 
   it("covers every fabrication class with at least one known violation", () => {
     const covered = new Set(
-      KNOWN_VIOLATIONS.flatMap((s) => scanText(s, "x").map((v) => v.rule))
+      KNOWN_VIOLATIONS.flatMap((s) => scanText(s, "x").map((v) => v.rule)),
     );
     const uncovered = RULES.map((r) => r.id).filter((id) => !covered.has(id));
     expect(uncovered).toEqual([]);
@@ -299,13 +306,15 @@ describe("public surfaces carry no unbacked claims", () => {
         ...scanText(
           fs.readFileSync(file, "utf8"),
           path.relative(repoRoot, file).replace(/\\/g, "/"),
-          commentsOnly
-        )
+          commentsOnly,
+        ),
       );
     }
 
     const report = violations
-      .map((v) => `${v.file}:${v.line} [${v.rule}] ${v.text}\n    why: ${v.why}`)
+      .map(
+        (v) => `${v.file}:${v.line} [${v.rule}] ${v.text}\n    why: ${v.why}`,
+      )
       .join("\n");
 
     expect(report).toBe("");

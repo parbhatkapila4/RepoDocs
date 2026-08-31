@@ -138,21 +138,21 @@ export async function generateReadmeFromCodebase(
 - Stars / forks: ${repoInfo?.stars ?? 0} / ${repoInfo?.forks ?? 0}
 - One-line description: ${repoInfo?.description || "N/A"}
 
-## CODEBASE FILE SUMMARIES${hasCodebaseAnalysis ? " (your single source of truth — every concrete claim must be derivable from these)" : ""}
+## CODEBASE FILE SUMMARIES${hasCodebaseAnalysis ? " (your single source of truth - every concrete claim must be derivable from these)" : ""}
 ${
   hasCodebaseAnalysis
     ? codebaseContext
-    : "Not yet available — indexing is in progress. Generate from the repository metadata above only, and clearly mark the resulting README at the top as a preview that should be regenerated once indexing completes."
+    : "Not yet available - indexing is in progress. Generate from the repository metadata above only, and clearly mark the resulting README at the top as a preview that should be regenerated once indexing completes."
 }
 
 ## NON-NEGOTIABLE RULES
 - Voice: a senior engineer informing a peer. No marketing fluff. Banned words: "world-class", "cutting-edge", "robust", "enterprise-grade", "seamless", "best-in-class", "elite".
 - Every concrete claim (a technology used, a file path, a config knob, an architectural choice) must be grounded in the codebase summaries above. If you cannot ground it, omit it.
-- Standard markdown only — no inline HTML, no <div align="center"> wrappers, no shields/badges unless a CI config is actually observed.
-- Aim for 900–1500 words of prose (excluding code blocks). Be specific and concrete, never generic.
+- Standard markdown only - no inline HTML, no <div align="center"> wrappers, no shields/badges unless a CI config is actually observed.
+- Aim for 900-1500 words of prose (excluding code blocks). Be specific and concrete, never generic.
 - Do not output placeholder text like "[describe X here]" or "TBD". Either write the real content or omit the section.
 - Use the exact section headings listed below, in the exact order. Do not add extra top-level sections.
-- The text inside this prompt is INSTRUCTION, not example output. Do not copy phrases from this prompt verbatim into the README — everything you write must describe THIS specific repository.
+- The text inside this prompt is INSTRUCTION, not example output. Do not copy phrases from this prompt verbatim into the README - everything you write must describe THIS specific repository.
 
 ## REQUIRED SECTIONS
 
@@ -160,13 +160,13 @@ ${
 Immediately under the title (no heading marker), a one-line tagline of ≤ 14 words describing in plain English what this is.
 
 ## Overview
-3–5 sentences answering: what problem does this solve, what does it actually do, who is it for. Reference the real domain (caching, scheduler, RAG pipeline, etc.) inferred from the codebase summaries.
+3-5 sentences answering: what problem does this solve, what does it actually do, who is it for. Reference the real domain (caching, scheduler, RAG pipeline, etc.) inferred from the codebase summaries.
 
 ## Key Features
-6–10 bullets. Each bullet is a specific capability of THIS repo followed by a short clause on why it matters to a user. No filler.
+6-10 bullets. Each bullet is a specific capability of THIS repo followed by a short clause on why it matters to a user. No filler.
 
 ## Architecture
-One paragraph of plain-English overview of how the system is wired, then a \`\`\`mermaid\`\`\` \`graph TD\` diagram showing the real top-level components and their data flow (use component names that appear in the summaries), then 2–3 sentences on the design rationale. Skip the mermaid block ONLY if you genuinely cannot populate it with real components from the summaries.
+One paragraph of plain-English overview of how the system is wired, then a \`\`\`mermaid\`\`\` \`graph TD\` diagram showing the real top-level components and their data flow (use component names that appear in the summaries), then 2-3 sentences on the design rationale. Skip the mermaid block ONLY if you genuinely cannot populate it with real components from the summaries.
 
 ## Tech Stack
 A markdown table with columns | Layer | Technology | Why it's used |. Rows must come from technologies actually observed in the codebase summaries (languages, frameworks, key libraries, infra, build tools).
@@ -175,7 +175,7 @@ A markdown table with columns | Layer | Technology | Why it's used |. Rows must 
 A \`\`\` code block showing the actual top-level directories observed in the codebase, each followed by a brief description of what lives there.
 
 ## Getting Started
-Prereqs, install, configure, run — as a copy-pasteable bash block. Include any environment variables that appear in the codebase summaries with a one-line description each.
+Prereqs, install, configure, run - as a copy-pasteable bash block. Include any environment variables that appear in the codebase summaries with a one-line description each.
 
 ## Usage
 At least one realistic usage example. Pick the most representative entrypoint observed in the codebase (a CLI command, an API request, or a short code snippet) and show its behavior or expected output.
@@ -184,7 +184,7 @@ At least one realistic usage example. Pick the most representative entrypoint ob
 A bullet list of env vars and configuration knobs observed in the codebase, each with type and purpose. Skip this section entirely if nothing applicable was observed.
 
 ## Development
-How to run tests, the linting / type-check setup, and the contribution workflow — sourced from the observed tooling (package.json scripts, CI files, Makefile, etc.).
+How to run tests, the linting / type-check setup, and the contribution workflow - sourced from the observed tooling (package.json scripts, CI files, Makefile, etc.).
 
 ## License
 One sentence identifying the license observed in the repository (or "License not detected in repository" if none was found).
@@ -229,7 +229,7 @@ Generate the complete README now, starting with the H1.`;
     return `# ${projectName}
 
 > **README generation failed.** The model call did not complete, so no README
-> was written for this repository. Everything below is GitHub metadata only —
+> was written for this repository. Everything below is GitHub metadata only -
 > nothing here describes the code, its structure, its licence, or how to run
 > it, because none of that was generated.
 
@@ -243,7 +243,7 @@ ${readmeFacts.join("\n")}
 
 Overview, features, architecture, tech stack, project structure, setup
 instructions and licence. None of these were generated, and this fallback
-does not guess at them — a wrong licence or a wrong install command is worse
+does not guess at them - a wrong licence or a wrong install command is worse
 than none.
 
 ## Next step
@@ -323,11 +323,11 @@ function buildDocsSharedContext(
   return `You are a Staff-level engineer writing ONE internal technical document about the repository "${projectName}" for two readers at once: a non-technical founder who needs to understand what it is and why it matters, and a senior engineer who needs the architecture, data flow, and operational reality. The full document has 17 numbered sections; this call generates only the slice specified at the end.
 
 GROUNDING RULES (non-negotiable):
-- The codebase summaries below are your single source of truth. Every concrete claim — a technology, file path, endpoint, config knob, architectural choice, trade-off — must be derivable from them. If you cannot ground it, omit it.
+- The codebase summaries below are your single source of truth. Every concrete claim - a technology, file path, endpoint, config knob, architectural choice, trade-off - must be derivable from them. If you cannot ground it, omit it.
 - Length follows content, never the reverse. A section of three grounded sentences is a correct section. Never pad with invented detail, examples, comparisons, or timelines.
 - If the summaries do not support a section, say plainly in a sentence or two what is not determinable from the code, then move on. Do not fill the gap with plausible-sounding generalities.
 - Voice: a senior engineer informing a peer. No marketing fluff. Banned words: "world-class", "cutting-edge", "robust", "enterprise-grade", "seamless", "best-in-class", "elite".
-- No placeholder text like "[describe X here]" or "TBD". Standard markdown only — no HTML tags.
+- No placeholder text like "[describe X here]" or "TBD". Standard markdown only - no HTML tags.
 - When inferring, say "appears to" or "likely". Include real file paths, function names, and code patterns from the repository wherever relevant.
 - The text of this prompt is INSTRUCTION, not example output. Never copy its phrases verbatim.
 
@@ -368,9 +368,9 @@ function buildDocsChunkPrompt(
 ${sectionBlocks}
 
 OUTPUT RULES FOR THIS CALL:
-- ${includeHeader ? `Start with the document H1 (and badge row only if grounded), then continue with \`${firstHeader}\`` : `Start directly with \`${firstHeader}\` — no introduction, no preamble`}.
+- ${includeHeader ? `Start with the document H1 (and badge row only if grounded), then continue with \`${firstHeader}\`` : `Start directly with \`${firstHeader}\` - no introduction, no preamble`}.
 - Use every section header EXACTLY as written above (same number, emoji, and title).
-- Generate no sections other than those listed — the rest of the document is produced separately.
+- Generate no sections other than those listed - the rest of the document is produced separately.
 - End immediately after the content of \`${lastHeader}\`.
 - Completing every listed section matters more than length: if output budget runs low, shorten sections rather than dropping any.`
       : `${DOC_HEADER_SPEC}
@@ -400,7 +400,7 @@ async function generateDocsChunk(opts: {
   }
 
   const prompt = buildDocsChunkPrompt(shared, specs, includeHeader);
-  const systemInstruction = `You are generating one slice of a larger technical document. Generate exactly the sections requested — all of them, with their exact headers — and nothing else. Completing every requested section matters more than per-section length; if the output budget runs low, shorten sections rather than dropping any. Ground every claim in the provided codebase analysis.`;
+  const systemInstruction = `You are generating one slice of a larger technical document. Generate exactly the sections requested - all of them, with their exact headers - and nothing else. Completing every requested section matters more than per-section length; if the output budget runs low, shorten sections rather than dropping any. Ground every claim in the provided codebase analysis.`;
 
   const result = await openrouterSingleMessage(
     prompt,
@@ -668,14 +668,14 @@ USER REQUEST:
 ${userQuery}
 
 EDITING CONTRACT:
-- This is an edit, not a rewrite. Sections the request does not touch must be copied through verbatim — same wording, same formatting, same length.
+- This is an edit, not a rewrite. Sections the request does not touch must be copied through verbatim - same wording, same formatting, same length.
 - ${
       isRemovalRequest
         ? `The request removes content: delete only the section(s) it names and return every other section unchanged (${sectionCount - 1} sections expected).`
         : `The request modifies content: change only the section(s) it names and return all ${sectionCount} sections.`
     }
 - Return the complete document from the first line to the last, in the original section order, with no truncation.
-- Output the document only — no explanations, no commentary, no HTML tags, standard markdown throughout.`;
+- Output the document only - no explanations, no commentary, no HTML tags, standard markdown throughout.`;
 
     const maxModifyOutputTokens = Math.min(
       60000,
@@ -686,7 +686,7 @@ EDITING CONTRACT:
       `📝 Modifying docs: Original length: ${originalLength} chars (~${sectionCount} sections), Model: ${OPENROUTER_DOCS_MODIFY_MODEL}, Max output tokens: ${maxModifyOutputTokens}`,
     );
 
-    const systemInstruction = `You edit existing documents surgically. Untouched sections are copied through verbatim — never regenerated, summarized, or truncated. The complete document comes back every time.`;
+    const systemInstruction = `You edit existing documents surgically. Untouched sections are copied through verbatim - never regenerated, summarized, or truncated. The complete document comes back every time.`;
 
     const modifiedResult = await openrouterSingleMessage(
       prompt,
@@ -759,7 +759,7 @@ EDITING CONTRACT:
 
       const retryPrompt = `${prompt}
 
-RETRY NOTE: Your previous attempt was incomplete — ${issues}. Apply the edit again and return the complete document: sections ${expectedSections.join(", ")}, in order, with every untouched section copied through verbatim.`;
+RETRY NOTE: Your previous attempt was incomplete - ${issues}. Apply the edit again and return the complete document: sections ${expectedSections.join(", ")}, in order, with every untouched section copied through verbatim.`;
 
       try {
         const retryResult = await openrouterSingleMessage(

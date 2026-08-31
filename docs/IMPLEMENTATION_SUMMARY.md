@@ -1,4 +1,4 @@
-> **Historical work log — not current documentation.**
+> **Historical work log - not current documentation.**
 > A one-time record of a single change, kept for history. Its "FIX 3" states
 > that GitHub token encryption was deliberately left unimplemented; that is no
 > longer true (AES-256-GCM, `src/lib/secret-crypto.ts`). See `README.md` for

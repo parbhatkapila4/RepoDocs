@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Github, Twitter, type LucideIcon } from "lucide-react";
 
 import FooterWaveform from "./FooterWaveform";
+import { SCANLINES } from "./sections/shared";
 
 interface NavItem {
   label: string;
@@ -14,15 +15,31 @@ interface NavItem {
 }
 
 const PRODUCT: NavItem[] = [
-  { label: "Documentation", desc: "Generated docs for every module", href: "/documentation" },
-  { label: "Changelog", desc: "Shipped improvements, continuously", href: "/changelog" },
+  {
+    label: "Documentation",
+    desc: "Generated docs for every module",
+    href: "/documentation",
+  },
+  {
+    label: "Changelog",
+    desc: "Shipped improvements, continuously",
+    href: "/changelog",
+  },
   { label: "Pricing", desc: "Plans for solo devs and teams", href: "/pricing" },
-  { label: "API Reference", desc: "The endpoints behind the product", href: "/api" },
+  {
+    label: "API Reference",
+    desc: "The endpoints behind the product",
+    href: "/api",
+  },
 ];
 
 const COMPANY: NavItem[] = [
   { label: "About", desc: "The story behind RepoDoc", href: "/about" },
-  { label: "Contact", desc: "Questions, demos, partnerships", href: "/contact" },
+  {
+    label: "Contact",
+    desc: "Questions, demos, partnerships",
+    href: "/contact",
+  },
   { label: "Privacy", desc: "How we handle your data", href: "/privacy" },
   { label: "Terms", desc: "The fine print", href: "/terms" },
 ];
@@ -36,13 +53,13 @@ const CONTACT_EMAIL = "parbhat@parbhat.work";
 
 export default function Footer() {
   return (
-    <footer className="relative mt-24 overflow-hidden bg-[#040406] lg:mt-36">
+    <footer className="relative overflow-hidden bg-[#040406] pt-24 lg:pt-36">
       <BentBars side="left" />
       <BentBars side="right" />
 
       <div
         aria-hidden
-        className="pointer-events-none absolute left-1/2 top-0 z-20 flex -translate-x-1/2 flex-col items-center"
+        className="pointer-events-none absolute left-1/2 top-24 z-20 flex -translate-x-1/2 flex-col items-center lg:top-36"
       >
         <span
           className="h-14 w-px"
@@ -113,10 +130,14 @@ export default function Footer() {
             </a>
           </div>
         </div>
-
       </div>
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-10"
+        style={{ backgroundImage: SCANLINES }}
+      />
 
-      <FooterWaveform className="h-[clamp(160px,23vw,320px)] w-full" />
+      <FooterWaveform className="relative z-20 h-[clamp(160px,23vw,320px)] w-full" />
     </footer>
   );
 }
@@ -126,22 +147,22 @@ function BentBars({ side }: { side: "left" | "right" }) {
 
   const bars = isLeft
     ? [
-      "0,60 200,60 380,160 380,190 200,90 0,90",
-      "0,120 200,120 380,220 380,250 200,150 0,150",
-      "0,180 200,180 380,280 380,310 200,210 0,210",
-    ]
+        "0,60 200,60 380,160 380,190 200,90 0,90",
+        "0,120 200,120 380,220 380,250 200,150 0,150",
+        "0,180 200,180 380,280 380,310 200,210 0,210",
+      ]
     : [
-      "600,60 400,60 220,160 220,190 400,90 600,90",
-      "600,120 400,120 220,220 220,250 400,150 600,150",
-      "600,180 400,180 220,280 220,310 400,210 600,210",
-    ];
+        "600,60 400,60 220,160 220,190 400,90 600,90",
+        "600,120 400,120 220,220 220,250 400,150 600,150",
+        "600,180 400,180 220,280 220,310 400,210 600,210",
+      ];
 
   const positionClass = isLeft ? "left-0" : "right-0";
 
   return (
     <div
       aria-hidden
-      className={`pointer-events-none absolute top-1/2 hidden -translate-y-1/2 md:block ${positionClass}`}
+      className={`pointer-events-none absolute top-1/2 mt-12 hidden -translate-y-1/2 md:block lg:mt-[72px] ${positionClass}`}
       style={{
         width: "min(36%, 460px)",
         aspectRatio: "600 / 400",
@@ -193,7 +214,10 @@ function BentBars({ side }: { side: "left" | "right" }) {
             />
           </mask>
         </defs>
-        <g mask={`url(#footer-mask-${side})`} fill={`url(#footer-halftone-${side})`}>
+        <g
+          mask={`url(#footer-mask-${side})`}
+          fill={`url(#footer-halftone-${side})`}
+        >
           {bars.map((points, i) => (
             <polygon key={i} points={points} />
           ))}

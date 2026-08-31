@@ -51,6 +51,9 @@ jest.mock("../../src/lib/prisma", () => ({
     project: { findFirst: jest.fn() },
     sourceCodeEmbeddings: { count: jest.fn() },
     user: { findUnique: jest.fn() },
+    chatThread: { findFirst: jest.fn(), create: jest.fn(), update: jest.fn() },
+    chatMessage: { create: jest.fn() },
+    $transaction: jest.fn(),
     $executeRaw: jest.fn(),
   },
 }));
@@ -70,7 +73,32 @@ const mockPrisma = prisma as unknown as {
   project: { findFirst: jest.Mock };
   sourceCodeEmbeddings: { count: jest.Mock };
   user: { findUnique: jest.Mock };
+  chatThread: { findFirst: jest.Mock; create: jest.Mock; update: jest.Mock };
+  chatMessage: { create: jest.Mock };
+  $transaction: jest.Mock;
   $executeRaw: jest.Mock;
+};
+
+const threadRow = {
+  id: "thread1",
+  projectId: "proj1",
+  title: "How does authentication work?",
+  mode: "default",
+  pinned: false,
+  archived: false,
+  lastMessageAt: new Date("2026-01-01T00:00:00Z"),
+  lastMessagePreview: null,
+  messageCount: 0,
+  createdAt: new Date("2026-01-01T00:00:00Z"),
+};
+
+const messageRow = {
+  id: "msg1",
+  role: "assistant",
+  content: "Test answer",
+  sources: null,
+  status: "complete",
+  createdAt: new Date("2026-01-01T00:00:00Z"),
 };
 
 describe("/api/query", () => {
@@ -78,8 +106,10 @@ describe("/api/query", () => {
     jest.clearAllMocks();
     mockAuth.mockResolvedValue({ userId: "user123" });
     mockGetDbUserId.mockResolvedValue("user123");
-    // Chat is a paid capability; these cases exercise an entitled account.
     mockPrisma.user.findUnique.mockResolvedValue({ plan: "professional" });
+    mockPrisma.chatThread.create.mockResolvedValue(threadRow);
+    mockPrisma.chatThread.findFirst.mockResolvedValue(threadRow);
+    mockPrisma.$transaction.mockResolvedValue([messageRow, threadRow]);
   });
 
   it("returns 401 if user is not authenticated", async () => {
@@ -114,7 +144,10 @@ describe("/api/query", () => {
 
     const request = new NextRequest("http://localhost:3000/api/query", {
       method: "POST",
-      body: JSON.stringify({ projectId: "p1", question: "how does auth work?" }),
+      body: JSON.stringify({
+        projectId: "p1",
+        question: "how does auth work?",
+      }),
     });
 
     const response = await POST(request);
@@ -192,7 +225,12 @@ describe("/api/query", () => {
     mockQueryCodebasePreindex.mockResolvedValue({
       answer: "Pre-index answer",
       sources: [
-        { fileName: "README.md", sourceCode: "", summary: "x", similarity: 0.5 },
+        {
+          fileName: "README.md",
+          sourceCode: "",
+          summary: "x",
+          similarity: 0.5,
+        },
       ],
       promptTokens: 1,
       completionTokens: 2,
@@ -230,5 +268,93 @@ describe("/api/query", () => {
 
     const response = await POST(request);
     expect(response.status).toBe(404);
+  });
+
+  describe("chat history persistence", () => {
+    const answeringProject = {
+      id: "proj1",
+      userId: "user123",
+      name: "Test Project",
+      monthlyCostLimitUsd: null,
+    };
+
+    const ask = (body: Record<string, unknown>) =>
+      POST(
+        new NextRequest("http://localhost:3000/api/query", {
+          method: "POST",
+          body: JSON.stringify({
+            projectId: "proj1",
+            question: "How does authentication work?",
+            ...body,
+          }),
+        }),
+      );
+
+    beforeEach(() => {
+      mockPrisma.project.findFirst.mockResolvedValue(answeringProject);
+      mockPrisma.sourceCodeEmbeddings.count.mockResolvedValue(10);
+      mockQueryCodebase.mockResolvedValue({
+        answer: "Test answer",
+        sources: [],
+      });
+    });
+
+    it("opens a thread and writes both sides of the turn", async () => {
+      const response = await ask({});
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(mockPrisma.chatThread.create).toHaveBeenCalledTimes(1);
+      expect(mockPrisma.$transaction).toHaveBeenCalledTimes(2);
+      expect(data.thread).toEqual({
+        id: "thread1",
+        title: "How does authentication work?",
+      });
+    });
+
+    it("reuses the thread the client names instead of opening a new one", async () => {
+      await ask({ threadId: "thread1" });
+
+      expect(mockPrisma.chatThread.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: "thread1",
+            userId: "user123",
+            projectId: "proj1",
+          }),
+        }),
+      );
+      expect(mockPrisma.chatThread.create).not.toHaveBeenCalled();
+    });
+
+    it("404s when the named thread is not the caller's", async () => {
+      mockPrisma.chatThread.findFirst.mockResolvedValue(null);
+
+      const response = await ask({ threadId: "someone-elses" });
+
+      expect(response.status).toBe(404);
+      expect(mockQueryCodebase).not.toHaveBeenCalled();
+    });
+
+    it("still answers when the history store is unavailable", async () => {
+      mockPrisma.chatThread.create.mockRejectedValue(new Error("db down"));
+
+      const response = await ask({});
+      const data = await response.json();
+      expect(response.status).toBe(200);
+      expect(data.answer).toBe("Test answer");
+      expect(data.thread).toBeNull();
+    });
+
+    it("does not lose the answer when appending a message fails", async () => {
+      mockPrisma.$transaction.mockRejectedValue(new Error("write failed"));
+
+      const response = await ask({});
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.answer).toBe("Test answer");
+      expect(data.messageId).toBeNull();
+    });
   });
 });

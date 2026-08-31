@@ -21,6 +21,7 @@ model User {
   plan           String          @default("starter")
   projects       Project[]
   backgroundJobs BackgroundJob[]
+  chatThreads    ChatThread[]
 }
 
 model Project {
@@ -45,6 +46,7 @@ model Project {
   indexingJob           IndexingJob?
   queryMetrics          QueryMetrics[]
   backgroundJobs        BackgroundJob[]
+  chatThreads           ChatThread[]
 
   @@index([userId, deletedAt])
   @@index([userId, createdAt(sort: Desc)])
@@ -232,4 +234,38 @@ model QueryMetrics {
   @@index([projectId])
   @@index([projectId, createdAt(sort: Desc)])
   @@index([projectId, success, createdAt(sort: Desc)])
+}
+
+model ChatThread {
+  id                 String        @id @default(uuid())
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  userId             String
+  user               User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId          String
+  project            Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title              String        @db.Text
+  mode               String        @default("default")
+  pinned             Boolean       @default(false)
+  archived           Boolean       @default(false)
+  lastMessageAt      DateTime      @default(now())
+  lastMessagePreview String?       @db.Text
+  messageCount       Int           @default(0)
+  messages           ChatMessage[]
+
+  @@index([userId, projectId, archived, lastMessageAt(sort: Desc)])
+  @@index([projectId, lastMessageAt(sort: Desc)])
+}
+
+model ChatMessage {
+  id        String     @id @default(uuid())
+  createdAt DateTime   @default(now())
+  threadId  String
+  thread    ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  role      String
+  content   String     @db.Text
+  sources   Json?
+  status    String     @default("complete")
+
+  @@index([threadId, createdAt])
 }

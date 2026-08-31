@@ -7,13 +7,15 @@ import { toast } from "sonner";
 import { useUser } from "@/hooks/useUser";
 import { Navigation, Footer, CommandPalette } from "@/components/landing";
 
-import HeroRig from "@/components/landing/HeroRig";
-import RigProblem from "@/components/landing/rig/RigProblem";
-import RigIntro from "@/components/landing/rig/RigIntro";
-import RigSpotlight from "@/components/landing/rig/RigSpotlight";
-import RigApproach from "@/components/landing/rig/RigApproach";
-import RigCapabilities from "@/components/landing/rig/RigCapabilities";
-import RigEngineered from "@/components/landing/rig/RigEngineered";
+import SectionHero from "@/components/landing/SectionHero";
+import Problem from "@/components/landing/sections/Problem";
+import Intro from "@/components/landing/sections/Intro";
+import Spotlight from "@/components/landing/sections/Spotlight";
+import Approach from "@/components/landing/sections/Approach";
+import Pricing from "@/components/landing/sections/Pricing";
+import Capabilities from "@/components/landing/sections/Capabilities";
+import Engineered from "@/components/landing/sections/Engineered";
+import Faq from "@/components/landing/sections/Faq";
 
 function PaymentStatusHandler() {
   const searchParams = useSearchParams();
@@ -74,13 +76,15 @@ function LandingPageContent() {
     <MotionConfig reducedMotion="user">
       <div className="min-h-screen bg-[#040406]">
         <Navigation />
-        <HeroRig />
-        <RigProblem />
-        <RigIntro />
-        <RigSpotlight />
-        <RigApproach />
-        <RigCapabilities />
-        <RigEngineered />
+        <SectionHero />
+        <Problem />
+        <Intro />
+        <Spotlight />
+        <Approach />
+        <Pricing />
+        <Capabilities />
+        <Engineered />
+        <Faq />
         <Footer />
         <CommandPalette />
       </div>

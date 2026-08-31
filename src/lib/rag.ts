@@ -553,16 +553,16 @@ async function fetchMissingMentionsFromGithub(
         fileName: f.path,
         sourceCode: f.text,
         summary: goneFromHead(f.path)
-          ? "Fetched live from GitHub at the indexed commit — this file existed when the repository was indexed but no longer appears on the current branch (likely moved, renamed, or deleted since; a re-index will reflect that)."
-          : "Fetched live from GitHub at the indexed commit — this file exists in the repository but is not in the index (it may have failed or been filtered during indexing; a re-index will include it).",
+          ? "Fetched live from GitHub at the indexed commit - this file existed when the repository was indexed but no longer appears on the current branch (likely moved, renamed, or deleted since; a re-index will reflect that)."
+          : "Fetched live from GitHub at the indexed commit - this file exists in the repository but is not in the index (it may have failed or been filtered during indexing; a re-index will include it).",
         similarity: 1,
       })),
       ...atHead.map((f) => ({
         fileName: f.path,
         sourceCode: f.text,
         summary: baseRef
-          ? "Fetched live from GitHub at the current branch head — this file was added or changed after the repository was indexed, so the index does not cover it yet (a re-index will)."
-          : "Fetched live from GitHub — this file is not in the index yet (it may have failed indexing or been added after; a re-index will include it).",
+          ? "Fetched live from GitHub at the current branch head - this file was added or changed after the repository was indexed, so the index does not cover it yet (a re-index will)."
+          : "Fetched live from GitHub - this file is not in the index yet (it may have failed indexing or been added after; a re-index will include it).",
         similarity: 1,
       })),
     ];
@@ -674,7 +674,7 @@ export async function queryCodebase(
       const absentNote = live.unresolved
         .map(
           (u) =>
-            ` \`${u.mention}\` does not exist in this repository — I checked the file tree, the indexed commit, and the branch head.${
+            ` \`${u.mention}\` does not exist in this repository - I checked the file tree, the indexed commit, and the branch head.${
               u.nearby.length > 0
                 ? ` Closest real files: ${u.nearby
                     .slice(0, 5)
@@ -698,7 +698,7 @@ export async function queryCodebase(
                 ", ",
               )} by name in the index and on GitHub and couldn't retrieve ${
               unproven.length > 1 ? "them" : "it"
-            } — the file may have been moved, renamed, or deleted; double-check the exact path or re-index the repository.`
+            } - the file may have been moved, renamed, or deleted; double-check the exact path or re-index the repository.`
           : "";
       return {
         answer:
@@ -748,18 +748,18 @@ Write like a senior engineer giving guidance before coding.`;
 
     const identityBlock = `You are RepoDoc's code assistant for the repository "${identity.name}"${identity.repoUrl ? ` (${identity.repoUrl})` : ""}.
 
-THIS REPOSITORY IS INDEXED. ${identity.fileCount > 0 ? `${identity.fileCount} files were summarized, embedded, and stored${identity.indexedCommitSha ? ` at commit ${identity.indexedCommitSha.slice(0, 7)}` : ""}.` : "Its files were summarized, embedded, and stored."} The code below was pulled FROM THAT INDEX for this question — by semantic retrieval, plus a direct lookup of any file the user named.
+THIS REPOSITORY IS INDEXED. ${identity.fileCount > 0 ? `${identity.fileCount} files were summarized, embedded, and stored${identity.indexedCommitSha ? ` at commit ${identity.indexedCommitSha.slice(0, 7)}` : ""}.` : "Its files were summarized, embedded, and stored."} The code below was pulled FROM THAT INDEX for this question - by semantic retrieval, plus a direct lookup of any file the user named.
 
 Because you answer through that index:
-- NEVER say you cannot access the repository or its files, and NEVER ask the user to paste code — you reach the entire indexed repo through retrieval.
+- NEVER say you cannot access the repository or its files, and NEVER ask the user to paste code - you reach the entire indexed repo through retrieval.
 - If the user asks whether you can see, read, or access the code: the answer is yes, via the index. Say so and summarize what was retrieved for this question.
-- If a file the user needs is NOT among the sources below, don't claim it is inaccessible — say it wasn't retrieved for this question and that asking about the file by its full path will pull its contents in.
-- If the user DID name a file and it is still not among the sources below, it could not be found in the index, at the indexed commit, or on the current branch head. Do NOT flatly deny the file exists — especially if you mentioned it earlier in this conversation; acknowledge that and say it could not be retrieved just now. Suggest double-checking the exact path (it may have been moved, renamed, or deleted) and offer re-indexing the repository. EXCEPTION: if the file is listed under "NAMED FILES VERIFIED ABSENT" below, it definitively does not exist — follow that section instead.
+- If a file the user needs is NOT among the sources below, don't claim it is inaccessible - say it wasn't retrieved for this question and that asking about the file by its full path will pull its contents in.
+- If the user DID name a file and it is still not among the sources below, it could not be found in the index, at the indexed commit, or on the current branch head. Do NOT flatly deny the file exists - especially if you mentioned it earlier in this conversation; acknowledge that and say it could not be retrieved just now. Suggest double-checking the exact path (it may have been moved, renamed, or deleted) and offer re-indexing the repository. EXCEPTION: if the file is listed under "NAMED FILES VERIFIED ABSENT" below, it definitively does not exist - follow that section instead.
 - Each source may be an excerpt of a longer file; when a source ends with "(file continues beyond this excerpt)", say the file continues rather than treating the cut as the end of the file.`;
 
     const baseSystemContent = `${identityBlock}
 
-Your role is to help developers understand this codebase with professional, comprehensive, and crystal-clear explanations — like a senior engineer who knows the repository well.
+Your role is to help developers understand this codebase with professional, comprehensive, and crystal-clear explanations - like a senior engineer who knows the repository well.
 
 ## RETRIEVED SOURCES FOR THIS QUESTION:
 
@@ -836,7 +836,7 @@ For each question, structure your response as follows:
 If the sources above don't fully answer the question:
 - State clearly what the retrieved code does show and what can be inferred from it
 - Name the specific files or areas of the repo that would likely hold the answer
-- Tell the user to ask about those files by path — naming a file pulls its contents into the next answer
+- Tell the user to ask about those files by path - naming a file pulls its contents into the next answer
 - Never frame the gap as you lacking access to the repository; it is only a retrieval miss for this particular question
 
 Remember: Your goal is to make the codebase as understandable as possible. Be detailed, be clear, be professional, and always prioritize the user's understanding.`;
@@ -847,7 +847,7 @@ Remember: Your goal is to make the codebase as understandable as possible. Be de
           live.unresolved
             .map(
               (u) =>
-                `- \`${u.mention}\` — checked against the repository's file tree and by direct retrieval at the indexed commit and the current branch head: this file does not exist in the repository.${
+                `- \`${u.mention}\` - checked against the repository's file tree and by direct retrieval at the indexed commit and the current branch head: this file does not exist in the repository.${
                   u.nearby.length > 0
                     ? ` Real files near that path: ${u.nearby
                         .map((n) => `\`${n}\``)
@@ -856,7 +856,7 @@ Remember: Your goal is to make the codebase as understandable as possible. Be de
                 }`,
             )
             .join("\n") +
-          `\nFor these files: state plainly that the file does not exist in this repository — do NOT suggest re-checking capitalization, other commits, or re-indexing — and point the user to the real nearby files they probably meant.`
+          `\nFor these files: state plainly that the file does not exist in this repository - do NOT suggest re-checking capitalization, other commits, or re-indexing - and point the user to the real nearby files they probably meant.`
         : "";
 
     const systemContent =
@@ -995,7 +995,7 @@ Stars / forks: ${repoInfo.stars} / ${repoInfo.forks}`
 
   const systemContent = `You are RepoDoc's code assistant. This repository is STILL BEING INDEXED, so for now you answer from a live GitHub fetch: the metadata, file excerpts, README supplement, and path list below.
 
-You DO have access to this repository — the excerpts below were fetched from it moments ago. Never tell the user to paste code to you. If the user asks whether you can see or access the code: yes, via this live fetch, with fuller retrieval available once indexing completes. Do not claim to have read files that are not in the excerpts or README supplement; if detail is missing, say what is missing and that the completed index will cover it.
+You DO have access to this repository - the excerpts below were fetched from it moments ago. Never tell the user to paste code to you. If the user asks whether you can see or access the code: yes, via this live fetch, with fuller retrieval available once indexing completes. Do not claim to have read files that are not in the excerpts or README supplement; if detail is missing, say what is missing and that the completed index will cover it.
 ${guidanceBlock}
 
 ## Context

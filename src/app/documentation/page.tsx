@@ -44,7 +44,7 @@ export default function DocumentationPage() {
           <span className="text-white/45">Query the system.</span>
         </h1>
         <p className="mt-6 max-w-2xl text-[15px] leading-[1.6] text-white/55">
-          A short guide to the four flows that make up RepoDoc  -  indexing,
+          A short guide to the four flows that make up RepoDoc - indexing,
           querying, documentation, and sharing. Every section is self-contained
           and points back at the API where relevant.
         </p>
@@ -73,7 +73,11 @@ export default function DocumentationPage() {
         </div>
       </section>
 
-      <Section id="getting-started" label="01 / getting started" title="Three steps to a queryable repo">
+      <Section
+        id="getting-started"
+        label="01 / getting started"
+        title="Three steps to a queryable repo"
+      >
         <ol className="space-y-5">
           <Step
             n="1"
@@ -93,13 +97,17 @@ export default function DocumentationPage() {
         </ol>
       </Section>
 
-      <Section id="indexing" label="02 / indexing" title="What happens when you connect a repo">
+      <Section
+        id="indexing"
+        label="02 / indexing"
+        title="What happens when you connect a repo"
+      >
         <p className="text-[14.5px] leading-[1.7] text-white/60">
           Indexing runs as a background job and emits progress through the
-          dashboard. It typically takes 5&ndash;15 minutes depending on
-          repository size. The worker time-boxes each run, writes a resume
-          cursor, and requeues itself, so a large repo indexes across several
-          short invocations rather than one long one.
+          dashboard. It typically takes 5-15 minutes depending on repository
+          size. The worker time-boxes each run, writes a resume cursor, and
+          requeues itself, so a large repo indexes across several short
+          invocations rather than one long one.
         </p>
         <ul className="mt-6 space-y-3">
           <Bullet>
@@ -122,10 +130,14 @@ export default function DocumentationPage() {
         </ul>
       </Section>
 
-      <Section id="querying" label="03 / querying" title="Chat over an indexed repo">
+      <Section
+        id="querying"
+        label="03 / querying"
+        title="Chat over an indexed repo"
+      >
         <p className="text-[14.5px] leading-[1.7] text-white/60">
           Chat is a grounded conversation that returns an answer plus the source
-          files it was built from. Vector retrieval runs inside that endpoint  -
+          files it was built from. Vector retrieval runs inside that endpoint -
           the question is embedded, matched against file summaries by cosine
           similarity, and the top 5 files are passed into the answer prompt.
           There is no separate retrieval-only endpoint.
@@ -147,21 +159,23 @@ export default function DocumentationPage() {
               POST /api/search
             </code>
             <p className="mt-2 text-[13.5px] leading-[1.6] text-white/55">
-              Finds repositories on GitHub by keyword, language, and topic  -
-              for picking something to index. It does not search your indexed
-              files.
+              Finds repositories on GitHub by keyword, language, and topic - for
+              picking something to index. It does not search your indexed files.
             </p>
           </Surface>
         </div>
       </Section>
 
-      <Section id="documentation" label="04 / documentation & readme" title="Generate, then refine">
+      <Section
+        id="documentation"
+        label="04 / documentation & readme"
+        title="Generate, then refine"
+      >
         <p className="text-[14.5px] leading-[1.7] text-white/60">
           Both documentation and README generation run against the indexed
-          codebase. The output is editable through follow-up questions  - 
+          codebase. The output is editable through follow-up questions -
           &quot;add a troubleshooting section&quot; or &quot;update the API
-          examples&quot; modify the document in place rather than starting
-          over.
+          examples&quot; modify the document in place rather than starting over.
         </p>
         <ul className="mt-6 space-y-3">
           <Bullet>
@@ -170,13 +184,17 @@ export default function DocumentationPage() {
             through the QnA history.
           </Bullet>
           <Bullet>
-            Markdown rendering uses remark-gfm, with syntax highlighting
-            wired through react-syntax-highlighter.
+            Markdown rendering uses remark-gfm, with syntax highlighting wired
+            through react-syntax-highlighter.
           </Bullet>
         </ul>
       </Section>
 
-      <Section id="sharing" label="05 / sharing" title="Token-based public links">
+      <Section
+        id="sharing"
+        label="05 / sharing"
+        title="Token-based public links"
+      >
         <p className="text-[14.5px] leading-[1.7] text-white/60">
           Documentation and README pages can be published to a tokenized URL
           without exposing the underlying project. Tokens are scoped per
@@ -194,15 +212,15 @@ export default function DocumentationPage() {
           <Surface>
             <SurfaceLabel>app</SurfaceLabel>
             <p className="mt-2 text-[13.5px] leading-[1.6] text-white/60">
-              Next.js (App Router) on the server, React on the client,
-              Tailwind for styling, Clerk for auth.
+              Next.js (App Router) on the server, React on the client, Tailwind
+              for styling, Clerk for auth.
             </p>
           </Surface>
           <Surface>
             <SurfaceLabel>data</SurfaceLabel>
             <p className="mt-2 text-[13.5px] leading-[1.6] text-white/60">
-              PostgreSQL + pgvector, accessed through Prisma. One database
-              for metadata, vectors, and history.
+              PostgreSQL + pgvector, accessed through Prisma. One database for
+              metadata, vectors, and history.
             </p>
           </Surface>
           <Surface>
@@ -257,10 +275,7 @@ function TopBar() {
   return (
     <div className="border-b border-white/[0.05]">
       <div className="flex items-center px-6 sm:px-8 lg:px-12 py-4">
-        <Link
-          href="/"
-          className="group inline-flex items-center gap-2"
-        >
+        <Link href="/" className="group inline-flex items-center gap-2">
           <ArrowLeft className="h-3.5 w-3.5 text-white/40 transition-all group-hover:-translate-x-0.5 group-hover:text-white/70" />
           <Image
             src="/repodoc.png"

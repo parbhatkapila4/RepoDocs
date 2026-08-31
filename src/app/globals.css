@@ -1,9 +1,15 @@
-@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=EB+Garamond:wght@400;500;600&family=Space+Grotesk:wght@300;400;500;600;700&family=Archivo:wght@300..500&family=Public+Sans:wght@300;400;500&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
+@font-face {
+  font-family: "Departure Mono";
+  src: url("/fonts/DepartureMono-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
 
 @keyframes constellation-drift {
-
   0%,
   100% {
     transform: translate3d(-1.5%, 0%, 0);
@@ -15,7 +21,6 @@
 }
 
 @keyframes constellation-pulse {
-
   0%,
   100% {
     opacity: 0.18;
@@ -27,7 +32,6 @@
 }
 
 @keyframes system-hub-pulse {
-
   0%,
   100% {
     opacity: 0.55;
@@ -72,7 +76,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-
   .constellation-drift,
   .constellation-pulse {
     animation: none !important;
@@ -157,6 +160,11 @@
   --color-sidebar-ring: var(--sidebar-ring);
   --font-sans: "Outfit", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-display: "EB Garamond", Georgia, "Times New Roman", serif;
+  --font-grotesk: "Space Grotesk", "Outfit", system-ui, sans-serif;
+  --font-heading: "Archivo", "Space Grotesk", system-ui, sans-serif;
+  --font-body: "Public Sans", "Outfit", system-ui, sans-serif;
+  --font-pixel: "Departure Mono", "JetBrains Mono", ui-monospace, monospace;
 }
 :root {
   --radius: 0.625rem;
@@ -266,10 +274,12 @@
 }
 
 .bg-gradient-conic {
-  background: conic-gradient(from 0deg at 50% 50%,
-      var(--tw-gradient-from) 0deg,
-      var(--tw-gradient-via) 180deg,
-      var(--tw-gradient-to) 360deg);
+  background: conic-gradient(
+    from 0deg at 50% 50%,
+    var(--tw-gradient-from) 0deg,
+    var(--tw-gradient-via) 180deg,
+    var(--tw-gradient-to) 360deg
+  );
 }
 
 .glass {
@@ -315,7 +325,6 @@
 }
 
 @keyframes float {
-
   0%,
   100% {
     transform: translateY(0);
@@ -327,12 +336,14 @@
 }
 
 .text-shimmer {
-  background: linear-gradient(90deg,
-      rgba(255, 255, 255, 0.8) 0%,
-      rgba(139, 92, 246, 1) 25%,
-      rgba(6, 182, 212, 1) 50%,
-      rgba(139, 92, 246, 1) 75%,
-      rgba(255, 255, 255, 0.8) 100%);
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.8) 0%,
+    rgba(139, 92, 246, 1) 25%,
+    rgba(6, 182, 212, 1) 50%,
+    rgba(139, 92, 246, 1) 75%,
+    rgba(255, 255, 255, 0.8) 100%
+  );
   background-size: 200% auto;
   -webkit-background-clip: text;
   background-clip: text;
@@ -370,7 +381,6 @@
 }
 
 @keyframes aurora {
-
   0%,
   100% {
     opacity: 0.3;
@@ -529,7 +539,6 @@
   color: #d1d5db;
 }
 
-
 *,
 *::before,
 *::after {
@@ -577,7 +586,6 @@
   color: #666666 !important;
 }
 
-
 .scrollbar-thin {
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -598,7 +606,6 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-
   [data-radix-scroll-area-viewport],
   .overflow-auto,
   .overflow-y-auto,
@@ -610,7 +617,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-
   .floating,
   .animate-gradient,
   .animate-scroll,
@@ -645,11 +651,6 @@
     display: flex !important;
     flex-direction: column !important;
   }
-
-  /* Radix wraps the scroll-area content in a `display: table` div that sizes to
-     its widest line, which defeats text wrapping and makes code blocks overflow
-     the card on mobile. Force normal block flow so `whitespace-pre-wrap` /
-     `break-words` actually wrap to the available width. */
   [data-slot="scroll-area-viewport"] > div {
     display: block !important;
     min-width: 0 !important;
@@ -685,7 +686,6 @@
   -webkit-transform: translateZ(0);
   backface-visibility: hidden;
 
-
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -696,11 +696,9 @@
   }
 }
 
-
 .smooth-scroll-docs .prose * {
   will-change: auto;
 }
-
 
 .show-disclaimer {
   display: none;
@@ -713,7 +711,6 @@
 }
 
 @keyframes dotPulse {
-
   0%,
   80%,
   100% {
@@ -738,7 +735,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-
   .dot-1,
   .dot-2,
   .dot-3 {

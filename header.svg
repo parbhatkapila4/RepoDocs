@@ -1,6 +1,6 @@
 <svg width="1200" height="360" viewBox="0 0 1200 360" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="ttl dsc">
   <title id="ttl">RepoDoc</title>
-  <desc id="dsc">Understand any codebase — grounded in the source, every answer cited.</desc>
+  <desc id="dsc">Understand any codebase - grounded in the source, every answer cited.</desc>
 
   <!-- flat surface -->
   <rect width="1200" height="360" rx="16" fill="#0D0D0F"/>
@@ -19,7 +19,7 @@
   <text x="70" y="184" fill="#F4F4F6" font-family="Inter,'Segoe UI',system-ui,Arial,sans-serif" font-size="88" font-weight="700" letter-spacing="-3.5">RepoDoc</text>
 
   <!-- tagline -->
-  <text x="74" y="226" fill="#9C9CA4" font-family="Inter,'Segoe UI',system-ui,Arial,sans-serif" font-size="21" font-weight="400">Understand any codebase — grounded in the source, every answer cited.</text>
+  <text x="74" y="226" fill="#9C9CA4" font-family="Inter,'Segoe UI',system-ui,Arial,sans-serif" font-size="21" font-weight="400">Understand any codebase - grounded in the source, every answer cited.</text>
 
   <!-- divider -->
   <line x1="72" y1="272" x2="1128" y2="272" stroke="#FFFFFF" stroke-opacity="0.10"/>

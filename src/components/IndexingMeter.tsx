@@ -194,7 +194,7 @@ export function IndexingMeter({ projectId }: { projectId: string }) {
     : failed
       ? "Indexing failed"
       : autoRetrying
-        ? `Paused — retrying ${retryEta(state.nextAttemptAt)}`
+        ? `Paused - retrying ${retryEta(state.nextAttemptAt)}`
         : working
           ? `Indexing ${pct}%`
           : stalledLease
@@ -298,7 +298,7 @@ export function IndexingMeter({ projectId }: { projectId: string }) {
               <span className="text-[#666]">
                 {" "}
                 Indexing will continue on its own from where it stopped (attempt{" "}
-                {state.attempts + 1} of 5) — nothing already indexed is
+                {state.attempts + 1} of 5) - nothing already indexed is
                 repeated.
               </span>
             )}
