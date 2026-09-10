@@ -265,6 +265,7 @@ export default function ChatPage() {
           content: result.answer,
           sources: result.sources,
           status: "complete",
+          preindex: result.preindex,
           createdAt: new Date().toISOString(),
         },
       ]);

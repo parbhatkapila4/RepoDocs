@@ -1,4 +1,4 @@
-- CREATE TABLE "QueryMetrics" (
+CREATE TABLE "QueryMetrics" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid()::text,
     "projectId" TEXT NOT NULL,
     "routeType" TEXT NOT NULL,

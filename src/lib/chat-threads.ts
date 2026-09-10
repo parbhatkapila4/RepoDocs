@@ -6,7 +6,7 @@ import { log } from "@/lib/logger";
 
 export type ChatSource = {
   fileName: string;
-  similarity: number;
+  similarity?: number;
   summary: string;
 };
 
@@ -16,6 +16,7 @@ export type ChatMessageDto = {
   content: string;
   sources: ChatSource[] | null;
   status: "complete" | "error";
+  preindex: boolean;
   createdAt: string;
 };
 
@@ -61,6 +62,7 @@ function toMessageDto(row: {
   content: string;
   sources: Prisma.JsonValue;
   status: string;
+  preindex?: boolean;
   createdAt: Date;
 }): ChatMessageDto {
   return {
@@ -71,6 +73,7 @@ function toMessageDto(row: {
       ? (row.sources as unknown as ChatSource[])
       : null,
     status: row.status === "error" ? "error" : "complete",
+    preindex: row.preindex ?? false,
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -146,6 +149,7 @@ export async function getThreadMessages(
       content: true,
       sources: true,
       status: true,
+      preindex: true,
       createdAt: true,
     },
   });
@@ -207,6 +211,7 @@ export async function appendMessage(params: {
   content: string;
   sources?: ChatSource[] | null;
   status?: "complete" | "error";
+  preindex?: boolean;
 }): Promise<ChatMessageDto> {
   const [message] = await prisma.$transaction([
     prisma.chatMessage.create({
@@ -218,6 +223,7 @@ export async function appendMessage(params: {
           ? (params.sources as unknown as Prisma.InputJsonValue)
           : Prisma.DbNull,
         status: params.status ?? "complete",
+        preindex: params.preindex ?? false,
       },
       select: {
         id: true,
@@ -225,6 +231,7 @@ export async function appendMessage(params: {
         content: true,
         sources: true,
         status: true,
+        preindex: true,
         createdAt: true,
       },
     }),

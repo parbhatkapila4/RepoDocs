@@ -2,7 +2,7 @@ import type { PrismaClient } from "@prisma/client";
 
 export interface QueryMetricsPayload {
   projectId: string;
-  routeType: "query" | "diff" | "architecture" | "repo-changes";
+  routeType: "query" | "diff" | "architecture" | "repo-changes" | "indexing";
   modelUsed: string;
   promptTokens: number;
   completionTokens: number;

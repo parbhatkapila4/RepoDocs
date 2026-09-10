@@ -8,13 +8,28 @@ const PRICING_PER_MILLION: Record<
 
 const DEFAULT_PRICING = PRICING_PER_MILLION["gemini-2.5-flash"];
 
+const EMBEDDING_INPUT_PER_MILLION = 0.15;
+
+const CHARS_PER_TOKEN = 4;
+
+export function estimateEmbeddingTokens(text: string): number {
+  if (!text) return 0;
+  return Math.max(1, Math.ceil(text.length / CHARS_PER_TOKEN));
+}
+
+export function estimateEmbeddingCostUsd(text: string): number {
+  const tokens = estimateEmbeddingTokens(text);
+  const cost = (tokens / 1_000_000) * EMBEDDING_INPUT_PER_MILLION;
+  return Math.round(cost * 1e6) / 1e6;
+}
+
 function normalizeModelKey(model: string): string {
   return model
     .toLowerCase()
     .trim()
     .replace(/^[a-z-]+\//, "")
-    .replace(/[:@].*$/, "") 
-    .replace(/-(?:preview|exp|latest|\d{3,})$/, ""); 
+    .replace(/[:@].*$/, "")
+    .replace(/-(?:preview|exp|latest|\d{3,})$/, "");
 }
 
 export function getModelPricing(

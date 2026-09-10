@@ -3,6 +3,7 @@
 import { after } from "next/server";
 import { createProjectWithAuth } from "./queries";
 import { kickIndexingWorker } from "./indexing-worker-kick";
+import { MAX_ATTEMPTS } from "./indexing-worker-run";
 import { auth } from "@clerk/nextjs/server";
 import { Prisma } from "@prisma/client";
 import prisma from "./prisma";
@@ -1185,11 +1186,15 @@ export async function checkEmbeddingsStatus(projectId: string) {
       });
 
       if (embeddingsCount === 0) {
-        if (!job || job.status === "failed") {
-          await prisma.indexingJob.upsert({
+        const exhausted = (job?.attempts ?? 0) >= MAX_ATTEMPTS;
+        if (!job) {
+          await prisma.indexingJob.create({
+            data: { projectId, status: "queued", progress: 0 },
+          });
+        } else if (job.status === "failed" && !exhausted) {
+          await prisma.indexingJob.update({
             where: { projectId },
-            create: { projectId, status: "queued", progress: 0 },
-            update: {
+            data: {
               status: "queued",
               progress: 0,
               error: null,
@@ -1212,16 +1217,19 @@ export async function checkEmbeddingsStatus(projectId: string) {
         const recovered = await githubCoreQuotaRecovered(ghAuth);
         if (recovered) {
           const prevStatus = job.status;
+          const requeue = prevStatus === "failed";
           await prisma.indexingJob.update({
             where: { projectId },
             data: {
               error: null,
-              ...(prevStatus === "failed"
+              ...(requeue
                 ? {
-                    status: "queued",
-                    lockedAt: null,
-                    lockedBy: null,
-                  }
+                  status: "queued",
+                  lockedAt: null,
+                  lockedBy: null,
+                  attempts: 0,
+                  nextAttemptAt: null,
+                }
                 : {}),
               updatedAt: now,
             },

@@ -160,9 +160,11 @@ function SourcesPill({
             >
               <FileCode className="h-2.5 w-2.5 text-white/25" />
               {s.fileName.split("/").pop()}
-              <span className="text-white/20">
-                {(s.similarity * 100).toFixed(0)}%
-              </span>
+              {typeof s.similarity === "number" && (
+                <span className="text-white/20">
+                  {(s.similarity * 100).toFixed(0)}%
+                </span>
+              )}
             </span>
           ))}
         </div>
@@ -269,6 +271,13 @@ export function MessageBubble({
               : "border-white/[0.06] bg-[#232326]",
           )}
         >
+          {!isError && message.preindex && (
+            <span className="mb-2 inline-flex items-center gap-1.5 rounded-md border border-amber-400/20 bg-amber-400/[0.08] px-2 py-0.5 text-[11px] font-medium text-amber-200/80">
+              <TriangleAlert className="h-3 w-3" />
+              Partial answer - repo was still indexing
+            </span>
+          )}
+
           {isError ? (
             <p className="flex items-start gap-2 text-[14px] leading-relaxed text-red-200/85">
               <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />

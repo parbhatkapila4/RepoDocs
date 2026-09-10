@@ -232,6 +232,9 @@ export async function retryIndexingJob(projectId: string) {
         nextAttemptAt: null,
         lockedAt: null,
         lockedBy: null,
+        lastCommitSha: null,
+        indexedBranch: null,
+        resumeAfter: null,
       },
     });
 
@@ -342,10 +345,11 @@ export async function cancelIndexingJob(projectId: string) {
     await prisma.indexingJob.update({
       where: { projectId },
       data: {
-        status: "failed",
+        status: "cancelled",
         error: "Cancelled by user",
         lockedAt: null,
         lockedBy: null,
+        nextAttemptAt: null,
       },
     });
 
@@ -361,12 +365,12 @@ export async function cancelIndexingJob(projectId: string) {
 
 export type SetBaselineResult =
   | {
-      success: true;
-      indexedCommitSha: string;
-      indexedBranch: string;
-      indexedAt: string;
-      alreadySet: boolean;
-    }
+    success: true;
+    indexedCommitSha: string;
+    indexedBranch: string;
+    indexedAt: string;
+    alreadySet: boolean;
+  }
   | { success: false; error: string };
 
 function describeGithubFetchError(e: unknown): string {

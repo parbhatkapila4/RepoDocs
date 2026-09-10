@@ -36,7 +36,17 @@ const OPENROUTER_DOCS_MODIFY_MODEL =
 const OPENROUTER_README_MODEL =
   process.env.OPENROUTER_README_MODEL?.trim() || "google/gemini-2.5-pro";
 
-export async function getSummariseCode(doc: Document) {
+export type SummariseCodeResult = {
+  content: string;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  modelUsed: string;
+};
+
+export async function getSummariseCode(
+  doc: Document,
+): Promise<SummariseCodeResult> {
   try {
     const code = doc.pageContent.slice(0, 10000);
 
@@ -49,10 +59,22 @@ ${code}
 Give a summary no more than 100 words of the code above.`;
 
     const result = await openrouterSingleMessage(prompt);
-    return result.content;
+    return {
+      content: result.content,
+      promptTokens: result.usage?.prompt_tokens ?? 0,
+      completionTokens: result.usage?.completion_tokens ?? 0,
+      totalTokens: result.usage?.total_tokens ?? 0,
+      modelUsed: result.model ?? "unknown",
+    };
   } catch (error) {
     console.error("Error summarising code for ", doc.metadata.source, error);
-    return "";
+    return {
+      content: "",
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+      modelUsed: "unknown",
+    };
   }
 }
 
@@ -139,11 +161,10 @@ export async function generateReadmeFromCodebase(
 - One-line description: ${repoInfo?.description || "N/A"}
 
 ## CODEBASE FILE SUMMARIES${hasCodebaseAnalysis ? " (your single source of truth - every concrete claim must be derivable from these)" : ""}
-${
-  hasCodebaseAnalysis
-    ? codebaseContext
-    : "Not yet available - indexing is in progress. Generate from the repository metadata above only, and clearly mark the resulting README at the top as a preview that should be regenerated once indexing completes."
-}
+${hasCodebaseAnalysis
+        ? codebaseContext
+        : "Not yet available - indexing is in progress. Generate from the repository metadata above only, and clearly mark the resulting README at the top as a preview that should be regenerated once indexing completes."
+      }
 
 ## NON-NEGOTIABLE RULES
 - Voice: a senior engineer informing a peer. No marketing fluff. Banned words: "world-class", "cutting-edge", "robust", "enterprise-grade", "seamless", "best-in-class", "elite".
@@ -201,10 +222,10 @@ Generate the complete README now, starting with the H1.`;
     console.error("Error generating README:", error);
     const readmeLanguages = repoInfo?.languages
       ? Object.entries(repoInfo.languages)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 8)
-          .map(([name]) => name)
-          .join(", ")
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+        .map(([name]) => name)
+        .join(", ")
       : null;
 
     const readmeFacts: string[] = [
@@ -339,15 +360,14 @@ PROJECT INFORMATION:
 - Stars: ${repoInfo?.stars || 0}
 - Forks: ${repoInfo?.forks || 0}
 
-${
-  hasCodebaseAnalysis
-    ? `DETAILED CODEBASE ANALYSIS:
+${hasCodebaseAnalysis
+      ? `DETAILED CODEBASE ANALYSIS:
 ${codebaseContext}`
-    : `⚠️ IMPORTANT NOTE FOR USER:
+      : `⚠️ IMPORTANT NOTE FOR USER:
 Indexing is in progress! We're currently indexing the codebase, which typically takes 5-15 minutes to complete.
 
 This is a DEMO/PREVIEW documentation generated from repository metadata only. Once indexing is ready, the documentation should be regenerated to get comprehensive, codebase-aware analysis. Generate from the repository metadata above only, keep sections short, and make clear where full analysis is pending.`
-}`;
+    }`;
 }
 
 function buildDocsChunkPrompt(
@@ -583,10 +603,10 @@ Keep every section grounded in the codebase summary above; keep sections short w
 
     const languageBreakdown = repoInfo?.languages
       ? Object.entries(repoInfo.languages)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 8)
-          .map(([name]) => name)
-          .join(", ")
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+        .map(([name]) => name)
+        .join(", ")
       : null;
 
     const facts: string[] = [
@@ -669,11 +689,10 @@ ${userQuery}
 
 EDITING CONTRACT:
 - This is an edit, not a rewrite. Sections the request does not touch must be copied through verbatim - same wording, same formatting, same length.
-- ${
-      isRemovalRequest
+- ${isRemovalRequest
         ? `The request removes content: delete only the section(s) it names and return every other section unchanged (${sectionCount - 1} sections expected).`
         : `The request modifies content: change only the section(s) it names and return all ${sectionCount} sections.`
-    }
+      }
 - Return the complete document from the first line to the last, in the original section order, with no truncation.
 - Output the document only - no explanations, no commentary, no HTML tags, standard markdown throughout.`;
 

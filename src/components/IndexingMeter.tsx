@@ -34,6 +34,7 @@ type JobStatus =
   | "processing"
   | "completed"
   | "failed"
+  | "cancelled"
   | "locked"
   | "unavailable";
 
@@ -171,6 +172,7 @@ export function IndexingMeter({ projectId }: { projectId: string }) {
 
   const done = state.status === "completed";
   const failed = state.status === "failed";
+  const cancelled = state.status === "cancelled";
   const queued = state.status === "queued";
   const derived =
     state.filesTotal > 0
@@ -191,27 +193,31 @@ export function IndexingMeter({ projectId }: { projectId: string }) {
 
   const headline = done
     ? "Indexing complete"
+    : cancelled
+      ? "Indexing cancelled"
+      : failed
+        ? "Indexing failed"
+        : autoRetrying
+          ? `Paused - retrying ${retryEta(state.nextAttemptAt)}`
+          : working
+            ? `Indexing ${pct}%`
+            : stalledLease
+              ? `Interrupted at ${pct}%`
+              : `Paused at ${pct}%`;
+
+  const reason = cancelled
+    ? "You cancelled this run. Press Retry to start a fresh index from the current commit."
     : failed
-      ? "Indexing failed"
-      : autoRetrying
-        ? `Paused - retrying ${retryEta(state.nextAttemptAt)}`
-        : working
-          ? `Indexing ${pct}%`
-          : stalledLease
-            ? `Interrupted at ${pct}%`
-            : `Paused at ${pct}%`;
+      ? friendlyError(state.error)
+      : state.error
+        ? `Last run stopped: ${friendlyError(state.error)}`
+        : stalledLease
+          ? "The worker stopped partway through a batch. Another one takes over automatically once the five-minute lease expires."
+          : parked
+            ? "Indexing runs in short slices so it survives serverless time limits. This one finished a slice and is waiting for the next to start."
+            : null;
 
-  const reason = failed
-    ? friendlyError(state.error)
-    : state.error
-      ? `Last run stopped: ${friendlyError(state.error)}`
-      : stalledLease
-        ? "The worker stopped partway through a batch. Another one takes over automatically once the five-minute lease expires."
-        : parked
-          ? "Indexing runs in short slices so it survives serverless time limits. This one finished a slice and is waiting for the next to start."
-          : null;
-
-  const accent = done ? GREEN : failed ? RED : AMBER;
+  const accent = done ? GREEN : failed || cancelled ? RED : AMBER;
 
   return (
     <div className="bg-[#1a1a1a] border border-[#333] rounded-lg p-5 mb-8">

@@ -7,7 +7,7 @@ import { mirrorBaselineIfPending } from "@/lib/baseline-mirror";
 import { isPaidPlan } from "@/lib/plan";
 
 const JOB_LEASE_DURATION_MS = 5 * 60 * 1000;
-const MAX_ATTEMPTS = 5;
+export const MAX_ATTEMPTS = 5;
 const BACKOFF_MS = [
   60_000,
   5 * 60_000,

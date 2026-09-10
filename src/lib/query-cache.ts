@@ -6,7 +6,7 @@ export interface CachedSource {
   fileName: string;
   sourceCode: string;
   summary: string;
-  similarity: number;
+  similarity?: number;
 }
 
 interface CacheEntry {

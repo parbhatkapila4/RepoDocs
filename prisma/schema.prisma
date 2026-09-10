@@ -59,9 +59,11 @@ model SourceCodeEmbeddings {
   sourceCode       String
   fileName         String
   Summary          String
+  contentHash      String?
   projectId        String
   project          Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
+  @@unique([projectId, fileName])
   @@index([projectId])
   @@index([fileName])
 }
@@ -176,6 +178,7 @@ enum IndexingJobStatus {
   processing
   completed
   failed
+  cancelled
 }
 
 enum IndexingPhase {
@@ -266,6 +269,7 @@ model ChatMessage {
   content   String     @db.Text
   sources   Json?
   status    String     @default("complete")
+  preindex  Boolean    @default(false)
 
   @@index([threadId, createdAt])
 }

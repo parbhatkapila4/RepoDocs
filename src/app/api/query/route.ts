@@ -232,6 +232,7 @@ export async function POST(request: NextRequest) {
             role: "assistant",
             content: preResult.answer,
             sources: preResult.sources as ChatSource[],
+            preindex: true,
           })
         : null;
 

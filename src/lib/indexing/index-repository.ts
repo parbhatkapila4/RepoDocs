@@ -1,6 +1,9 @@
+import { createHash } from "crypto";
 import { log } from "@/lib/logger";
 import prisma from "@/lib/prisma";
 import { getGenerateEmbeddings, getSummariseCode } from "@/lib/gemini";
+import { estimateCostUsd, estimateEmbeddingCostUsd } from "@/lib/cost";
+import { recordQueryMetrics } from "@/lib/query-metrics";
 import { generateReadmeFromCodebase } from "@/lib/gemini";
 import { sanitizeTextForDb } from "@/lib/db-text";
 import { loadGithubRepository, type RepoDocument } from "@/lib/github/tarball";
@@ -9,10 +12,6 @@ import {
   resolveGithubDefaultBranch,
 } from "@/lib/github/refs";
 import { getGitHubRepositoryInfo } from "@/lib/github/repo-info";
-import {
-  isGithubLoaderIgnoredPath,
-  listGithubRepoPathsForPreindex,
-} from "@/lib/github/preindex";
 
 const HIGH_VALUE_PATTERNS = [
   /^readme/i,
@@ -55,6 +54,10 @@ const WORKER_BUDGET_MS = 45_000;
 const BATCH_SIZE = 5;
 const EMBEDDING_THROTTLE_MS = 500;
 
+function contentHashOf(text: string): string {
+  return createHash("sha256").update(text, "utf8").digest("hex");
+}
+
 interface IndexResult {
   success: boolean;
   filesProcessed: number;
@@ -88,9 +91,9 @@ export async function indexGithubRepository(
 
     const jobRow = job as
       | (typeof job & {
-          phase?: string | null;
-          resumeAfter?: string | null;
-        })
+        phase?: string | null;
+        resumeAfter?: string | null;
+      })
       | null;
 
     const currentPhase: "fast" | "full" =
@@ -128,42 +131,12 @@ export async function indexGithubRepository(
 
     const alreadyIndexed = await prisma.sourceCodeEmbeddings.findMany({
       where: { projectId },
-      select: { fileName: true },
+      select: { fileName: true, contentHash: true },
     });
     const indexedSet = new Set(alreadyIndexed.map((e) => e.fileName));
-
-    if (alreadyIndexed.length > 0) {
-      const treeListing = await listGithubRepoPathsForPreindex(
-        githubUrl,
-        githubToken || process.env.GITHUB_TOKEN,
-        25_000,
-      );
-      if (treeListing && !treeListing.truncated) {
-        const paths = treeListing.paths.filter(
-          (p) => !isGithubLoaderIgnoredPath(p),
-        );
-        const notIndexed = paths.filter((p) => !indexedSet.has(p));
-        if (notIndexed.length === 0 && paths.length > 0) {
-          await generateReadmeIfNeeded(
-            projectId,
-            githubUrl,
-            githubToken,
-            retryAsync,
-            logError,
-          );
-          await cache.invalidateProject(projectId);
-          return {
-            success: true,
-            filesProcessed: 0,
-            successCount: 0,
-            failCount: 0,
-            needsResume: false,
-            resumeAfter: null,
-            phase: "full",
-          };
-        }
-      }
-    }
+    const indexedHashes = new Map(
+      alreadyIndexed.map((e) => [e.fileName, e.contentHash]),
+    );
 
     try {
       await prisma.indexingJob.update({
@@ -199,9 +172,57 @@ export async function indexGithubRepository(
       throw new Error("No files found in repository");
     }
 
-    const newDocs = docs.filter(
-      (d: RepoDocument) => !indexedSet.has(d.metadata.source),
-    );
+    const addedDocs: RepoDocument[] = [];
+    const changedDocs: RepoDocument[] = [];
+    const staleHashBackfill: { fileName: string; hash: string }[] = [];
+
+    for (const d of docs as RepoDocument[]) {
+      const path = d.metadata.source;
+      const raw =
+        typeof d.pageContent === "string"
+          ? d.pageContent
+          : String(d.pageContent ?? "");
+
+      if (!indexedSet.has(path)) {
+        addedDocs.push(d);
+        continue;
+      }
+
+      const knownHash = indexedHashes.get(path) ?? null;
+      const currentHash = contentHashOf(raw);
+
+      if (knownHash === null) {
+        staleHashBackfill.push({ fileName: path, hash: currentHash });
+      } else if (knownHash !== currentHash) {
+        changedDocs.push(d);
+      }
+    }
+
+    if (staleHashBackfill.length > 0) {
+      try {
+        await prisma.$executeRaw`
+          UPDATE "SourceCodeEmbeddings" AS s
+          SET "contentHash" = v."hash"
+          FROM (
+            SELECT * FROM UNNEST(
+              ${staleHashBackfill.map((f) => f.fileName)}::text[],
+              ${staleHashBackfill.map((f) => f.hash)}::text[]
+            ) AS t("fileName", "hash")
+          ) AS v
+          WHERE s."projectId" = ${projectId}
+            AND s."fileName" = v."fileName"
+            AND s."contentHash" IS NULL
+        `;
+        ilog.debug(
+          `[indexing] Backfilled contentHash for ${staleHashBackfill.length} pre-existing row(s)`,
+        );
+      } catch (backfillError) {
+        ilog.warn("[indexing] contentHash backfill failed:", backfillError);
+      }
+    }
+
+    const newDocs = [...addedDocs, ...changedDocs];
+    const changedPaths = new Set(changedDocs.map((d) => d.metadata.source));
 
     if (newDocs.length === 0) {
       await generateReadmeIfNeeded(
@@ -243,7 +264,7 @@ export async function indexGithubRepository(
       }
     }
 
-    const knownTotal = alreadyIndexed.length + newDocs.length;
+    const knownTotal = alreadyIndexed.length + addedDocs.length;
     await prisma.indexingJob.update({
       where: { projectId },
       data: {
@@ -268,7 +289,8 @@ export async function indexGithubRepository(
     let failCount = 0;
     let lastProcessed: string | null = null;
     let fastPhaseCompleted = false;
-    const totalFiles = alreadyIndexed.length + newDocs.length;
+    const totalFiles = alreadyIndexed.length + addedDocs.length;
+    let addedSuccessCount = 0;
     let warnedProgressCallback = false;
     let warnedProgressWrite = false;
 
@@ -278,9 +300,9 @@ export async function indexGithubRepository(
           where: { projectId },
           data: {
             resumeAfter: lastProcessed,
-            filesProcessed: indexedSet.size + successCount,
+            filesProcessed: indexedSet.size + addedSuccessCount,
             progress: Math.floor(
-              ((indexedSet.size + successCount) / totalFiles) * 100,
+              ((indexedSet.size + addedSuccessCount) / totalFiles) * 100,
             ),
             updatedAt: new Date(),
           },
@@ -300,6 +322,14 @@ export async function indexGithubRepository(
 
       for (const doc of batch) {
         if (Date.now() - invocationStart > WORKER_BUDGET_MS) break;
+
+        const fileStartedAt = Date.now();
+        let spentUsd = 0;
+        let promptTokens = 0;
+        let completionTokens = 0;
+        let totalTokens = 0;
+        let modelUsed = "unknown";
+
         try {
           const rawContent =
             typeof doc.pageContent === "string"
@@ -308,27 +338,56 @@ export async function indexGithubRepository(
 
           const isBinary = rawContent.includes(String.fromCharCode(0));
 
-          const summary = isBinary
-            ? `Binary or non-text file at ${doc.metadata.source}; contents are not indexed.`
-            : await retryAsync(() => getSummariseCode(doc), {
-                maxRetries: 2,
-                initialDelay: 500,
-              });
+          let summary: string;
+          if (isBinary) {
+            summary = `Binary or non-text file at ${doc.metadata.source}; contents are not indexed.`;
+            modelUsed = "none-binary-stub";
+          } else {
+            const summarised = await retryAsync(() => getSummariseCode(doc), {
+              maxRetries: 2,
+              initialDelay: 500,
+            });
+            summary = summarised.content;
+            promptTokens = summarised.promptTokens;
+            completionTokens = summarised.completionTokens;
+            totalTokens = summarised.totalTokens;
+            modelUsed = summarised.modelUsed;
+            spentUsd += estimateCostUsd(
+              promptTokens,
+              completionTokens,
+              modelUsed,
+            );
+          }
           if (!summary) throw new Error("Empty summary generated");
 
           const embedding = await retryAsync(
             () => getGenerateEmbeddings(summary),
             { maxRetries: 2, initialDelay: 500 },
           );
+          spentUsd += estimateEmbeddingCostUsd(summary);
 
-          const row = await prisma.sourceCodeEmbeddings.create({
-            data: {
+          const row = await prisma.sourceCodeEmbeddings.upsert({
+            where: {
+              projectId_fileName: {
+                projectId,
+                fileName: doc.metadata.source,
+              },
+            },
+            create: {
               sourceCode: sanitizeTextForDb(
                 isBinary ? "[binary file - contents not stored]" : rawContent,
               ),
               fileName: doc.metadata.source,
               Summary: sanitizeTextForDb(summary),
+              contentHash: contentHashOf(rawContent),
               projectId,
+            },
+            update: {
+              sourceCode: sanitizeTextForDb(
+                isBinary ? "[binary file - contents not stored]" : rawContent,
+              ),
+              Summary: sanitizeTextForDb(summary),
+              contentHash: contentHashOf(rawContent),
             },
           });
 
@@ -339,11 +398,41 @@ export async function indexGithubRepository(
           `;
 
           successCount++;
+          if (!changedPaths.has(doc.metadata.source)) addedSuccessCount++;
           lastProcessed = doc.metadata.source;
+
+          void recordQueryMetrics(prisma, {
+            projectId,
+            routeType: "indexing",
+            modelUsed,
+            promptTokens,
+            completionTokens,
+            totalTokens,
+            retrievalCount: 0,
+            memoryHitCount: 0,
+            latencyMs: Date.now() - fileStartedAt,
+            estimatedCostUsd: spentUsd,
+            success: true,
+          }).catch((err) => ilog.warn("[QueryMetrics] indexing:", err));
 
           await new Promise((r) => setTimeout(r, EMBEDDING_THROTTLE_MS));
         } catch (error) {
           logError(error, { file: doc.metadata.source, projectId });
+          void recordQueryMetrics(prisma, {
+            projectId,
+            routeType: "indexing",
+            modelUsed,
+            promptTokens,
+            completionTokens,
+            totalTokens,
+            retrievalCount: 0,
+            memoryHitCount: 0,
+            latencyMs: Date.now() - fileStartedAt,
+            estimatedCostUsd: spentUsd,
+            success: false,
+            errorMessage:
+              error instanceof Error ? error.message : String(error),
+          }).catch((err) => ilog.warn("[QueryMetrics] indexing:", err));
           failCount++;
           lastProcessed = doc.metadata.source;
         }
@@ -358,7 +447,7 @@ export async function indexGithubRepository(
         }
       }
 
-      const processed = indexedSet.size + successCount;
+      const processed = indexedSet.size + addedSuccessCount;
       const progressPercent = Math.floor((processed / totalFiles) * 100);
       if (onProgress) {
         try {

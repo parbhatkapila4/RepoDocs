@@ -18,8 +18,12 @@ export async function isProjectOverBudget(
     });
     const spent = agg._sum.estimatedCostUsd ?? 0;
     return spent >= monthlyCostLimitUsd;
-  } catch {
-    return false;
+  } catch (error) {
+    console.error(
+      "[budget] Spend check failed; blocking request (fail-closed):",
+      error instanceof Error ? error.message : String(error),
+    );
+    return true;
   }
 }
 

@@ -81,7 +81,7 @@ export interface RAGQueryResult {
     fileName: string;
     sourceCode: string;
     summary: string;
-    similarity: number;
+    similarity?: number;
   }[];
   tokensUsed?: number;
   usage?: {
@@ -412,7 +412,7 @@ async function getMentionTree(
   if (
     hit &&
     Date.now() - hit.at <
-      (hit.meta ? MENTION_CACHE_TTL_MS : MENTION_TREE_FAIL_TTL_MS)
+    (hit.meta ? MENTION_CACHE_TTL_MS : MENTION_TREE_FAIL_TTL_MS)
   ) {
     return hit.meta;
   }
@@ -523,28 +523,28 @@ async function fetchMissingMentionsFromGithub(
     const atBaseline =
       baseRef && capped.length > 0
         ? await fetchGithubPreindexFileContents(
-            parsed.owner,
-            parsed.repo,
-            capped,
-            baseRef,
-            token,
-            fetchChars,
-            MAX_MENTION_LOOKUPS,
-          )
+          parsed.owner,
+          parsed.repo,
+          capped,
+          baseRef,
+          token,
+          fetchChars,
+          MAX_MENTION_LOOKUPS,
+        )
         : [];
     const foundAtBaseline = new Set(atBaseline.map((f) => f.path));
     const remaining = capped.filter((p) => !foundAtBaseline.has(p));
     const atHead =
       remaining.length > 0
         ? await fetchGithubPreindexFileContents(
-            parsed.owner,
-            parsed.repo,
-            remaining,
-            treeMeta?.defaultBranch ?? "HEAD",
-            token,
-            fetchChars,
-            MAX_MENTION_LOOKUPS,
-          )
+          parsed.owner,
+          parsed.repo,
+          remaining,
+          treeMeta?.defaultBranch ?? "HEAD",
+          token,
+          fetchChars,
+          MAX_MENTION_LOOKUPS,
+        )
         : [];
     const goneFromHead = (path: string) =>
       treeMeta != null && !treeMeta.truncated && !fromTree.has(path);
@@ -614,7 +614,7 @@ async function loadMemoryContext(
       const memoryContext =
         memories.length > 0
           ? "\n\n## Repository memory (use to inform answers; code overrides when in conflict):\n" +
-            memories.map((m) => `[Memory: ${m.type}] ${m.content}`).join("\n")
+          memories.map((m) => `[Memory: ${m.type}] ${m.content}`).join("\n")
           : "";
       return {
         memoryContext,
@@ -622,7 +622,7 @@ async function loadMemoryContext(
         avgMemorySimilarity,
       };
     }
-  } catch {}
+  } catch { }
   return { memoryContext: "", memoryHitCount: 0, avgMemorySimilarity: null };
 }
 
@@ -674,13 +674,12 @@ export async function queryCodebase(
       const absentNote = live.unresolved
         .map(
           (u) =>
-            ` \`${u.mention}\` does not exist in this repository - I checked the file tree, the indexed commit, and the branch head.${
-              u.nearby.length > 0
-                ? ` Closest real files: ${u.nearby
-                    .slice(0, 5)
-                    .map((n) => `\`${n}\``)
-                    .join(", ")}.`
-                : ""
+            ` \`${u.mention}\` does not exist in this repository - I checked the file tree, the indexed commit, and the branch head.${u.nearby.length > 0
+              ? ` Closest real files: ${u.nearby
+                .slice(0, 5)
+                .map((n) => `\`${n}\``)
+                .join(", ")}.`
+              : ""
             }`,
         )
         .join("");
@@ -693,12 +692,11 @@ export async function queryCodebase(
       const mentionNote =
         unproven.length > 0
           ? ` I also looked for ${unproven
-              .map((m) => `\`${m}\``)
-              .join(
-                ", ",
-              )} by name in the index and on GitHub and couldn't retrieve ${
-              unproven.length > 1 ? "them" : "it"
-            } - the file may have been moved, renamed, or deleted; double-check the exact path or re-index the repository.`
+            .map((m) => `\`${m}\``)
+            .join(
+              ", ",
+            )} by name in the index and on GitHub and couldn't retrieve ${unproven.length > 1 ? "them" : "it"
+          } - the file may have been moved, renamed, or deleted; double-check the exact path or re-index the repository.`
           : "";
       return {
         answer:
@@ -844,19 +842,18 @@ Remember: Your goal is to make the codebase as understandable as possible. Be de
     const unresolvedBlock =
       live.unresolved.length > 0
         ? `\n\n## NAMED FILES VERIFIED ABSENT:\n` +
-          live.unresolved
-            .map(
-              (u) =>
-                `- \`${u.mention}\` - checked against the repository's file tree and by direct retrieval at the indexed commit and the current branch head: this file does not exist in the repository.${
-                  u.nearby.length > 0
-                    ? ` Real files near that path: ${u.nearby
-                        .map((n) => `\`${n}\``)
-                        .join(", ")}.`
-                    : ""
-                }`,
-            )
-            .join("\n") +
-          `\nFor these files: state plainly that the file does not exist in this repository - do NOT suggest re-checking capitalization, other commits, or re-indexing - and point the user to the real nearby files they probably meant.`
+        live.unresolved
+          .map(
+            (u) =>
+              `- \`${u.mention}\` - checked against the repository's file tree and by direct retrieval at the indexed commit and the current branch head: this file does not exist in the repository.${u.nearby.length > 0
+                ? ` Real files near that path: ${u.nearby
+                  .map((n) => `\`${n}\``)
+                  .join(", ")}.`
+                : ""
+              }`,
+          )
+          .join("\n") +
+        `\nFor these files: state plainly that the file does not exist in this repository - do NOT suggest re-checking capitalization, other commits, or re-indexing - and point the user to the real nearby files they probably meant.`
         : "";
 
     const systemContent =
@@ -868,11 +865,11 @@ Remember: Your goal is to make the codebase as understandable as possible. Be de
       role: "user" | "assistant" | "system";
       content: string;
     }[] = [
-      {
-        role: "system",
-        content: systemContent,
-      },
-    ];
+        {
+          role: "system",
+          content: systemContent,
+        },
+      ];
 
     if (conversationHistory && conversationHistory.length > 0) {
       messages.push(...conversationHistory);
@@ -937,14 +934,14 @@ export async function queryCodebasePreindex(
   const fetched =
     own && rep
       ? await fetchGithubPreindexFileContents(
-          own,
-          rep,
-          picked,
-          branch,
-          token,
-          7200,
-          PREINDEX_FETCH_FILES,
-        )
+        own,
+        rep,
+        picked,
+        branch,
+        token,
+        7200,
+        PREINDEX_FETCH_FILES,
+      )
       : [];
 
   const readme = await fetchRepositoryReadmeRaw(repoUrl, token, 10_000);
@@ -1024,13 +1021,23 @@ ${pathList}`;
   });
 
   const usage = chatResult.usage;
-  let sources = fetched.map((f, i) => ({
+  // No `similarity` on any of these. Nothing here is retrieved by vector
+  // comparison - the files are picked by a filename allowlist and a stride
+  // sample, then fetched live from GitHub. The previous
+  // `Math.max(0.22, 0.58 - i * 0.02)` was a decay over list POSITION with no
+  // measurement behind it, rendered by the same widget that shows genuine
+  // pgvector cosine for indexed answers, so a made-up 58% was indistinguishable
+  // from a measured one. Omitting the field makes the UI render no percentage.
+  let sources: {
+    fileName: string;
+    sourceCode: string;
+    summary: string;
+  }[] = fetched.map((f) => ({
     fileName: f.path,
     sourceCode: f.text.slice(0, 600),
     summary: f.truncated
       ? "Pre-index excerpt (trimmed per file)"
       : "Pre-index file from GitHub",
-    similarity: Math.max(0.22, 0.58 - i * 0.02),
   }));
   if (sources.length === 0 && readme && !hasReadmeInFetched) {
     sources = [
@@ -1038,7 +1045,6 @@ ${pathList}`;
         fileName: "README.md",
         sourceCode: readme.slice(0, 500),
         summary: "README excerpt (pre-index)",
-        similarity: 0.45,
       },
     ];
   } else if (sources.length === 0 && paths.length) {
@@ -1046,7 +1052,6 @@ ${pathList}`;
       fileName: p,
       sourceCode: "",
       summary: "Tree path only (pre-index; could not fetch contents)",
-      similarity: 0.25,
     }));
   }
 

@@ -110,9 +110,15 @@ describe("isProjectOverBudget", () => {
     expect(metricsAggregate).not.toHaveBeenCalled();
   });
 
-  it("fails open if the metrics query throws", async () => {
+  it("fails closed if the metrics query throws", async () => {
     metricsAggregate.mockRejectedValue(new Error("db down"));
-    await expect(isProjectOverBudget("p-1", 5)).resolves.toBe(false);
+    await expect(isProjectOverBudget("p-1", 5)).resolves.toBe(true);
+  });
+
+  it("still fails open when no cap is configured and the DB is down", async () => {
+    metricsAggregate.mockRejectedValue(new Error("db down"));
+    await expect(isProjectOverBudget("p-1", null)).resolves.toBe(false);
+    expect(metricsAggregate).not.toHaveBeenCalled();
   });
 });
 

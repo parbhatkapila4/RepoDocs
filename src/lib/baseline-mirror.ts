@@ -20,9 +20,9 @@ export async function mirrorBaselineIfPending(
   ]);
 
   if (!job || !project) return null;
-  if (project.indexedCommitSha) return null;
   if (job.status !== "completed") return null;
   if (!job.lastCommitSha) return null;
+  if (project.indexedCommitSha === job.lastCommitSha) return null;
 
   await prisma.project.update({
     where: { id: projectId },

@@ -2,7 +2,7 @@ import { fetchJson } from "@/lib/fetch-json";
 
 export type ChatSource = {
   fileName: string;
-  similarity: number;
+  similarity?: number;
   summary: string;
 };
 
@@ -14,6 +14,7 @@ export type ChatMessage = {
   status?: "complete" | "error";
   createdAt: string;
   pending?: boolean;
+  preindex?: boolean;
 };
 
 export type ChatThread = {
@@ -101,6 +102,7 @@ export type AskResult = {
   threadId: string;
   threadTitle: string;
   messageId: string | null;
+  preindex: boolean;
 };
 
 export async function askQuestion(params: {
@@ -116,6 +118,7 @@ export async function askQuestion(params: {
       sources?: ChatSource[];
       thread?: { id: string; title: string };
       messageId?: string | null;
+      metadata?: { preindex?: boolean };
     } & ApiError
   >(
     "/api/query",
@@ -154,6 +157,7 @@ export async function askQuestion(params: {
     threadId: res.data.thread?.id ?? params.threadId ?? "",
     threadTitle: res.data.thread?.title ?? "",
     messageId: res.data.messageId ?? null,
+    preindex: res.data.metadata?.preindex === true,
   };
 }
 export function avatarGradient(seed: string): { from: string; to: string } {
