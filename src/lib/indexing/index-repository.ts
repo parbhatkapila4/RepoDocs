@@ -1,7 +1,12 @@
 import { createHash } from "crypto";
 import { log } from "@/lib/logger";
 import prisma from "@/lib/prisma";
-import { getGenerateEmbeddings, getSummariseCode } from "@/lib/gemini";
+import {
+  EmptySummaryError,
+  getGenerateEmbeddings,
+  getSummariseCode,
+} from "@/lib/gemini";
+import { isRetryableOpenRouterError } from "@/lib/openrouter";
 import { estimateCostUsd, estimateEmbeddingCostUsd } from "@/lib/cost";
 import { recordQueryMetrics } from "@/lib/query-metrics";
 import { generateReadmeFromCodebase } from "@/lib/gemini";
@@ -12,6 +17,7 @@ import {
   resolveGithubDefaultBranch,
 } from "@/lib/github/refs";
 import { getGitHubRepositoryInfo } from "@/lib/github/repo-info";
+import { resolveRepoToken } from "@/lib/github/repo-access";
 
 const HIGH_VALUE_PATTERNS = [
   /^readme/i,
@@ -80,6 +86,8 @@ export async function indexGithubRepository(
   const ilog = log.with({ projectId });
 
   try {
+    const repoToken = await resolveRepoToken(githubUrl, githubToken);
+
     await prisma.project.update({
       where: { id: projectId },
       data: { updatedAt: new Date() },
@@ -104,13 +112,12 @@ export async function indexGithubRepository(
 
     if (!jobRow?.lastCommitSha) {
       try {
-        const baselineToken = githubToken || process.env.GITHUB_TOKEN;
         const baselineBranch = await resolveGithubDefaultBranch(
           githubUrl,
-          baselineToken,
+          repoToken,
         );
         const baselineSha = await retryAsync(
-          () => fetchBranchHeadSha(githubUrl, baselineBranch, baselineToken),
+          () => fetchBranchHeadSha(githubUrl, baselineBranch, repoToken),
           { maxRetries: 2, initialDelay: 500 },
         );
         if (baselineSha) {
@@ -156,11 +163,7 @@ export async function indexGithubRepository(
 
     const docs = await retryAsync(
       () =>
-        loadGithubRepository(
-          githubUrl,
-          githubToken || process.env.GITHUB_TOKEN,
-          indexRef,
-        ),
+        loadGithubRepository(githubUrl, repoToken, indexRef),
       {
         maxRetries: 3,
         initialDelay: 2000,
@@ -228,7 +231,7 @@ export async function indexGithubRepository(
       await generateReadmeIfNeeded(
         projectId,
         githubUrl,
-        githubToken,
+        repoToken,
         retryAsync,
         logError,
       );
@@ -343,10 +346,42 @@ export async function indexGithubRepository(
             summary = `Binary or non-text file at ${doc.metadata.source}; contents are not indexed.`;
             modelUsed = "none-binary-stub";
           } else {
-            const summarised = await retryAsync(() => getSummariseCode(doc), {
-              maxRetries: 2,
-              initialDelay: 500,
-            });
+            const summarised = await retryAsync(
+              async () => {
+                const attemptStartedAt = Date.now();
+                try {
+                  return await getSummariseCode(doc);
+                } catch (attemptError) {
+                  if (attemptError instanceof EmptySummaryError) {
+                    const { usage } = attemptError;
+                    void recordQueryMetrics(prisma, {
+                      projectId,
+                      routeType: "indexing",
+                      modelUsed: usage.modelUsed,
+                      promptTokens: usage.promptTokens,
+                      completionTokens: usage.completionTokens,
+                      totalTokens: usage.totalTokens,
+                      retrievalCount: 0,
+                      memoryHitCount: 0,
+                      latencyMs: Date.now() - attemptStartedAt,
+                      estimatedCostUsd: estimateCostUsd(
+                        usage.promptTokens,
+                        usage.completionTokens,
+                        usage.modelUsed,
+                      ),
+                      success: false,
+                      errorMessage: attemptError.message,
+                    }).catch((err) => ilog.warn("[QueryMetrics] indexing:", err));
+                  }
+                  throw attemptError;
+                }
+              },
+              {
+                maxRetries: 2,
+                initialDelay: 500,
+                retryIf: isRetryableOpenRouterError,
+              },
+            );
             summary = summarised.content;
             promptTokens = summarised.promptTokens;
             completionTokens = summarised.completionTokens;
@@ -358,7 +393,6 @@ export async function indexGithubRepository(
               modelUsed,
             );
           }
-          if (!summary) throw new Error("Empty summary generated");
 
           const embedding = await retryAsync(
             () => getGenerateEmbeddings(summary),
@@ -496,7 +530,7 @@ export async function indexGithubRepository(
     await generateReadmeIfNeeded(
       projectId,
       githubUrl,
-      githubToken,
+      repoToken,
       retryAsync,
       logError,
     );

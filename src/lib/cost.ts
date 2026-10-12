@@ -2,7 +2,7 @@ const PRICING_PER_MILLION: Record<
   string,
   { input: number; output: number }
 > = {
-  "gemini-2.5-flash": { input: 0.15, output: 0.6 },
+  "gemini-2.5-flash": { input: 0.3, output: 2.5 },
   "gemini-2.5-flash-lite": { input: 0.1, output: 0.4 },
 };
 

@@ -17,6 +17,10 @@ import { recordQueryMetrics } from "@/lib/query-metrics";
 import { estimateCostUsd } from "@/lib/cost";
 import { kickIndexingWorker } from "@/lib/indexing-worker-kick";
 import { decryptSecret } from "@/lib/secret-crypto";
+import {
+  RepoTokenRequiredError,
+  resolveRepoToken,
+} from "@/lib/github/repo-access";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -78,6 +82,27 @@ export async function GET(request: NextRequest) {
     });
 
     if (embeddingsCount === 0) {
+      let repoToken: string | undefined;
+      let repoReadable = true;
+      try {
+        repoToken = await resolveRepoToken(
+          project.repoUrl,
+          decryptSecret(project.githubToken)
+        );
+      } catch (accessError) {
+        if (accessError instanceof RepoTokenRequiredError) {
+          return NextResponse.json(
+            {
+              error: "Repository needs its own token",
+              reason: "repo_token_required",
+              message: accessError.message,
+            },
+            { status: 403 }
+          );
+        }
+        repoReadable = false;
+      }
+
       if (!indexingJob || indexingJob.status === "failed") {
         await prisma.indexingJob.upsert({
           where: { projectId },
@@ -98,23 +123,22 @@ export async function GET(request: NextRequest) {
 
       void kickIndexingWorker();
 
-      try {
-        const quickGraph = (await Promise.race([
-          buildQuickDependencyGraphFromGitTree(
-            project.repoUrl,
-            decryptSecret(project.githubToken) ||
-              process.env.GITHUB_TOKEN ||
-              undefined
-          ),
-          new Promise<null>((resolve) => setTimeout(() => resolve(null), 3500)),
-        ])) as
-          | Awaited<ReturnType<typeof buildQuickDependencyGraphFromGitTree>>
-          | null;
+      if (repoReadable) {
+        try {
+          const quickGraph = (await Promise.race([
+            buildQuickDependencyGraphFromGitTree(project.repoUrl, repoToken),
+            new Promise<null>((resolve) =>
+              setTimeout(() => resolve(null), 3500)
+            ),
+          ])) as
+            | Awaited<ReturnType<typeof buildQuickDependencyGraphFromGitTree>>
+            | null;
 
-        if (quickGraph && quickGraph.nodes.length > 0) {
-          result = quickGraph;
+          if (quickGraph && quickGraph.nodes.length > 0) {
+            result = quickGraph;
+          }
+        } catch {
         }
-      } catch {
       }
 
       indexingJob = await prisma.indexingJob.findUnique({

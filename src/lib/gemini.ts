@@ -44,6 +44,18 @@ export type SummariseCodeResult = {
   modelUsed: string;
 };
 
+export type SummaryUsage = Omit<SummariseCodeResult, "content">;
+
+export class EmptySummaryError extends Error {
+  readonly usage: SummaryUsage;
+
+  constructor(source: string, usage: SummaryUsage) {
+    super(`Model returned an empty summary for ${source}`);
+    this.name = "EmptySummaryError";
+    this.usage = usage;
+  }
+}
+
 export async function getSummariseCode(
   doc: Document,
 ): Promise<SummariseCodeResult> {
@@ -59,22 +71,19 @@ ${code}
 Give a summary no more than 100 words of the code above.`;
 
     const result = await openrouterSingleMessage(prompt);
-    return {
-      content: result.content,
+    const usage: SummaryUsage = {
       promptTokens: result.usage?.prompt_tokens ?? 0,
       completionTokens: result.usage?.completion_tokens ?? 0,
       totalTokens: result.usage?.total_tokens ?? 0,
       modelUsed: result.model ?? "unknown",
     };
+    if (!result.content.trim()) {
+      throw new EmptySummaryError(doc.metadata.source, usage);
+    }
+    return { content: result.content, ...usage };
   } catch (error) {
     console.error("Error summarising code for ", doc.metadata.source, error);
-    return {
-      content: "",
-      promptTokens: 0,
-      completionTokens: 0,
-      totalTokens: 0,
-      modelUsed: "unknown",
-    };
+    throw error;
   }
 }
 

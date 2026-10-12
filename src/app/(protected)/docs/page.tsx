@@ -353,8 +353,7 @@ function DocsPage() {
   };
 
   const fetchRepositoryInfo = useCallback(
-    (projectId: string, repoUrl: string | null | undefined) =>
-      fetchProjectRepositoryInfo(projectId, repoUrl),
+    (projectId: string) => fetchProjectRepositoryInfo(projectId),
     [],
   );
 
@@ -375,7 +374,7 @@ function DocsPage() {
 
       let fetchedRepoInfo = null;
       if (repoUrl) {
-        fetchedRepoInfo = await fetchRepositoryInfo(selectedProjectId, repoUrl);
+        fetchedRepoInfo = await fetchRepositoryInfo(selectedProjectId);
 
         if (fetchedRepoInfo && docsMountedRef.current) {
           setRepositoryInfo(fetchedRepoInfo);

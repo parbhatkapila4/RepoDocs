@@ -256,15 +256,30 @@ export async function deleteProject(
   userId: string,
 ): Promise<Project> {
   try {
-    const project = await prisma.project.update({
-      where: {
-        id: projectId,
-        userId: userId,
-      },
-      data: {
-        deletedAt: new Date(),
-      },
-    });
+    const [project] = await prisma.$transaction([
+      prisma.project.update({
+        where: {
+          id: projectId,
+          userId: userId,
+        },
+        data: {
+          deletedAt: new Date(),
+        },
+      }),
+      prisma.indexingJob.updateMany({
+        where: {
+          projectId,
+          status: { in: ["queued", "processing"] },
+        },
+        data: {
+          status: "cancelled",
+          error: "Project deleted",
+          lockedAt: null,
+          lockedBy: null,
+          nextAttemptAt: null,
+        },
+      }),
+    ]);
 
     return project;
   } catch (error) {

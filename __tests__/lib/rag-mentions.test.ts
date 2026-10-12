@@ -27,6 +27,7 @@ jest.mock("@/lib/github", () => ({
 jest.mock("@/lib/architecture", () => ({
   buildQuickDependencyGraphFromGitTree: jest.fn(),
 }));
+jest.mock("@/lib/github-octokit", () => ({ createGitHubOctokit: jest.fn() }));
 
 import prisma from "@/lib/prisma";
 import { getGenerateEmbeddings } from "@/lib/gemini";
@@ -36,11 +37,15 @@ import {
   fetchGithubPreindexFileContents,
   listGithubRepoPathsForPreindex,
 } from "@/lib/github";
+import { createHash } from "crypto";
 import {
   extractFileMentions,
   queryCodebase,
   clearMentionResolutionCachesForTest,
+  mentionCacheKeysForTest,
 } from "@/lib/rag";
+import { createGitHubOctokit } from "@/lib/github-octokit";
+import { REPO_TOKEN_REQUIRED_MESSAGE } from "@/lib/github/repo-access";
 
 describe("extractFileMentions", () => {
   it("finds explicit file paths in a question", () => {
@@ -424,5 +429,132 @@ describe("queryCodebase named-file handling", () => {
     expect(result.sources).toEqual([]);
     expect(result.answer).toContain("src/ghost-file.ts");
     expect(result.answer).toContain("moved, renamed, or deleted");
+  });
+
+  describe("mention caches are scoped to the token that read them", () => {
+    const tree = (paths: string[]) => ({
+      paths,
+      defaultBranch: "main",
+      owner: "puny",
+      repo: "demo",
+      truncated: false,
+    });
+
+    beforeEach(() => {
+      projectFindUnique.mockImplementation(
+        ({ where }: { where: { id: string } }) =>
+          Promise.resolve({
+            name: "Ai-demo-video",
+            repoUrl: "https://github.com/puny/demo",
+            githubToken: where.id === "p-a" ? "tok-a" : "tok-b",
+            indexedCommitSha: "0688975".padEnd(40, "0"),
+          }),
+      );
+      embFindMany.mockResolvedValue([]);
+      liveFetch.mockResolvedValue([]);
+    });
+
+    it("doesn't reuse one token's tree listing for another token", async () => {
+      treeList.mockResolvedValue(tree(["backend/app/workers/video_worker.py"]));
+
+      await queryCodebase("p-a", "what does video_worker.py do?");
+      await queryCodebase("p-b", "what does video_worker.py do?");
+      await queryCodebase("p-a", "why does video_worker.py retry?");
+
+      expect(treeList.mock.calls.map((c) => c[1])).toEqual(["tok-a", "tok-b"]);
+    });
+
+    it("doesn't hand one token's nearby-file names to another token", async () => {
+      treeList
+        .mockResolvedValueOnce(tree(["backend/app/models/video.py"]))
+        .mockResolvedValueOnce(tree(["backend/app/models/order.py"]));
+
+      await queryCodebase("p-a", "explain backend/app/models/user.py");
+      chat.mockClear();
+      await queryCodebase("p-b", "explain backend/app/models/user.py");
+
+      const systemPrompt = chat.mock.calls[0][0].messages[0].content;
+      expect(systemPrompt).toContain("backend/app/models/order.py");
+      expect(systemPrompt).not.toContain("backend/app/models/video.py");
+    });
+
+    it("keys the caches by a hash of the token, never the token itself", async () => {
+      treeList.mockResolvedValue(tree(["backend/app/models/video.py"]));
+
+      await queryCodebase("p-a", "explain backend/app/models/user.py");
+
+      const fingerprint = createHash("sha256")
+        .update("tok-a", "utf8")
+        .digest("hex")
+        .slice(0, 16);
+      const keys = mentionCacheKeysForTest();
+      expect(keys.length).toBeGreaterThan(1);
+      for (const key of keys) {
+        expect(key).not.toContain("tok-a");
+        expect(key.startsWith(`${fingerprint}|`)).toBe(true);
+      }
+    });
+  });
+
+  describe("on a private repo without the project's own token", () => {
+    const reposGet = jest.fn();
+    const tokenless = {
+      name: "Ai-demo-video",
+      repoUrl: "https://github.com/puny/demo",
+      githubToken: null,
+      indexedCommitSha: "0688975".padEnd(40, "0"),
+    };
+
+    beforeEach(() => {
+      (createGitHubOctokit as jest.Mock).mockReturnValue({
+        rest: { repos: { get: reposGet } },
+      });
+      reposGet.mockResolvedValue({ data: { private: true } });
+    });
+
+    it("skips the lookup and adds the shared refusal message to the answer", async () => {
+      projectFindUnique.mockResolvedValue(tokenless);
+      embFindMany.mockResolvedValue([]);
+
+      const result = await queryCodebase(
+        "p-1",
+        "explain backend/app/models/user.py",
+      );
+
+      expect(treeList).not.toHaveBeenCalled();
+      expect(liveFetch).not.toHaveBeenCalled();
+      expect(result.answer).toContain(REPO_TOKEN_REQUIRED_MESSAGE);
+      const systemPrompt = chat.mock.calls[0][0].messages[0].content;
+      expect(systemPrompt).toContain("## NAMED FILES NOT LOOKED UP");
+      expect(systemPrompt).not.toContain("## NAMED FILES VERIFIED ABSENT");
+    });
+
+    it("doesn't hand it paths another project's token left in the mention cache", async () => {
+      embFindMany.mockResolvedValue([]);
+      treeList.mockResolvedValue({
+        paths: ["backend/app/models/video.py", "backend/app/models/product.py"],
+        defaultBranch: "main",
+        owner: "puny",
+        repo: "demo",
+        truncated: false,
+      });
+      liveFetch.mockResolvedValue([]);
+      await queryCodebase("p-1", "explain backend/app/models/user.py");
+      expect(chat.mock.calls[0][0].messages[0].content).toContain(
+        "backend/app/models/video.py",
+      );
+
+      projectFindUnique.mockResolvedValue(tokenless);
+      chat.mockClear();
+      const result = await queryCodebase(
+        "p-2",
+        "explain backend/app/models/user.py",
+      );
+
+      const systemPrompt = chat.mock.calls[0][0].messages[0].content;
+      expect(systemPrompt).not.toContain("backend/app/models/video.py");
+      expect(result.answer).not.toContain("backend/app/models/video.py");
+      expect(result.answer).toContain(REPO_TOKEN_REQUIRED_MESSAGE);
+    });
   });
 });

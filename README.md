@@ -6,7 +6,7 @@
 
 # RepoDoc
 
-**Codebase RAG built as infrastructure: retrieval runs over what each file *means*, indexing is a durable Postgres lease queue, and every token is metered against a per-project budget.**
+**Codebase RAG built as infrastructure: retrieval runs over what each file *means*, indexing is a durable Postgres lease queue, and model spend on chat, diff analysis and indexing is metered per project.**
 
 [Live](https://repodoc.parbhat.dev) · [Source](https://github.com/parbhatkapila4/RepoDocs)
 
@@ -26,11 +26,11 @@ RepoDoc takes four opinionated positions, and they're the reason it behaves diff
 
 **The database is the queue.** Indexing is not a request; it's a job. RepoDoc models it as an `IndexingJob` row in Postgres with a lease, not as a call to SQS or Redis or BullMQ. A worker claims a job with an atomic compare-and-swap, holds a five-minute lease, and releases it on completion or failure. One datastore, transactional with the data it indexes, no extra infrastructure to operate. The tradeoff is that work is pulled (cron + on-demand kicks) rather than pushed, and this isn't built for tens of thousands of jobs per minute - but at this scale, a queue service would be operational overhead with no payoff.
 
-**Cost is a runtime constraint on the query path.** Every request through `/api/query`, `/api/analyze-diff`, `/api/repo-changes` and `/api/architecture` writes a `QueryMetrics` row (model, prompt/completion tokens, latency, estimated USD, retrieval and memory counts, cold-start and cache flags, success/error). A project can set `monthlyCostLimitUsd`; once 30 days of recorded spend crosses it, those routes return `402` before any model call. Stated precisely, because the gap matters: **README generation, docs generation and per-file summarization during indexing are not metered and not budget-checked.** They use the most expensive models in the product (`gemini-2.5-pro`, Claude Haiku) and the largest payloads, and they can run past a project's limit without being counted. Closing that is the next real piece of work on this pillar, not something the current code does.
+**Cost is a runtime constraint on the query path.** Chat (`/api/query`) and diff analysis (`/api/analyze-diff`, `/api/repo-changes`) write a `QueryMetrics` row for every request that gets past the guards, and indexing writes one per file plus one for each summary attempt that comes back empty, since those are billed too (model, prompt/completion tokens, latency, estimated USD, retrieval and memory counts, cold-start and cache flags, success/error). `/api/architecture` writes a zero-cost row because it makes no model call. `Project.monthlyCostLimitUsd` is an optional cap: once 30 days of recorded spend crosses it, chat and diff requests return `402` before any model call. Nothing in the app sets that column yet, so the cap applies only where it has been written to the database directly. Stated precisely, because the gaps matter: **indexing spend is recorded, and counts toward the 30-day total, but indexing never checks the cap; README generation, docs generation, document edits and memory extraction are neither metered nor budget-checked.** README generation uses the most expensive model in the product (`gemini-2.5-pro`) and the largest payloads, and these paths can run past a project's limit without being counted. Closing that is the next real piece of work on this pillar, not something the current code does.
 
 **Durable repo memory, separate from retrieval.** RepoDoc extracts facts from each Q&A exchange into a `RepoMemory` store and pulls the top matches back as secondary context on later questions - capturing intent and decisions that live in conversations, not in any file. It's labeled distinctly from code in the prompt, under one rule: when memory and code conflict, the code wins.
 
-One more thing, stated precisely because precision is the point: all generation goes through OpenRouter, with the model picked per route - `gemini-2.5-flash` for chat (temperature 0.3), `gemini-2.5-pro` for README generation, Claude Haiku for docs. Gemini's API is called directly only for embeddings. This keeps model selection a one-line change. To be exact about what *isn't* here: there is no automatic cross-provider failover. The codebase earns the word "fallback" only in the cost model, which defaults unpriced models to the Gemini Flash rate so a request is never silently billed at zero.
+One more thing, stated precisely because precision is the point: all generation goes through OpenRouter, with the model picked per route - `gemini-2.5-flash` for chat (temperature 0.3), diff analysis, docs, document edits and memory extraction; `gemini-2.5-flash-lite` for per-file summaries during indexing; `gemini-2.5-pro` for README generation. The README, docs and docs-edit defaults can be overridden with `OPENROUTER_README_MODEL`, `OPENROUTER_DOCS_MODEL` and `OPENROUTER_DOCS_MODIFY_MODEL`. Gemini's API is called directly only for embeddings. This keeps model selection a one-line change. To be exact about what *isn't* here: there is no automatic cross-provider failover. The codebase earns the word "fallback" only in the cost model, which defaults unpriced models to the Gemini Flash rate so a request is never silently billed at zero.
 
 ## Architecture
 
@@ -48,7 +48,7 @@ One more thing, stated precisely because precision is the point: all generation 
   job via lease (CAS)                                    └── no  ─▶ pgvector top-5  +  RepoMemory top-3
        │                                                            │
        ▼  per file: summarize → embed → store                       ▼
-  LangChain GithubRepoLoader                            OpenRouter (gemini-2.5-flash)
+  GitHub tarball, pinned SHA                            OpenRouter (gemini-2.5-flash)
        │  summary → gemini-embedding-001 (768d)         grounded answer + cited sources
        ▼                                                            │
   Postgres + pgvector (HNSW, cosine)  ◀──────────────────────────────┘
@@ -57,7 +57,7 @@ One more thing, stated precisely because precision is the point: all generation 
   IndexingJob.progress / status (retry, cancel, resume in UI)
 ```
 
-The connect step stores the repo and an (optionally encrypted) GitHub token and enqueues a job. The worker - invoked on demand and by a daily cron backstop - claims a job, walks the repo with LangChain's `GithubRepoLoader`, and for each file summarizes then embeds then writes a pgvector row. Querying guards the request, then either answers from the index or, if indexing hasn't produced embeddings yet, live-fetches a curated set of files from GitHub so the project is useful immediately.
+The connect step stores the repo and an (optionally encrypted) GitHub token and enqueues a job. The worker - invoked on demand and by a daily cron backstop - claims a job, streams the repository's GitHub tarball at the commit pinned when the job started, and for each new or changed file summarizes then embeds then writes a pgvector row. Querying guards the request, then either answers from the index or, if indexing hasn't produced embeddings yet, live-fetches a curated set of files from GitHub so the project is useful immediately.
 
 ## Why this is hard
 
@@ -67,14 +67,14 @@ These are the parts that took real engineering, each tied to where it lives:
 - **Surviving the serverless 60-second wall.** Indexing a large repo can't finish in one invocation. The worker time-boxes itself (`WORKER_BUDGET_MS`), and when it runs out it writes a `resumeAfter` cursor, requeues the job, and re-kicks - so indexing makes forward progress across many short runs instead of dying at the platform timeout.
 - **Recovering a dead worker without double-processing.** A lease is five minutes. A job stuck in `processing` with `lockedAt` older than that is reclaimable; `@@index([status, lockedAt])` makes finding it cheap. A crashed worker's job is picked up by the next one and resumed from its cursor.
 - **Being useful before indexing finishes.** `queryCodebasePreindex` fetches up to 22 high-value files (READMEs, configs, entrypoints) straight from the GitHub tree and answers from those, flagging the response `preindex: true`, while kicking the indexer in the background.
-- **Bounding spend before the model call.** `isProjectOverBudget` sums 30 days of `QueryMetrics` and short-circuits the query, diff and architecture routes to `402` before any tokens are spent. The indexer's own `needsResume` is a *time* box (`WORKER_BUDGET_MS`, 45s), not a cost one - it exists to survive the serverless wall, and does not consult the budget.
+- **Bounding spend before the model call.** `isProjectOverBudget` sums 30 days of `QueryMetrics` and, when a cap is set, short-circuits the chat and diff routes to `402` before any tokens are spent. The architecture route makes no model call and doesn't check the cap. The indexer's own `needsResume` is a *time* box (`WORKER_BUDGET_MS`, 45s), not a cost one - it exists to survive the serverless wall, and does not consult the budget.
 
 ## Design decisions & tradeoffs
 
 - **Decision:** Embed LLM summaries, not raw code. **Why:** code embeds lexically; intent is what you query by. **Tradeoff accepted:** an LLM call per file at index time, and retrieval is only as good as the summaries.
 - **Decision:** Postgres as the job queue (lease + CAS), no queue service. **Why:** one transactional datastore, nothing extra to run. **Tradeoff accepted:** polling, not push; not built for very high job throughput.
 - **Decision:** OpenRouter as the single chat gateway. **Why:** swap or route models per task without SDK churn, one billing surface. **Tradeoff accepted:** an extra network hop and no native multi-provider failover.
-- **Decision:** Budget enforced in the request path (`402`) and mid-index (pause/resume). **Why:** AI cost is unbounded by default; a ceiling has to be live to matter. **Tradeoff accepted:** a hard limit can interrupt indexing, which is why jobs are resumable.
+- **Decision:** Budget enforced in the request path (`402` before chat and diff model calls), not mid-index. **Why:** AI cost is unbounded by default; a ceiling has to be live to matter. **Tradeoff accepted:** indexing records its spend but never checks the cap, so a large index can run past it. Jobs are resumable because of the serverless time box, not the budget.
 - **Decision:** Rate limiting and secret encryption both **fail open**. **Why:** for a single-operator product, a Redis blip or an unset key shouldn't 500 every request. **Tradeoff accepted:** a deliberately weaker posture under those failures - documented below, not hidden.
 
 ## Failure modes
@@ -82,14 +82,14 @@ These are the parts that took real engineering, each tied to where it lives:
 - **Worker dies mid-index.** Its lease expires after five minutes; the next worker reclaims the job and resumes from the `resumeAfter` cursor. No stuck jobs, no re-embedding from scratch.
 - **Serverless invocation times out.** The time-box requeues with a cursor before the platform kills the function; indexing continues on the next invocation.
 - **Project queried before it's indexed.** The pre-index path answers from live GitHub fetches and marks the result `preindex: true`, so the user isn't blocked.
-- **Project exceeds its budget.** Queries, diff analysis and architecture requests return `402` with a clear message before calling a model. Indexing is unaffected - it neither reports spend nor checks the limit, so a large index can still run while the query path is closed.
-- **Redis unavailable / provider error.** The rate limiter falls back to a per-instance in-memory window (weaker across instances, but never a 500). During indexing, each summary and embedding is retried twice with backoff; a persistent failure marks the job `failed` with the error string, surfaced in the UI for retry.
+- **Project exceeds its budget.** When a cap is set, chat and diff-analysis requests return `402` with a clear message before calling a model. Indexing is unaffected - it records its spend but never checks the limit, so a large index can still run while the query path is closed.
+- **Redis unavailable / provider error.** The rate limiter falls back to a per-instance in-memory window (weaker across instances, but never a 500). During indexing, each summary and embedding call is retried twice with backoff, and a summary that comes back empty or whitespace-only counts as a failure and is retried the same way. A missing OpenRouter key or a `400`, `401`, `402` or `404` from OpenRouter is not retried, since it would fail identically. A file that still fails is counted as failed: a pass with failed files is requeued with backoff (1m, 5m, 15m, then 1h), and after the fifth attempt the job completes with a note recording how many files were skipped. A pass that throws is retried on the same schedule and marked `failed` after the fifth attempt, with the error string surfaced in the UI for retry; a private repo without the project's own token is marked `failed` at once, since retrying can't help.
 
 ## Security model
 
-- **Auth.** Clerk middleware guards everything except an explicit public allow-list (`middleware.ts`); each API route re-checks the session and returns `401`. Every request-path project lookup is scoped by owner and `deletedAt: null`. Three lookups omit the filter and are safe for a stated reason rather than by accident: two run server-side on a `projectId` already validated upstream (`baseline-mirror.ts`, the indexer), and the third resolves names for IDs that came out of an already owner-scoped set (`analytics`).
+- **Auth.** The Clerk proxy (`src/proxy.ts`, Next 16's name for middleware) guards pages and API routes except an explicit public allow-list, and each API route re-checks the session and returns `401`. Server actions pass through the proxy and check the session themselves; the two share-link readers (`getPublicReadme`, `getPublicDocs`) are public by design and look documents up by share token. Every request-path project lookup is scoped by owner and `deletedAt: null`. Three lookups omit the filter and are safe for a stated reason rather than by accident: two run server-side on a `projectId` already validated upstream (`baseline-mirror.ts`, the indexer), and the third resolves names for IDs that came out of an already owner-scoped set (`analytics`).
 - **Admin role.** `/api/analytics` has a privileged mode: an allow-list of admin emails (`getAdminEmails()`) switches the query scope from one owner to platform-wide. It is email-gated, not a separate credential.
-- **Input & SQL.** Zod validates request bodies. There are nine raw-SQL sites - pgvector similarity search and embedding writes, repo-memory read/write, chat-history read/write, a plan lookup, a project aggregate, and the health check's `SELECT 1`. Every one is a tagged template, so Prisma parameterizes it; `$queryRawUnsafe`/`$executeRawUnsafe` appear nowhere in the codebase.
+- **Input & SQL.** Zod validates request bodies. There are ten raw-SQL sites - pgvector similarity search, embedding writes, the content-hash backfill during indexing, repo-memory read/write, chat-history read/write, two plan lookups, and the health check's `SELECT 1`. Every one is a tagged template, so Prisma parameterizes it; `$queryRawUnsafe`/`$executeRawUnsafe` appear nowhere in the codebase.
 - **Secrets at rest.** Stored GitHub tokens are encrypted with **AES-256-GCM** in an envelope format `enc:v1:<base64(iv|tag|ciphertext)>` (`secret-crypto.ts`), keyed by `ENCRYPTION_KEY`. Honest caveat: if `ENCRYPTION_KEY` is unset, the code falls back to storing plaintext so the app keeps working - set the key in every environment to actually get encryption.
 - **Webhooks.** The Clerk webhook verifies the **svix HMAC signature** and rejects on mismatch (fail-closed). The cron worker route authorizes with a constant-time (`timingSafeEqual`) shared-secret check.
 - **Billing webhook.** The Gumroad billing webhook authenticates with a constant-time shared-secret check, maps a product permalink to a plan, and auto-downgrades to Starter on refund, chargeback, or cancellation.
@@ -107,7 +107,7 @@ Vector search runs against an HNSW index on the embedding column with cosine dis
 
 - **Automatic cross-provider LLM failover** - a single OpenRouter gateway today; model selection is per-task, not failover. Deferred until provider outages are a real operational problem.
 - **Multi-tenant / team seats** - projects are single-owner today. Multi-seat lands when there's a multi-seat customer, not before.
-- **Metering and budget enforcement on the generation paths** - README generation, docs generation and indexing-time summarization write no `QueryMetrics` row and never consult `monthlyCostLimitUsd`. The plumbing exists and the query path uses it; extending it to those three is a known gap, called out here rather than left to be discovered.
+- **Metering and budget enforcement on the generation paths** - README generation, docs generation, document edits and memory extraction write no `QueryMetrics` row and never consult `monthlyCostLimitUsd`; indexing writes rows but never consults the cap. Nothing in the app sets the cap either. The plumbing exists and the query path uses it; extending it to those paths is a known gap, called out here rather than left to be discovered.
 - **A measured retrieval benchmark** - the HNSW index is in place, but nothing here times index-vs-scan or measures recall against exhaustive search, so this README claims the mechanism and no numbers. Benchmarks land when there's a row count big enough to make them mean something.
 - **Async, batched embedding pipeline + dedicated vector store** - one Postgres+pgvector instance handles ingestion and retrieval today. Sharded or batched embedding when a single database is the bottleneck.
 - **Integration / e2e tests against a live database** - the suite is unit-level (below). End-to-end coverage waits until the data layer's shape stabilizes.
@@ -126,7 +126,7 @@ npm run dev            # http://localhost:3000
 
 Requires Node 20+ and a PostgreSQL instance with the `pgvector` extension.
 
-`RepoMemory` and `CodebaseQueries` have no Prisma model - they are reached through raw SQL - and until `20260805000000_apply_orphaned_sql_and_vector_indexes` they were created only by loose files that `migrate deploy` skipped. That migration now creates both, so `npm run db:migrate` is sufficient on a clean database.
+`CodebaseQueries` has no Prisma model and is reached only through raw SQL. `RepoMemory` has a Prisma model, but its `vector` column is written and searched with raw SQL. Until `20260805000000_apply_orphaned_sql_and_vector_indexes`, both tables were created only by loose files that `migrate deploy` skipped. That migration now creates both, so `npm run db:migrate` is sufficient on a clean database.
 
 Environment variables actually read by the code:
 
@@ -140,7 +140,7 @@ GEMINI_API_KEY=          # embeddings
 OPENROUTER_API_KEY=      # all generation
 ENCRYPTION_KEY=          # 32-byte key; without it, stored tokens are NOT encrypted
 CRON_SECRET=             # authorizes the indexing-worker cron route
-GITHUB_TOKEN=            # optional; raises rate limits and enables private repos
+GITHUB_TOKEN=            # optional; raises rate limits. Used only for public repos; private repos need the project's own token
 UPSTASH_REDIS_REST_URL=  # optional; distributed rate limiting/locking
 UPSTASH_REDIS_REST_TOKEN=
 RESEND_API_KEY=          # contact form; without it /api/contact returns 503, never a false success
@@ -153,9 +153,9 @@ One caveat on the contact form, because "it posts successfully" and "the mail ar
 
 ## Tests
 
-36 tests across five suites (`npm run test:ci`), fully mocked - route guards on `/api/query` (401/400/404/200 and the pre-index path), RAG retrieval and answer generation, the GitHub loader, the architecture graph's import resolver, and a claim-drift guard that fails the build if an unbacked performance or capability claim reappears on a public surface. They cover behavior and error handling at the function and route-handler level; there is no live-DB integration or end-to-end coverage yet (see "not built yet").
+195 tests across 30 suites (`npm run test:ci`), fully mocked - route guards on `/api/query` (401/400/402/403/404/200 and the pre-index path), the API guard and budget helpers, the private-repo token guard, RAG retrieval, answer generation and file-mention lookup, the GitHub tarball loader, the indexing worker's queue transitions and lease fencing, changed-file re-indexing, per-file summaries and their retry rules, project deletion cancelling its indexing job, the architecture graph's import resolver, smaller helpers (chat threads, docs sections, plan names, formatting), and a claim-drift guard that fails the build if an unbacked performance or capability claim reappears on a public surface. They cover behavior and error handling at the function and route-handler level; there is no live-DB integration or end-to-end coverage yet (see "not built yet").
 
-Stated plainly rather than left to be discovered: that's ~3.4% line coverage against a 50% threshold configured in `jest.config.js`, so `npm run test:coverage` fails on the threshold while `npm run test:ci` passes. The tests that exist are the ones guarding the query path and the public claims; the number is low because the suite is deliberately narrow, not because the threshold is aspirational.
+Stated plainly rather than left to be discovered: that's ~17.7% line coverage against a 50% threshold configured in `jest.config.js`, so `npm run test:coverage` fails on the threshold while `npm run test:ci` passes. The tests that exist are the ones guarding the query path, the indexing queue and the public claims; the number is low because the suite is deliberately narrow, not because the threshold is aspirational.
 
 ## About
 

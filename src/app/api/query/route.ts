@@ -18,6 +18,7 @@ import { z } from "zod";
 import { decryptSecret } from "@/lib/secret-crypto";
 import { isProjectOverBudget, BUDGET_EXCEEDED_MESSAGE } from "@/lib/budget";
 import { requirePaidPlan, isGuardFailure } from "@/lib/api-guards";
+import { RepoTokenRequiredError } from "@/lib/github/repo-access";
 import {
   resolveThread,
   appendMessageSafe,
@@ -431,7 +432,7 @@ export async function POST(request: NextRequest) {
         message: failureText,
         threadId: threadIdForPersistence ?? null,
       },
-      { status: 500 },
+      { status: error instanceof RepoTokenRequiredError ? 403 : 500 },
     );
   }
 }

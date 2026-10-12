@@ -264,10 +264,8 @@ function ReadmePage() {
     }
   };
 
-  const fetchRepositoryInfo = (
-    projectId: string,
-    repoUrl: string | null | undefined,
-  ) => fetchProjectRepositoryInfo(projectId, repoUrl);
+  const fetchRepositoryInfo = (projectId: string) =>
+    fetchProjectRepositoryInfo(projectId);
 
   const fetchReadme = async () => {
     if (!selectedProjectId) return;
@@ -288,7 +286,7 @@ function ReadmePage() {
 
       let fetchedRepoInfo: RepositoryInfoResult | null = null;
       if (repoUrl) {
-        fetchedRepoInfo = await fetchRepositoryInfo(selectedProjectId, repoUrl);
+        fetchedRepoInfo = await fetchRepositoryInfo(selectedProjectId);
         if (
           fetchedRepoInfo &&
           hasUsefulRepoInfo(fetchedRepoInfo) &&

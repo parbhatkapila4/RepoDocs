@@ -8,6 +8,7 @@ import { decryptSecret } from "./secret-crypto";
 import { resolveGithubDefaultBranch, fetchBranchHeadSha } from "./github";
 import { mirrorBaselineIfPending } from "./baseline-mirror";
 import { isPaidPlan, upgradeMessage } from "./plan";
+import { RepoTokenRequiredError, resolveRepoToken } from "./github/repo-access";
 const WAKE_THROTTLE_MS = 15_000;
 const lastWake = new Map<string, number>();
 
@@ -430,10 +431,19 @@ export async function setProjectBaselineNow(
       };
     }
 
-    const token =
-      (project.githubToken ? decryptSecret(project.githubToken) : null) ||
-      process.env.GITHUB_TOKEN ||
-      undefined;
+    let token: string | undefined;
+    try {
+      token = await resolveRepoToken(
+        project.repoUrl,
+        decryptSecret(project.githubToken),
+      );
+    } catch (accessError) {
+      if (accessError instanceof RepoTokenRequiredError) {
+        return { success: false, error: accessError.message };
+      }
+      console.error("[setProjectBaselineNow] access check failed:", accessError);
+      return { success: false, error: describeGithubFetchError(accessError) };
+    }
 
     const branch = await resolveGithubDefaultBranch(project.repoUrl, token);
 

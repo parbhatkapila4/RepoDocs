@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import prisma from "./prisma";
 import { getGenerateEmbeddings } from "./gemini";
 import { openrouterChatCompletion } from "./openrouter";
@@ -10,6 +11,11 @@ import {
   fetchGithubPreindexFileContents,
 } from "./github";
 import { buildQuickDependencyGraphFromGitTree } from "./architecture";
+import {
+  REPO_TOKEN_REQUIRED_MESSAGE,
+  RepoTokenRequiredError,
+  resolveRepoToken,
+} from "./github/repo-access";
 
 const PREINDEX_FETCH_FILES = 22;
 const PREINDEX_PATH_LIST_CAP = 200;
@@ -397,18 +403,36 @@ type LiveMentionFetchResult = {
   }[];
 
   unresolved: { mention: string; nearby: string[] }[];
+  refused?: boolean;
 };
+
+function refusedMentionNote(mentions: string[]): string {
+  return `I couldn't look up ${mentions
+    .map((m) => `\`${m}\``)
+    .join(", ")} on GitHub. ${REPO_TOKEN_REQUIRED_MESSAGE}`;
+}
+function mentionCacheScope(repoUrl: string, token: string | undefined): string {
+  const fingerprint = token
+    ? createHash("sha256").update(token, "utf8").digest("hex").slice(0, 16)
+    : "anonymous";
+  return `${fingerprint}|${repoUrl}`;
+}
 
 export function clearMentionResolutionCachesForTest(): void {
   mentionTreeCache.clear();
   mentionMissCache.clear();
 }
 
+export function mentionCacheKeysForTest(): string[] {
+  return [...mentionTreeCache.keys(), ...mentionMissCache.keys()];
+}
+
 async function getMentionTree(
   repoUrl: string,
   token: string | undefined,
 ): Promise<MentionTreeMeta> {
-  const hit = mentionTreeCache.get(repoUrl);
+  const scope = mentionCacheScope(repoUrl, token);
+  const hit = mentionTreeCache.get(scope);
   if (
     hit &&
     Date.now() - hit.at <
@@ -422,7 +446,7 @@ async function getMentionTree(
     MENTION_TREE_PATH_CAP,
     isMentionResolvablePath,
   );
-  mentionTreeCache.set(repoUrl, { meta, at: Date.now() });
+  mentionTreeCache.set(scope, { meta, at: Date.now() });
   if (mentionTreeCache.size > 50) {
     const oldest = mentionTreeCache.keys().next().value;
     if (oldest !== undefined) mentionTreeCache.delete(oldest);
@@ -454,11 +478,24 @@ async function fetchMissingMentionsFromGithub(
     return { files: [], unresolved: [] };
   }
   const repoUrl = identity.repoUrl;
+  let token: string | undefined;
+  try {
+    const { decryptSecret } = await import("./secret-crypto");
+    token = await resolveRepoToken(repoUrl, decryptSecret(identity.githubToken));
+  } catch (accessError) {
+    return {
+      files: [],
+      unresolved: [],
+      refused: accessError instanceof RepoTokenRequiredError,
+    };
+  }
+
+  const scope = mentionCacheScope(repoUrl, token);
   const now = Date.now();
   const cachedUnresolved: { mention: string; nearby: string[] }[] = [];
   const mentionsToTry: string[] = [];
   for (const m of missingMentions) {
-    const hit = mentionMissCache.get(`${repoUrl}:${m.toLowerCase()}`);
+    const hit = mentionMissCache.get(`${scope}:${m.toLowerCase()}`);
     if (hit && hit.expiry > now) {
       cachedUnresolved.push({ mention: m, nearby: hit.nearby });
     } else {
@@ -472,9 +509,6 @@ async function fetchMissingMentionsFromGithub(
     const { parseGithubOwnerRepo } = await import("./github");
     const parsed = parseGithubOwnerRepo(repoUrl);
     if (!parsed) return { files: [], unresolved: cachedUnresolved };
-    const { decryptSecret } = await import("./secret-crypto");
-    const token =
-      decryptSecret(identity.githubToken) || process.env.GITHUB_TOKEN;
 
     const treeMeta = await getMentionTree(repoUrl, token);
     const treePaths = treeMeta?.paths ?? [];
@@ -580,7 +614,7 @@ async function fetchMissingMentionsFromGithub(
         if (!satisfied && conclusive && !mentionHadTreeMatch.has(lower)) {
           const nearby = nearbyPathsForMention(treePaths, m);
           unresolved.push({ mention: m, nearby });
-          mentionMissCache.set(`${repoUrl}:${lower}`, {
+          mentionMissCache.set(`${scope}:${lower}`, {
             expiry: Date.now() + MENTION_CACHE_TTL_MS,
             nearby,
           });
@@ -690,7 +724,9 @@ export async function queryCodebase(
           ),
       );
       const mentionNote =
-        unproven.length > 0
+        unproven.length > 0 && live.refused
+          ? ` ${refusedMentionNote(unproven)}`
+          : unproven.length > 0
           ? ` I also looked for ${unproven
             .map((m) => `\`${m}\``)
             .join(
@@ -856,10 +892,20 @@ Remember: Your goal is to make the codebase as understandable as possible. Be de
         `\nFor these files: state plainly that the file does not exist in this repository - do NOT suggest re-checking capitalization, other commits, or re-indexing - and point the user to the real nearby files they probably meant.`
         : "";
 
+    const notLookedUp = live.refused ? missingMentions : [];
+    const notLookedUpBlock =
+      notLookedUp.length > 0
+        ? `\n\n## NAMED FILES NOT LOOKED UP:\n` +
+          notLookedUp.map((m) => `- \`${m}\``).join("\n") +
+          `\nThese files are not in the index and were not looked up on GitHub, because this repository can only be read with the project's own GitHub token. Do not say whether they exist; a note explaining this is added after your answer.`
+        : "";
+
     const systemContent =
       (options?.mode === "guidance"
         ? baseSystemContent + guidanceBlock
-        : baseSystemContent) + unresolvedBlock;
+        : baseSystemContent) +
+      unresolvedBlock +
+      notLookedUpBlock;
 
     const messages: {
       role: "user" | "assistant" | "system";
@@ -888,7 +934,10 @@ Remember: Your goal is to make the codebase as understandable as possible. Be de
 
     const usage = chatResult.usage;
     return {
-      answer: chatResult.content,
+      answer:
+        notLookedUp.length > 0
+          ? `${chatResult.content}\n\n${refusedMentionNote(notLookedUp)}`
+          : chatResult.content,
       sources: relevantCode,
       usage: chatResult.usage,
       model: chatResult.model,
@@ -912,7 +961,7 @@ export async function queryCodebasePreindex(
   conversationHistory?: { role: "user" | "assistant"; content: string }[],
   options?: QueryCodebaseOptions,
 ): Promise<RAGQueryResult> {
-  const token = githubToken || undefined;
+  const token = await resolveRepoToken(repoUrl, githubToken);
   const repoInfo = await getGitHubRepositoryInfo(repoUrl, token);
   const treeMeta = await listGithubRepoPathsForPreindex(repoUrl, token);
 

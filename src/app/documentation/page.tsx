@@ -111,12 +111,15 @@ export default function DocumentationPage() {
         </p>
         <ul className="mt-6 space-y-3">
           <Bullet>
-            Files are fetched with LangChain&apos;s GithubRepoLoader, scoped to
-            the default branch. Lockfiles and VCS metadata are skipped;
-            everything else in the tree is indexed.
+            Files are streamed from the GitHub tarball of the default
+            branch&apos;s head commit, pinned when indexing starts. Lockfiles,
+            the .git, .github, node_modules and .next directories, binary files
+            and files over 512 KB are skipped, and a repository is capped at
+            200 MB of text.
           </Bullet>
           <Bullet>
-            Each file is summarized with Gemini 2.5 Flash, then embedded with{" "}
+            Each new or changed file is summarized with Gemini 2.5 Flash-Lite,
+            then embedded with{" "}
             <span className="font-mono text-[12.5px] text-white/80">
               gemini-embedding-001
             </span>{" "}
@@ -227,8 +230,9 @@ export default function DocumentationPage() {
             <SurfaceLabel>models</SurfaceLabel>
             <p className="mt-2 text-[13.5px] leading-[1.6] text-white/60">
               All generation goes through OpenRouter, picked per task: Gemini
-              2.5 Flash for chat and summaries, Gemini 2.5 Pro for README,
-              Claude Haiku for docs edits. There is no cross-provider failover.
+              2.5 Flash for chat, docs and document edits, Gemini 2.5
+              Flash-Lite for file summaries, Gemini 2.5 Pro for README. There
+              is no cross-provider failover.
             </p>
           </Surface>
           <Surface>

@@ -45,6 +45,10 @@ jest.mock("../../src/lib/indexing-worker-kick", () => ({
   kickIndexingWorker: jest.fn().mockResolvedValue(undefined),
 }));
 
+jest.mock("../../src/lib/github-octokit", () => ({
+  createGitHubOctokit: jest.fn(),
+}));
+
 jest.mock("../../src/lib/prisma", () => ({
   __esModule: true,
   default: {
@@ -63,6 +67,10 @@ import { auth } from "@clerk/nextjs/server";
 import { getDbUserId } from "../../src/lib/get-db-user-id";
 import { queryCodebase, queryCodebasePreindex } from "../../src/lib/rag";
 import prisma from "../../src/lib/prisma";
+import {
+  REPO_TOKEN_REQUIRED_MESSAGE,
+  RepoTokenRequiredError,
+} from "../../src/lib/github/repo-access";
 import { POST } from "../../src/app/api/query/route";
 
 const mockAuth = auth as unknown as jest.Mock;
@@ -253,6 +261,32 @@ describe("/api/query", () => {
     expect(data.answer).toBe("Pre-index answer");
     expect(data.metadata?.preindex).toBe(true);
     expect(mockQueryCodebasePreindex).toHaveBeenCalled();
+  });
+
+  it("returns 403 with a clear message when pre-index chat hits a private repo without a token", async () => {
+    mockPrisma.project.findFirst.mockResolvedValue({
+      id: "proj1",
+      userId: "user123",
+      name: "Test Project",
+      repoUrl: "https://github.com/o/private-r",
+      githubToken: null,
+      monthlyCostLimitUsd: null,
+    });
+    mockPrisma.sourceCodeEmbeddings.count.mockResolvedValue(0);
+    mockQueryCodebasePreindex.mockRejectedValue(new RepoTokenRequiredError());
+
+    const request = new NextRequest("http://localhost:3000/api/query", {
+      method: "POST",
+      body: JSON.stringify({
+        projectId: "proj1",
+        question: "Test question",
+      }),
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(403);
+    const data = await response.json();
+    expect(data.message).toBe(REPO_TOKEN_REQUIRED_MESSAGE);
   });
 
   it("returns 404 if project is not found or unauthorized", async () => {

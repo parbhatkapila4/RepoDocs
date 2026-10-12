@@ -6,10 +6,17 @@ export const PLAN_LIMITS: Record<PlanName, { maxProjects: number }> = {
   enterprise: { maxProjects: Infinity },
 };
 
+const PROFESSIONAL_ALIASES: readonly string[] = ["pro", "professional"];
+const ENTERPRISE_ALIASES: readonly string[] = ["enterprise", "ent"];
+export const PAID_PLAN_VALUES: readonly string[] = [
+  ...PROFESSIONAL_ALIASES,
+  ...ENTERPRISE_ALIASES,
+];
+
 export function normalizePlanName(plan: string | null | undefined): PlanName {
   const p = (plan ?? "").toLowerCase().trim();
-  if (p === "pro" || p === "professional") return "professional";
-  if (p === "enterprise" || p === "ent") return "enterprise";
+  if (PROFESSIONAL_ALIASES.includes(p)) return "professional";
+  if (ENTERPRISE_ALIASES.includes(p)) return "enterprise";
   return "starter";
 }
 

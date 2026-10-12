@@ -18,17 +18,29 @@ jest.mock("@/lib/baseline-mirror", () => ({
 jest.mock("@/lib/indexing-worker-kick", () => ({
   kickIndexingWorker: jest.fn().mockResolvedValue(undefined),
 }));
+jest.mock("@/lib/github-octokit", () => ({ createGitHubOctokit: jest.fn() }));
 
 import prisma from "@/lib/prisma";
 import { indexGithubRepository } from "@/lib/github";
 import { mirrorBaselineIfPending } from "@/lib/baseline-mirror";
 import { kickIndexingWorker } from "@/lib/indexing-worker-kick";
 import { runIndexingWorkerOnce } from "@/lib/indexing-worker-run";
+import { PAID_PLAN_VALUES } from "@/lib/plan";
+import {
+  REPO_TOKEN_REQUIRED_MESSAGE,
+  RepoTokenRequiredError,
+} from "@/lib/github/repo-access";
 
 const findMany = prisma.indexingJob.findMany as jest.Mock;
 const update = prisma.indexingJob.update as jest.Mock;
 const updateMany = prisma.indexingJob.updateMany as jest.Mock;
 const indexRepo = indexGithubRepository as jest.Mock;
+
+const FENCED_WHERE = {
+  id: "job-1",
+  status: "processing",
+  lockedBy: expect.any(String),
+};
 
 function makeJob(overrides: Record<string, unknown> = {}) {
   return {
@@ -42,8 +54,20 @@ function makeJob(overrides: Record<string, unknown> = {}) {
       repoUrl: "https://github.com/acme/ledger",
       githubToken: null,
       name: "ledger",
-      user: { plan: "professional" },
     },
+    ...overrides,
+  };
+}
+
+function completedPass(overrides: Record<string, unknown> = {}) {
+  return {
+    success: true,
+    needsResume: false,
+    resumeAfter: null,
+    filesProcessed: 120,
+    successCount: 120,
+    failCount: 0,
+    phase: "full",
     ...overrides,
   };
 }
@@ -61,13 +85,22 @@ describe("runIndexingWorkerOnce", () => {
     expect(res.body.status).toBe("idle");
   });
 
-  it("skips free-plan jobs (indexing is a paid feature)", async () => {
-    findMany.mockResolvedValue([
-      makeJob({ project: { ...makeJob().project, user: { plan: "starter" } } }),
-    ]);
-    const res = await runIndexingWorkerOnce();
-    expect(res.body.status).toBe("idle");
-    expect(updateMany).not.toHaveBeenCalled();
+  it("filters out free-plan and deleted-project jobs in the query, before the 40-job window", async () => {
+    findMany.mockResolvedValue([]);
+
+    await runIndexingWorkerOnce();
+
+    const args = findMany.mock.calls[0][0];
+    expect(args.take).toBe(40);
+    expect(args.where.project).toEqual({
+      deletedAt: null,
+      user: {
+        OR: PAID_PLAN_VALUES.map((plan) => ({
+          plan: { equals: plan, mode: "insensitive" },
+        })),
+      },
+    });
+    expect(args.include.project.select).not.toHaveProperty("user");
   });
 
   it("yields when another worker wins the lease", async () => {
@@ -84,15 +117,7 @@ describe("runIndexingWorkerOnce", () => {
       makeJob({ id: "job-stale", updatedAt: new Date("2026-01-01T09:00:00Z") }),
     ]);
     updateMany.mockResolvedValue({ count: 1 });
-    indexRepo.mockResolvedValue({
-      success: true,
-      needsResume: false,
-      resumeAfter: null,
-      filesProcessed: 1,
-      successCount: 1,
-      failCount: 0,
-      phase: "full",
-    });
+    indexRepo.mockResolvedValue(completedPass({ filesProcessed: 1, successCount: 1 }));
 
     await runIndexingWorkerOnce();
 
@@ -115,7 +140,7 @@ describe("runIndexingWorkerOnce", () => {
     const res = await runIndexingWorkerOnce();
 
     expect(res.body.status).toBe("stalled");
-    const data = update.mock.calls.at(-1)?.[0]?.data;
+    const data = updateMany.mock.calls.at(-1)?.[0]?.data;
     expect(data.status).toBe("queued");
     expect(data.attempts).toBe(2);
     expect(data.nextAttemptAt).toBeInstanceOf(Date);
@@ -138,7 +163,7 @@ describe("runIndexingWorkerOnce", () => {
     const res = await runIndexingWorkerOnce();
 
     expect(res.body.status).toBe("error");
-    const data = update.mock.calls.at(-1)?.[0]?.data;
+    const data = updateMany.mock.calls.at(-1)?.[0]?.data;
     expect(data.status).toBe("failed");
     expect(data.attempts).toBe(5);
   });
@@ -160,9 +185,9 @@ describe("runIndexingWorkerOnce", () => {
 
     expect(res.body.status).toBe("paused");
     expect(res.body.resumeAfter).toBe("src/lib/visuals.ts");
-    expect(update).toHaveBeenCalledWith(
+    expect(updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: "job-1" },
+        where: FENCED_WHERE,
         data: expect.objectContaining({
           status: "queued",
           resumeAfter: "src/lib/visuals.ts",
@@ -178,20 +203,14 @@ describe("runIndexingWorkerOnce", () => {
   it("requeues instead of completing when files failed to index", async () => {
     findMany.mockResolvedValue([makeJob()]);
     updateMany.mockResolvedValue({ count: 1 });
-    indexRepo.mockResolvedValue({
-      success: true,
-      needsResume: false,
-      resumeAfter: null,
-      filesProcessed: 110,
-      successCount: 107,
-      failCount: 3,
-      phase: "full",
-    });
+    indexRepo.mockResolvedValue(
+      completedPass({ filesProcessed: 110, successCount: 107, failCount: 3 }),
+    );
 
     const res = await runIndexingWorkerOnce();
 
     expect(res.body.status).toBe("requeued_incomplete");
-    const data = update.mock.calls.at(-1)?.[0]?.data;
+    const data = updateMany.mock.calls.at(-1)?.[0]?.data;
     expect(data.status).toBe("queued");
     expect(data.attempts).toBe(1);
     expect(data.nextAttemptAt).toBeInstanceOf(Date);
@@ -201,20 +220,14 @@ describe("runIndexingWorkerOnce", () => {
   it("completes with a recorded gap after failures persist past the attempt cap", async () => {
     findMany.mockResolvedValue([makeJob({ attempts: 4 })]);
     updateMany.mockResolvedValue({ count: 1 });
-    indexRepo.mockResolvedValue({
-      success: true,
-      needsResume: false,
-      resumeAfter: null,
-      filesProcessed: 110,
-      successCount: 108,
-      failCount: 2,
-      phase: "full",
-    });
+    indexRepo.mockResolvedValue(
+      completedPass({ filesProcessed: 110, successCount: 108, failCount: 2 }),
+    );
 
     const res = await runIndexingWorkerOnce();
 
     expect(res.body.status).toBe("success");
-    const data = update.mock.calls.at(-1)?.[0]?.data;
+    const data = updateMany.mock.calls.at(-1)?.[0]?.data;
     expect(data.status).toBe("completed");
     expect(data.error).toContain("could not be indexed");
     expect(mirrorBaselineIfPending).toHaveBeenCalledWith("proj-1");
@@ -223,22 +236,14 @@ describe("runIndexingWorkerOnce", () => {
   it("completes the job and mirrors the baseline on success", async () => {
     findMany.mockResolvedValue([makeJob()]);
     updateMany.mockResolvedValue({ count: 1 });
-    indexRepo.mockResolvedValue({
-      success: true,
-      needsResume: false,
-      resumeAfter: null,
-      filesProcessed: 120,
-      successCount: 120,
-      failCount: 0,
-      phase: "full",
-    });
+    indexRepo.mockResolvedValue(completedPass());
 
     const res = await runIndexingWorkerOnce();
 
     expect(res.body.status).toBe("success");
-    expect(update).toHaveBeenCalledWith(
+    expect(updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: "job-1" },
+        where: FENCED_WHERE,
         data: expect.objectContaining({
           status: "completed",
           progress: 100,
@@ -259,11 +264,26 @@ describe("runIndexingWorkerOnce", () => {
 
     expect(res.status).toBe(500);
     expect(res.body.status).toBe("retrying");
-    const data = update.mock.calls.at(-1)?.[0]?.data;
+    const data = updateMany.mock.calls.at(-1)?.[0]?.data;
     expect(data.status).toBe("queued");
     expect(data.attempts).toBe(1);
     expect(data.nextAttemptAt).toBeInstanceOf(Date);
     expect(data.nextAttemptAt.getTime()).toBeGreaterThan(Date.now() + 50_000);
+  });
+
+  it("fails at once, without retrying, when a private repo needs the project's own token", async () => {
+    findMany.mockResolvedValue([makeJob()]);
+    updateMany.mockResolvedValue({ count: 1 });
+    indexRepo.mockRejectedValue(new RepoTokenRequiredError());
+
+    const res = await runIndexingWorkerOnce();
+
+    expect(res.body.status).toBe("error");
+    const data = updateMany.mock.calls.at(-1)?.[0]?.data;
+    expect(data.status).toBe("failed");
+    expect(data.attempts).toBe(1);
+    expect(data.nextAttemptAt).toBeNull();
+    expect(data.error).toBe(REPO_TOKEN_REQUIRED_MESSAGE);
   });
 
   it("fails permanently after the attempt cap", async () => {
@@ -274,9 +294,86 @@ describe("runIndexingWorkerOnce", () => {
     const res = await runIndexingWorkerOnce();
 
     expect(res.body.status).toBe("error");
-    const data = update.mock.calls.at(-1)?.[0]?.data;
+    const data = updateMany.mock.calls.at(-1)?.[0]?.data;
     expect(data.status).toBe("failed");
     expect(data.attempts).toBe(5);
     expect(data.nextAttemptAt).toBeNull();
+  });
+});
+
+describe("lease fencing", () => {
+  it("conditions every write after the claim on the lease this worker holds", async () => {
+    findMany.mockResolvedValue([makeJob()]);
+    updateMany.mockResolvedValue({ count: 1 });
+    indexRepo.mockImplementation(async (_id, _url, _token, onProgress) => {
+      await onProgress(50);
+      return completedPass();
+    });
+
+    await runIndexingWorkerOnce();
+
+    const [claim, ...writes] = updateMany.mock.calls.map((c) => c[0]);
+    const workerId = claim.data.lockedBy;
+    expect(typeof workerId).toBe("string");
+    expect(writes).toHaveLength(2);
+    for (const write of writes) {
+      expect(write.where).toEqual(
+        expect.objectContaining({
+          id: "job-1",
+          status: "processing",
+          lockedBy: workerId,
+        }),
+      );
+    }
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("does not overwrite a cancel that lands while the pass is running", async () => {
+    findMany.mockResolvedValue([makeJob()]);
+    updateMany
+      .mockResolvedValueOnce({ count: 1 })
+      .mockResolvedValue({ count: 0 });
+    indexRepo.mockResolvedValue(completedPass());
+
+    const res = await runIndexingWorkerOnce();
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("lease_lost");
+    expect(mirrorBaselineIfPending).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("does not requeue or re-kick a time-boxed pass whose lease is gone", async () => {
+    findMany.mockResolvedValue([makeJob()]);
+    updateMany
+      .mockResolvedValueOnce({ count: 1 })
+      .mockResolvedValue({ count: 0 });
+    indexRepo.mockResolvedValue({
+      success: true,
+      needsResume: true,
+      resumeAfter: "src/lib/visuals.ts",
+      filesProcessed: 40,
+      successCount: 40,
+      failCount: 0,
+      phase: "fast",
+    });
+
+    const res = await runIndexingWorkerOnce();
+
+    expect(res.body.status).toBe("lease_lost");
+    expect(kickIndexingWorker).not.toHaveBeenCalled();
+  });
+
+  it("does not overwrite a cancel when the pass throws", async () => {
+    findMany.mockResolvedValue([makeJob()]);
+    updateMany
+      .mockResolvedValueOnce({ count: 1 })
+      .mockResolvedValue({ count: 0 });
+    indexRepo.mockRejectedValue(new Error("GitHub 403"));
+
+    const res = await runIndexingWorkerOnce();
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("lease_lost");
   });
 });

@@ -13,7 +13,7 @@ const STATS = [
   { label: "embedding dims", value: "768" },
   { label: "files per answer", value: "top 5" },
   { label: "worker lease", value: "5 min" },
-  { label: "unit tests", value: "20" },
+  { label: "unit tests", value: "195" },
 ];
 
 const STACK = [
@@ -102,12 +102,12 @@ export default function AboutPage() {
           <Step
             n="01"
             title="Ingest"
-            body="Repository contents are fetched with LangChain's GithubRepoLoader, scoped to the default branch and respecting ignore rules."
+            body="Repository contents are streamed from GitHub's tarball of the default branch's head commit, pinned when indexing starts. Lockfiles, VCS, dependency and build directories, binaries and files over 512 KB are skipped."
           />
           <Step
             n="02"
             title="Summarize"
-            body="Each file is summarized with Gemini 2.5 Flash. Summaries are short, deterministic, and produced in parallel."
+            body="Each new or changed file is summarized by Gemini 2.5 Flash-Lite, which is asked for at most 100 words. Files are processed one at a time within each worker pass."
           />
           <Step
             n="03"

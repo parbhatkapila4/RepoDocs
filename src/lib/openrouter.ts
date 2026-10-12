@@ -1,9 +1,25 @@
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 
+export class OpenRouterError extends Error {
+  readonly status: number | null;
+
+  constructor(message: string, status: number | null = null) {
+    super(message);
+    this.name = "OpenRouterError";
+    this.status = status;
+  }
+}
+
+const NON_RETRYABLE_STATUSES = new Set([400, 401, 402, 404]);
+export function isRetryableOpenRouterError(error: unknown): boolean {
+  if (!(error instanceof OpenRouterError)) return true;
+  return error.status !== null && !NON_RETRYABLE_STATUSES.has(error.status);
+}
+
 function getOpenRouterKey(): string {
   const key = process.env.OPENROUTER_API_KEY;
   if (!key?.trim()) {
-    throw new Error(
+    throw new OpenRouterError(
       "OPENROUTER_API_KEY is not set. Add it in your environment (e.g. .env) to use doc modification and AI features.",
     );
   }
@@ -111,8 +127,9 @@ export async function openrouterChatCompletion(
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(
+      throw new OpenRouterError(
         `OpenRouter API error: ${response.status} ${response.statusText} - ${errorText}`,
+        response.status,
       );
     }
 

@@ -1,5 +1,9 @@
 import { decryptSecret } from "@/lib/secret-crypto";
 import { getGitHubRepositoryInfo, type GitHubRepoInfo } from "@/lib/github";
+import {
+  RepoTokenRequiredError,
+  resolveRepoToken,
+} from "@/lib/github/repo-access";
 import { log } from "@/lib/logger";
 
 export interface ProjectRepoRef {
@@ -12,14 +16,14 @@ export async function fetchRepoInfoForProject(
   project: ProjectRepoRef,
 ): Promise<Partial<GitHubRepoInfo>> {
   try {
-    const withToken = await getGitHubRepositoryInfo(
+    const token = await resolveRepoToken(
       project.repoUrl,
-      decryptSecret(project.githubToken) || undefined,
+      decryptSecret(project.githubToken),
     );
-    if (withToken) return withToken;
-    const anonymous = await getGitHubRepositoryInfo(project.repoUrl);
-    if (anonymous) return anonymous;
+    const info = await getGitHubRepositoryInfo(project.repoUrl, token);
+    if (info) return info;
   } catch (repoError) {
+    if (repoError instanceof RepoTokenRequiredError) throw repoError;
     log.error("Error fetching repo info:", repoError);
   }
   return {

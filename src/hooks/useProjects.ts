@@ -31,8 +31,8 @@ export const useProjects = () => {
         }
         dispatch(
           addProject({
-            name: project.name,
-            githubUrl: project.repoUrl,
+            name,
+            githubUrl,
             status: "completed",
           })
         );

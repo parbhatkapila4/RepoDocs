@@ -1,7 +1,7 @@
 "use server";
 
 import { after } from "next/server";
-import { createProjectWithAuth } from "./queries";
+import { createProjectWithAuth, deleteProject } from "./queries";
 import { kickIndexingWorker } from "./indexing-worker-kick";
 import { MAX_ATTEMPTS } from "./indexing-worker-run";
 import { auth } from "@clerk/nextjs/server";
@@ -13,12 +13,13 @@ import { getDbUserId } from "./get-db-user-id";
 import { isLikelyGitHubRateLimitMessage } from "./github-rate-limit-message";
 import { githubCoreQuotaRecovered } from "./github-rate-limit-status";
 import { getGitHubRepositoryInfo, type GitHubRepoInfo } from "./github";
+import { RepoTokenRequiredError, resolveRepoToken } from "./github/repo-access";
 import { fetchRepoInfoForProject } from "./project-repo-info";
 import { withGenerationStamp } from "./generated-stamp";
-import type { Project } from "@prisma/client";
 
+// Only the id goes back to the client; the full row would carry githubToken.
 export type CreateProjectResult =
-  | { project: Project; error?: undefined }
+  | { project: { id: string }; error?: undefined }
   | { project: null; error: string };
 
 const PLAN_LIMITS = {
@@ -46,7 +47,7 @@ export async function createProject(
   try {
     const project = await createProjectWithAuth(name, githubUrl, githubToken);
     void kickIndexingWorker();
-    return { project };
+    return { project: { id: project.id } };
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Failed to create project";
@@ -445,10 +446,30 @@ export async function fetchRepositoryInfo(
   repoUrl: string,
 ): Promise<{ data: any } | { error: string }> {
   try {
-    const repoInfo = await getGitHubRepositoryInfo(repoUrl);
+    const { userId } = await auth();
+    if (!userId) return { error: "Please sign in to load repository details." };
+    const dbUserId = await getDbUserId(userId);
+    const ownProject = dbUserId
+      ? await prisma.project.findFirst({
+          where: {
+            userId: dbUserId,
+            repoUrl,
+            deletedAt: null,
+            githubToken: { not: null },
+          },
+          select: { githubToken: true },
+        })
+      : null;
+    const token = await resolveRepoToken(
+      repoUrl,
+      decryptSecret(ownProject?.githubToken),
+    );
+
+    const repoInfo = await getGitHubRepositoryInfo(repoUrl, token);
     if (!repoInfo) return { error: "Repository not found" };
     return { data: repoInfo };
   } catch (error: any) {
+    if (error instanceof RepoTokenRequiredError) return { error: error.message };
     console.error("Error fetching repository information:", error);
     const status = error?.status ?? error?.response?.status;
     const msg = error?.message ?? "";
@@ -474,7 +495,7 @@ export async function fetchRepositoryInfo(
   }
 }
 
-export async function deleteUserProject(projectId: string) {
+export async function deleteUserProject(projectId: string): Promise<void> {
   try {
     const { userId } = await auth();
 
@@ -508,17 +529,7 @@ export async function deleteUserProject(projectId: string) {
       throw new Error("User not found");
     }
 
-    const project = await prisma.project.update({
-      where: {
-        id: projectId,
-        userId: dbUser.id,
-      },
-      data: {
-        deletedAt: new Date(),
-      },
-    });
-
-    return project;
+    await deleteProject(projectId, dbUser.id);
   } catch (error) {
     console.error("Error deleting project:", error);
     throw new Error("Failed to delete project");
@@ -685,6 +696,7 @@ export async function regenerateProjectReadme(projectId: string) {
     return readme;
   } catch (error) {
     console.error("Error regenerating project README:", error);
+    if (error instanceof RepoTokenRequiredError) throw error;
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
     throw new Error(`Failed to regenerate README: ${errorMessage}`);
@@ -1072,18 +1084,15 @@ export async function getProjectDocs(projectId: string) {
   }
 }
 
-export async function getProjectWithToken(projectId: string) {
+export async function getProjectRepositoryInfo(
+  projectId: string,
+): Promise<GitHubRepoInfo | null> {
   try {
     const { userId } = await auth();
-
-    if (!userId) {
-      throw new Error("Unauthorized");
-    }
+    if (!userId) return null;
 
     const dbUserId = await getDbUserId(userId);
-    if (!dbUserId) {
-      throw new Error("User not found");
-    }
+    if (!dbUserId) return null;
 
     const project = await prisma.project.findFirst({
       where: {
@@ -1096,17 +1105,17 @@ export async function getProjectWithToken(projectId: string) {
         githubToken: true,
       },
     });
+    if (!project) return null;
 
-    if (!project) {
-      throw new Error("Project not found or unauthorized");
-    }
-
-    return {
-      repoUrl: project.repoUrl,
-      githubToken: decryptSecret(project.githubToken),
-    };
+    const token = await resolveRepoToken(
+      project.repoUrl,
+      decryptSecret(project.githubToken),
+    );
+    return await getGitHubRepositoryInfo(project.repoUrl, token);
   } catch (error) {
-    console.error("Error fetching project with token:", error);
+    if (!(error instanceof RepoTokenRequiredError)) {
+      console.error("Error fetching project repository info:", error);
+    }
     return null;
   }
 }
@@ -1496,6 +1505,7 @@ export async function regenerateProjectDocs(projectId: string) {
     return docs;
   } catch (error) {
     console.error("Error regenerating project docs:", error);
+    if (error instanceof RepoTokenRequiredError) throw error;
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
     throw new Error(`Failed to regenerate docs: ${errorMessage}`);

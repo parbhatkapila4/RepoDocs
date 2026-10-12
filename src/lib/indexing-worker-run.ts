@@ -1,10 +1,12 @@
-import { log } from "./logger";
+import type { Prisma } from "@prisma/client";
+import { log, type Logger } from "./logger";
 import prisma from "@/lib/prisma";
 import { indexGithubRepository } from "@/lib/github";
 import { decryptSecret } from "@/lib/secret-crypto";
 import { retryAsync } from "@/lib/errors";
 import { mirrorBaselineIfPending } from "@/lib/baseline-mirror";
-import { isPaidPlan } from "@/lib/plan";
+import { PAID_PLAN_VALUES } from "@/lib/plan";
+import { RepoTokenRequiredError } from "@/lib/github/repo-access";
 
 const JOB_LEASE_DURATION_MS = 5 * 60 * 1000;
 export const MAX_ATTEMPTS = 5;
@@ -15,6 +17,14 @@ const BACKOFF_MS = [
   60 * 60_000,
   6 * 60 * 60_000,
 ];
+const ELIGIBLE_PROJECT: Prisma.ProjectWhereInput = {
+  deletedAt: null,
+  user: {
+    OR: PAID_PLAN_VALUES.map((plan) => ({
+      plan: { equals: plan, mode: "insensitive" as const },
+    })),
+  },
+};
 
 function backoffFor(attempt: number): number {
   return BACKOFF_MS[Math.min(attempt, BACKOFF_MS.length - 1)];
@@ -31,6 +41,7 @@ async function findEligibleJob() {
 
   const candidates = await prisma.indexingJob.findMany({
     where: {
+      project: ELIGIBLE_PROJECT,
       OR: [
         {
           status: "queued",
@@ -49,18 +60,15 @@ async function findEligibleJob() {
           repoUrl: true,
           githubToken: true,
           name: true,
-          user: { select: { plan: true } },
         },
       },
     },
   });
 
-  const eligible = candidates.filter((c) => isPaidPlan(c.project.user?.plan));
+  if (candidates.length === 0) return null;
+  candidates.sort((a, b) => a.updatedAt.getTime() - b.updatedAt.getTime());
 
-  if (eligible.length === 0) return null;
-  eligible.sort((a, b) => a.updatedAt.getTime() - b.updatedAt.getTime());
-
-  return eligible[0];
+  return candidates[0];
 }
 
 async function claimJob(jobId: string, workerId: string): Promise<boolean> {
@@ -87,6 +95,30 @@ async function claimJob(jobId: string, workerId: string): Promise<boolean> {
   });
   return res.count === 1;
 }
+async function updateIfLeaseHeld(
+  jobId: string,
+  workerId: string,
+  data: Prisma.IndexingJobUpdateManyMutationInput,
+): Promise<boolean> {
+  const res = await prisma.indexingJob.updateMany({
+    where: { id: jobId, status: "processing", lockedBy: workerId },
+    data,
+  });
+  return res.count === 1;
+}
+
+function leaseLost(
+  jlog: Logger,
+  job: { id: string; projectId: string },
+): IndexingWorkerHttpResult {
+  jlog.warn(
+    "Lease lost during the pass (cancelled, project deleted, or reclaimed); not writing this pass's result",
+  );
+  return {
+    status: 200,
+    body: { status: "lease_lost", jobId: job.id, projectId: job.projectId },
+  };
+}
 
 async function processIndexingJob(
   job: {
@@ -106,7 +138,12 @@ async function processIndexingJob(
     const capped = Math.max(0, Math.min(progress, 100));
     try {
       await prisma.indexingJob.updateMany({
-        where: { id: job.id, progress: { lt: capped } },
+        where: {
+          id: job.id,
+          status: "processing",
+          lockedBy: workerId,
+          progress: { lt: capped },
+        },
         data: { progress: capped, updatedAt: new Date() },
       });
     } catch {}
@@ -163,22 +200,18 @@ export async function runIndexingWorkerOnce(): Promise<IndexingWorkerHttpResult>
           const attempts = (job.attempts ?? 0) + 1;
           const willRetry = attempts < MAX_ATTEMPTS;
           const retryInMs = backoffFor(attempts - 1);
-          await prisma.indexingJob.update({
-            where: { id: job.id },
-            data: {
-              status: willRetry ? "queued" : "failed",
-              resumeAfter: result.resumeAfter,
-              attempts,
-              nextAttemptAt: willRetry
-                ? new Date(Date.now() + retryInMs)
-                : null,
-              error:
-                "No files were processed in the last pass - the summarization or embedding service may be temporarily unavailable. Retrying with backoff.",
-              lockedAt: null,
-              lockedBy: null,
-              updatedAt: new Date(),
-            },
+          const stillOwned = await updateIfLeaseHeld(job.id, workerId, {
+            status: willRetry ? "queued" : "failed",
+            resumeAfter: result.resumeAfter,
+            attempts,
+            nextAttemptAt: willRetry ? new Date(Date.now() + retryInMs) : null,
+            error:
+              "No files were processed in the last pass - the summarization or embedding service may be temporarily unavailable. Retrying with backoff.",
+            lockedAt: null,
+            lockedBy: null,
+            updatedAt: new Date(),
           });
+          if (!stillOwned) return leaseLost(jlog, job);
           jlog.warn(
             `Pass made no progress (attempt ${attempts}/${MAX_ATTEMPTS}); ${willRetry ? `backing off ${Math.round(retryInMs / 1000)}s` : "marking failed"}`,
           );
@@ -194,19 +227,17 @@ export async function runIndexingWorkerOnce(): Promise<IndexingWorkerHttpResult>
           };
         }
 
-        await prisma.indexingJob.update({
-          where: { id: job.id },
-          data: {
-            status: "queued",
-            resumeAfter: result.resumeAfter,
-            attempts: 0,
-            nextAttemptAt: null,
-            error: null,
-            lockedAt: null,
-            lockedBy: null,
-            updatedAt: new Date(),
-          },
+        const stillOwned = await updateIfLeaseHeld(job.id, workerId, {
+          status: "queued",
+          resumeAfter: result.resumeAfter,
+          attempts: 0,
+          nextAttemptAt: null,
+          error: null,
+          lockedAt: null,
+          lockedBy: null,
+          updatedAt: new Date(),
         });
+        if (!stillOwned) return leaseLost(jlog, job);
         jlog.debug(
           `Job hit its time box; will resume from "${result.resumeAfter}"`,
         );
@@ -227,19 +258,17 @@ export async function runIndexingWorkerOnce(): Promise<IndexingWorkerHttpResult>
         const attempts = (job.attempts ?? 0) + 1;
         if (attempts < MAX_ATTEMPTS) {
           const retryInMs = backoffFor(attempts - 1);
-          await prisma.indexingJob.update({
-            where: { id: job.id },
-            data: {
-              status: "queued",
-              resumeAfter: null,
-              attempts,
-              nextAttemptAt: new Date(Date.now() + retryInMs),
-              error: `${result.failCount} file(s) failed to index (provider errors); retrying the missing files with backoff.`,
-              lockedAt: null,
-              lockedBy: null,
-              updatedAt: new Date(),
-            },
+          const stillOwned = await updateIfLeaseHeld(job.id, workerId, {
+            status: "queued",
+            resumeAfter: null,
+            attempts,
+            nextAttemptAt: new Date(Date.now() + retryInMs),
+            error: `${result.failCount} file(s) failed to index (provider errors); retrying the missing files with backoff.`,
+            lockedAt: null,
+            lockedBy: null,
+            updatedAt: new Date(),
           });
+          if (!stillOwned) return leaseLost(jlog, job);
           jlog.warn(
             `Pass finished but ${result.failCount} file(s) failed; requeueing (attempt ${attempts}/${MAX_ATTEMPTS}) in ${Math.round(retryInMs / 1000)}s`,
           );
@@ -264,21 +293,19 @@ export async function runIndexingWorkerOnce(): Promise<IndexingWorkerHttpResult>
           ? `Index completed, but ${result.failCount} file(s) could not be indexed after repeated attempts.`
           : null;
 
-      await prisma.indexingJob.update({
-        where: { id: job.id },
-        data: {
-          status: "completed",
-          progress: 100,
-          phase: "full",
-          resumeAfter: null,
-          attempts: 0,
-          nextAttemptAt: null,
-          lockedAt: null,
-          lockedBy: null,
-          error: completionNote,
-          updatedAt: new Date(),
-        },
+      const stillOwned = await updateIfLeaseHeld(job.id, workerId, {
+        status: "completed",
+        progress: 100,
+        phase: "full",
+        resumeAfter: null,
+        attempts: 0,
+        nextAttemptAt: null,
+        lockedAt: null,
+        lockedBy: null,
+        error: completionNote,
+        updatedAt: new Date(),
       });
+      if (!stillOwned) return leaseLost(jlog, job);
       try {
         const mirroredSha = await retryAsync(
           () => mirrorBaselineIfPending(job.projectId),
@@ -305,20 +332,19 @@ export async function runIndexingWorkerOnce(): Promise<IndexingWorkerHttpResult>
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       const attempts = (job.attempts ?? 0) + 1;
-      const willRetry = attempts < MAX_ATTEMPTS;
+      const willRetry =
+        attempts < MAX_ATTEMPTS && !(error instanceof RepoTokenRequiredError);
       const retryInMs = backoffFor(attempts - 1);
-      await prisma.indexingJob.update({
-        where: { id: job.id },
-        data: {
-          status: willRetry ? "queued" : "failed",
-          error: errorMessage,
-          attempts,
-          nextAttemptAt: willRetry ? new Date(Date.now() + retryInMs) : null,
-          lockedAt: null,
-          lockedBy: null,
-          updatedAt: new Date(),
-        },
+      const stillOwned = await updateIfLeaseHeld(job.id, workerId, {
+        status: willRetry ? "queued" : "failed",
+        error: errorMessage,
+        attempts,
+        nextAttemptAt: willRetry ? new Date(Date.now() + retryInMs) : null,
+        lockedAt: null,
+        lockedBy: null,
+        updatedAt: new Date(),
       });
+      if (!stillOwned) return leaseLost(jlog, job);
 
       if (willRetry) {
         jlog.error(

@@ -320,6 +320,7 @@ function friendlyCheckError(
 ): string {
   const reason = data?.reason ?? "";
   const raw = data?.message || data?.error || "";
+  if (reason === "repo_token_required" && raw) return raw;
   if (/being processed/i.test(raw)) {
     return "RepoDoc is still reading this repository. This will be available once indexing finishes.";
   }

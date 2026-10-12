@@ -14,6 +14,10 @@ import {
   isGuardFailure,
 } from "@/lib/api-guards";
 import { parseGithubOwnerRepo, compareCommitsBasehead } from "@/lib/github";
+import {
+  RepoTokenRequiredError,
+  resolveRepoToken,
+} from "@/lib/github/repo-access";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -66,10 +70,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ reason: "no_baseline" }, { status: 409 });
     }
 
-    const token =
-      (project.githubToken ? decryptSecret(project.githubToken) : null) ||
-      process.env.GITHUB_TOKEN ||
-      undefined;
+    let token: string | undefined;
+    try {
+      token = await resolveRepoToken(
+        project.repoUrl,
+        decryptSecret(project.githubToken),
+      );
+    } catch (accessError) {
+      if (accessError instanceof RepoTokenRequiredError) {
+        return NextResponse.json(
+          {
+            error: "GitHub comparison refused",
+            reason: "repo_token_required",
+            message: accessError.message,
+          },
+          { status: 403 }
+        );
+      }
+      throw accessError;
+    }
 
     const compare = await compareCommitsBasehead(
       repo.owner,
